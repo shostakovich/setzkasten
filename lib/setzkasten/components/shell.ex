@@ -26,6 +26,9 @@ defmodule Setzkasten.Components.Shell do
   The entry whose `key` equals `current` is marked with `aria-current="page"`.
   `:fab` reserves space for a floating action above the dock.
 
+  The brand shrinks before the account does, so the bar stays one row: give long brand
+  text `truncate` (and a dropdown in it a `truncate` label) so it ends in an ellipsis.
+
       <.app_shell layout={:topbar} current={:expenses} width={:narrow}>
         <:brand><.plush name="mascot" size={:lg} /> Teilbar</:brand>
         <:nav key={:expenses} label="Ausgaben" plush="receipt" navigate={~p"/"} />
@@ -138,7 +141,7 @@ defmodule Setzkasten.Components.Shell do
             @width_class
           ]}
         >
-          <div class="flex-1 flex items-center gap-2 font-semibold">
+          <div class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
             <span class="contents md:hidden">{render_slot(@brand)}</span>
           </div>
           {render_slot(@account)}
@@ -149,7 +152,9 @@ defmodule Setzkasten.Components.Shell do
             @width_class,
             @dock_items == [] && "max-md:flex-wrap"
           ]}>
-            <div class="flex items-center gap-2 font-semibold">{render_slot(@brand)}</div>
+            <div class="flex min-w-0 items-center gap-2 font-semibold *:min-w-0 max-md:flex-1">
+              {render_slot(@brand)}
+            </div>
             <nav
               :if={@nav != []}
               aria-label={@nav_label}
@@ -172,7 +177,7 @@ defmodule Setzkasten.Components.Shell do
                 </li>
               </ul>
             </nav>
-            <div class="ms-auto flex items-center gap-2">{render_slot(@account)}</div>
+            <div class="ms-auto flex shrink-0 items-center gap-2">{render_slot(@account)}</div>
           </div>
         </header>
         <main

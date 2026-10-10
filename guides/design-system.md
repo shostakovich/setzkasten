@@ -300,7 +300,8 @@ Text in components wraps long unbroken strings (host names, URLs) instead of wid
   - `width` `:narrow | :default | :wide | :full` (2.7); `current` marks the active `:nav` entry.
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
     (the first five go into the dock).
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`.
+  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. The brand shrinks before the account, so the bar
+    stays one row; long brand text needs `truncate`.
   - Dock: daisyUI `dock` (64px + safe area), hidden while a text field has focus. Sticky action bars sit above it
     via `--setzkasten-dock-offset`.
 

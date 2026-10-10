@@ -70,4 +70,21 @@ defmodule Setzkasten.ShellTest do
     assert text(doc, "aside.xl\\:flex li.menu-title") == "Depots"
     assert text(doc, "aside.xl\\:flex a[aria-current=page]") =~ "7.994,83"
   end
+
+  test "topbar brand shrinks before the account instead of wrapping the bar" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell dock={false}>
+        <:brand><span class="truncate">A long brand</span></:brand>
+        <:account>acc</:account>
+        x
+      </.app_shell>
+      """)
+
+    brand = classes(doc, ".navbar > div:first-child")
+    assert Enum.all?(~w(min-w-0 *:min-w-0 max-md:flex-1), &(&1 in brand))
+    assert "shrink-0" in classes(doc, ".navbar > div.ms-auto")
+  end
 end
