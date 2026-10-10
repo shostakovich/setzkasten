@@ -29,7 +29,9 @@ defmodule Setzkasten.LayoutTest do
     assert classes(doc, "h3") ==
              ~w(flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere)
 
-    assert text(doc, "h3 .badge") == "3"
+    # The count is quiet text, no badge.
+    assert text(doc, "h3 span.tabular-nums") == "3"
+    assert count(doc, "h3 .badge") == 0
   end
 
   test "card is flat with hairline; list slot uses a header strip" do

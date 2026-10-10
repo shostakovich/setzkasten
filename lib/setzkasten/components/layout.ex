@@ -62,7 +62,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  A section heading (sentence case, `text-base` 600) with optional count badge
+  A section heading (sentence case, `text-base` 600) with an optional count (quiet text)
   and actions. `mt-8` above it, none when it is the first child.
 
       <.section_heading count={2}>Depots
@@ -86,7 +86,7 @@ defmodule Setzkasten.Components.Layout do
         class="flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere"
       >
         {render_slot(@inner_block)}
-        <span :if={@count} class="badge badge-sm tabular-nums">{@count}</span>
+        <span :if={@count} class="font-normal text-base-content/70 tabular-nums">{@count}</span>
       </.dynamic_tag>
       <div :if={@actions != []} class="flex flex-wrap gap-2">{render_slot(@actions)}</div>
     </div>

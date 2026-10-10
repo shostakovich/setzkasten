@@ -249,7 +249,7 @@ Visible and accessible default strings are German; each has an attr:
 
 - **`header`** – page title (`h1`, `text-2xl`), `back`/`back_label`, `:subtitle`, `:badge`, `:actions`. Actions wrap
   under the title on narrow screens.
-- **`section_heading`** – `text-base` 600, sentence case; `count` badge, `:actions`; `mt-8` above unless first child.
+- **`section_heading`** – `text-base` 600, sentence case; `count` as quiet text (70 %, regular weight), `:actions`; `mt-8` above unless first child.
 - **`card`** – independent objects only (see Flat). `title`, `subtitle`, `level`, `as`, `:leading`, `:actions`,
   `:list` (flush list or table, no body padding), `:footer` (hairline note). `navigate`/`href` makes the whole card
   clickable. `bleed={:phone}` runs it edge to edge below `sm`. No margin; spacing comes from the parent.
