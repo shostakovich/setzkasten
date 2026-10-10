@@ -299,7 +299,7 @@ defmodule Setzkasten.Components.Feedback do
   @doc """
   Says what belongs here and how to get it (one action). `layout={:inline}` (default) sits
   inside a section, list or card, left-aligned; `layout={:page}` is centred with a large
-  plush. Data that arrives by itself needs no action.
+  plush (`plush_size`, `:xl` 48px or `:xxl` 96px). Data that arrives by itself needs no action.
 
   The inline title is a bold line in the surrounding text size; the page title is a heading
   (`level`, default 2) in `text-lg`.
@@ -313,6 +313,7 @@ defmodule Setzkasten.Components.Feedback do
   attr :icon, :string, default: nil
   attr :plush, :string, default: nil
   attr :layout, :atom, default: :inline, values: [:inline, :page]
+  attr :plush_size, :atom, default: :xl, values: [:xl, :xxl], doc: "page layout only"
   attr :level, :integer, default: 2
   attr :class, :any, default: nil
   attr :rest, :global
@@ -322,7 +323,7 @@ defmodule Setzkasten.Components.Feedback do
   def empty_state(%{layout: :page} = assigns) do
     ~H"""
     <div class={["flex flex-col items-center gap-3 px-6 py-12 text-center", @class]} {@rest}>
-      <.plush :if={@plush} name={@plush} size={:xl} />
+      <.plush :if={@plush} name={@plush} size={@plush_size} />
       <.icon :if={@icon && !@plush} name={@icon} class="size-12 text-base-content/70" />
       <.dynamic_tag :if={@title} tag_name={"h#{@level}"} class="text-lg font-semibold wrap-anywhere">
         {@title}

@@ -45,14 +45,21 @@ defmodule Setzkasten.Components.Icons do
     """
   end
 
-  @plush_sizes %{sm: {"size-5", 20}, md: {"size-6", 24}, lg: {"size-8", 32}, xl: {"size-12", 48}}
+  @plush_sizes %{
+    sm: {"size-5", 20},
+    md: {"size-6", 24},
+    lg: {"size-8", 32},
+    xl: {"size-12", 48},
+    xxl: {"size-24", 96}
+  }
 
   @doc """
   Renders a plush WebP icon. With a dark file it renders two images and lets the theme pick
   one (`dark:hidden` / `hidden dark:inline-block`), so an explicit theme choice swaps it too.
 
   Sizes: `:sm` 20px (menus), `:md` 24px (dock), `:lg` 32px (list leading), `:xl` 48px (empty
-  pages). Sources come from the module configured as `config :setzkasten, plush: …`
+  pages), `:xxl` 96px (empty pages where the plush is the figure). Sources come from the
+  module configured as `config :setzkasten, plush: …`
   (see `Setzkasten.Plush`) or from `src`/`dark_src`. Decorative by default (`alt=""`).
 
       <.plush name="cart" size={:lg} />
@@ -61,7 +68,7 @@ defmodule Setzkasten.Components.Icons do
   attr :name, :string, default: nil
   attr :src, :string, default: nil
   attr :dark_src, :string, default: nil
-  attr :size, :atom, default: :md, values: [:sm, :md, :lg, :xl]
+  attr :size, :atom, default: :md, values: [:sm, :md, :lg, :xl, :xxl]
   attr :alt, :string, default: ""
   attr :class, :any, default: nil
   attr :rest, :global
