@@ -124,4 +124,27 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "button.text-error-ink", "phx-click") =~ "logout"
     assert count(doc, "[role=menu]") == 0
   end
+
+  test "dropdown returns focus to its trigger on Escape and after choosing an item" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="acc" label="Konto">
+        <:trigger>RC</:trigger>
+        <:header>kim@example.com</:header>
+        <:item patch="/s">Einstellungen</:item>
+        <:item on_click="logout">Abmelden</:item>
+      </.dropdown>
+      """)
+
+    assert attr(doc, "summary", "phx-keydown") =~ "focus_first"
+    assert attr(doc, "li button", "phx-keydown") =~ "focus_first"
+    assert attr(doc, "li button", "phx-key") == "Escape"
+    assert attr(doc, "details", "phx-window-keydown") =~ "remove_attr"
+    assert attr(doc, "li a", "phx-click") =~ ~s(["focus_first",{"to":"#acc"}])
+    assert attr(doc, "li button", "phx-click") =~ ~s(["focus_first",{"to":"#acc"}])
+    assert attr(doc, "li button", "phx-click") =~ "logout"
+    assert "menu-title" in classes(doc, "li:first-child")
+  end
 end

@@ -277,7 +277,8 @@ Text in components wraps long unbroken strings (host names, URLs) instead of wid
   horizontally on phones. No client-side tab panels.
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
   `method` or `on_click`, `icon`, `active`, `danger`), `align`, `variant`, `chevron`, `trigger_class`. Closes on
-  outside click, Escape and item choice; survives LiveView patches.
+  outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives LiveView
+  patches.
 
 ### Overlays
 
@@ -288,6 +289,9 @@ Text in components wraps long unbroken strings (host names, URLs) instead of wid
   `<.button>` and on list row actions, or `show_confirm(id, question, action, text: …, label: …)`, writes the
   question into it and puts the destructive command on its confirm button. Cancel, Escape and the backdrop only
   close. Focus starts on Cancel. No `data-confirm`, no `window.confirm`.
+  - Focus return: to the trigger, or to its menu's summary when the menu closed. If the confirmed action removes the
+    trigger, focus goes to the next (else previous) row of the closest `[data-focus-fallback]` (set on `<.list>` and
+    `<.table>` bodies; add it to other collections), else to that element, else to `<main>`. Same for `modal`.
 - **`disclosure`** – `<details>`; `variant` `:collapse` (default) | `:button` (compact "more options" trigger with
   `icon`); `open`. Open state survives patches.
 
@@ -349,7 +353,7 @@ Text in components wraps long unbroken strings (host names, URLs) instead of wid
 | Need | Mechanism |
 |---|---|
 | Modal, sheet, side panel | `<dialog>` + `showModal()` via `JS.dispatch`; `<form method="dialog">` |
-| Dropdown, row menu | `<details>` + `phx-click-away` + Escape via `phx-window-keydown`; `JS.ignore_attributes(["open"])` |
+| Dropdown, row menu | `<details>` + `phx-click-away` + Escape via `phx-window-keydown`; `JS.ignore_attributes(["open"])`; Escape and item choice `JS.focus_first` the summary |
 | Disclosure | `<details>` |
 | Tabs, segmented ranges | links with `patch`, server state |
 | Flash | `JS.push("lv:clear-flash")` + `JS.hide` |

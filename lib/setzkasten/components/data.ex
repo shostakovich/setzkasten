@@ -84,13 +84,13 @@ defmodule Setzkasten.Components.Data do
             <th :for={col <- @col} scope="col" class={col_class(col)}>{col[:label]}</th>
           </tr>
         </thead>
-        <tbody :if={@groups == nil} id={@id} phx-update={@stream? && "stream"}>
+        <tbody :if={@groups == nil} id={@id} phx-update={@stream? && "stream"} data-focus-fallback>
           {table_rows(assigns, @rows)}
           <tr :if={@empty != []} id={"#{@id}-empty"} class="hidden only:table-row">
             <td colspan={length(@col)}>{render_slot(@empty)}</td>
           </tr>
         </tbody>
-        <tbody :for={group <- @groups || []} id={"#{@id}-#{group.id}"}>
+        <tbody :for={group <- @groups || []} id={"#{@id}-#{group.id}"} data-focus-fallback>
           <tr>
             <th scope="colgroup" colspan={length(@col)} class="bg-base-200 text-xs font-semibold">
               {group.label}
@@ -197,7 +197,9 @@ defmodule Setzkasten.Components.Data do
 
   def list(assigns) do
     ~H"""
-    <ul class={["list", !@flush && flat(), @class]} {@rest}>{render_slot(@inner_block)}</ul>
+    <ul class={["list", !@flush && flat(), @class]} data-focus-fallback {@rest}>
+      {render_slot(@inner_block)}
+    </ul>
     """
   end
 
@@ -218,7 +220,8 @@ defmodule Setzkasten.Components.Data do
   `font-medium`), `:meta` (70 %, truncates), `:trailing` (value, amount, badge) and `:action`
   entries. With `navigate`/`patch`/`href` the title link covers the row and a chevron shows.
 
-  Actions are icon buttons from `md` and fold into a `⋮` menu below. Each `:action` takes
+  Actions are icon buttons from `md` and fold into a `⋮` menu below (Escape and choosing an
+  entry return focus to the `⋮` button). Each `:action` takes
   `label`, `icon`, a target (`navigate`/`patch`/`href`, or `on_click` as event name or
   `%JS{}`), and optionally `confirm` (+ `confirm_text`, `confirm_label`) for the shared
   confirmation dialog, `danger` (red in the menu), `disabled` and `id` (the icon button; the
@@ -350,6 +353,8 @@ defmodule Setzkasten.Components.Data do
           id={@id && "#{@id}-menu-toggle"}
           class="btn btn-ghost btn-sm btn-square"
           aria-label={@menu_label}
+          phx-keydown={close_menu({:closest, "details"})}
+          phx-key="Escape"
         >
           <.icon name="ellipsis-vertical" />
         </summary>
@@ -363,6 +368,9 @@ defmodule Setzkasten.Components.Data do
               method={action[:method]}
               id={action[:id] && "#{action[:id]}-menu-item"}
               class={action[:danger] && "text-error-ink"}
+              phx-click={close_menu({:closest, "details"})}
+              phx-keydown={close_menu({:closest, "details"})}
+              phx-key="Escape"
             >
               <.icon :if={action[:icon]} name={action[:icon]} />{action.label}
             </.link>
@@ -374,9 +382,10 @@ defmodule Setzkasten.Components.Data do
               disabled={action[:disabled]}
               aria-haspopup={action[:confirm] && "dialog"}
               phx-click={
-                JS.remove_attribute("open", to: {:closest, "details"})
-                |> JS.concat(action_click(action, @confirm_id))
+                close_menu({:closest, "details"}) |> JS.concat(action_click(action, @confirm_id))
               }
+              phx-keydown={close_menu({:closest, "details"})}
+              phx-key="Escape"
             >
               <.icon :if={action[:icon]} name={action[:icon]} />{action.label}
             </button>
@@ -391,6 +400,9 @@ defmodule Setzkasten.Components.Data do
     </li>
     """
   end
+
+  # As in Navigation: close the row menu and focus its summary (Escape binding on each item).
+  defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
 
   defp action_link?(action), do: Enum.any?([action[:navigate], action[:patch], action[:href]])
 

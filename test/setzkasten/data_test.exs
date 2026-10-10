@@ -306,6 +306,41 @@ defmodule Setzkasten.DataTest do
     assert "bg-error-ink" in classes(doc, "li:last-child span")
   end
 
+  test "lists and table bodies are focus fallbacks for removed rows" do
+    assigns = %{}
+
+    list = parse(~H|<.list id="l"><.list_row title="A" /></.list>|)
+    assert attr(list, "ul.list", "data-focus-fallback") != nil
+
+    table =
+      parse(~H"""
+      <.table id="t" rows={[%{id: 1}]}>
+        <:col :let={r} label="Id">{r.id}</:col>
+      </.table>
+      """)
+
+    assert attr(table, "tbody#t", "data-focus-fallback") != nil
+  end
+
+  test "list row menu returns focus to its toggle" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row id="r1" title="Herbst" navigate="/p/1">
+        <:action label="Bearbeiten" icon="pencil" patch="/p/1/edit" />
+        <:action label="Löschen" icon="trash-2" confirm="Löschen?" on_click="delete" />
+      </.list_row>
+      """)
+
+    assert attr(doc, "details summary", "phx-keydown") =~ "focus_first"
+    assert attr(doc, "details li a", "phx-keydown") =~ "focus_first"
+    closest = ~s(["focus_first",{"to":{"closest":"details"}}])
+    assert attr(doc, "details li a", "phx-click") =~ closest
+    assert attr(doc, "details li button", "phx-click") =~ closest
+    assert attr(doc, "details li button", "phx-click") =~ "confirm-delete"
+  end
+
   test "list row titles and description list values break long strings" do
     assigns = %{}
     row = parse(~H|<.list_row title="a-very-long-hostname.example.com" navigate="/p/1" />|)

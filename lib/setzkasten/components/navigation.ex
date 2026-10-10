@@ -159,8 +159,8 @@ defmodule Setzkasten.Components.Navigation do
 
   @doc """
   A menu behind a button: `<details class="dropdown">` with a `menu`. Closes on outside
-  click, Escape and after choosing an item; stays open across LiveView patches. Disclosure
-  semantics from `<details>` (no `role="menu"`).
+  click, Escape and after choosing an item; Escape and choosing return focus to the trigger.
+  Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).
 
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
   `icon`, `active` (selected, `aria-current="page"`), `danger`. `:header` is a line above the
@@ -211,6 +211,8 @@ defmodule Setzkasten.Components.Navigation do
       <summary
         class={["btn", @variant == :ghost && "btn-ghost", @trigger_class]}
         aria-label={@label}
+        phx-keydown={close_menu("##{@id}")}
+        phx-key="Escape"
       >
         {render_slot(@trigger)}<.icon :if={@chevron} name="chevron-down" />
       </summary>
@@ -225,7 +227,9 @@ defmodule Setzkasten.Components.Navigation do
             method={item[:method]}
             class={[item[:active] && "menu-active", item[:danger] && "text-error-ink"]}
             aria-current={item[:active] && "page"}
-            phx-click={JS.remove_attribute("open", to: "##{@id}")}
+            phx-click={close_menu("##{@id}")}
+            phx-keydown={close_menu("##{@id}")}
+            phx-key="Escape"
           >
             <.icon :if={item[:icon]} name={item[:icon]} />{render_slot(item)}
           </.link>
@@ -233,7 +237,9 @@ defmodule Setzkasten.Components.Navigation do
             :if={!(item[:navigate] || item[:patch] || item[:href])}
             type="button"
             class={item[:danger] && "text-error-ink"}
-            phx-click={JS.remove_attribute("open", to: "##{@id}") |> JS.concat(click(item))}
+            phx-click={close_menu("##{@id}") |> JS.concat(click(item))}
+            phx-keydown={close_menu("##{@id}")}
+            phx-key="Escape"
           >
             <.icon :if={item[:icon]} name={item[:icon]} />{render_slot(item)}
           </button>
@@ -242,6 +248,11 @@ defmodule Setzkasten.Components.Navigation do
     </details>
     """
   end
+
+  # Closes a `<details>` menu and puts focus back on its summary (the closed menu's items are
+  # hidden, so focus would otherwise drop to <body>). LiveView runs an element's phx-keydown
+  # only on the focused element itself, so the summary and every item carry the Escape binding.
+  defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
 
   defp click(item) do
     case item[:on_click] do

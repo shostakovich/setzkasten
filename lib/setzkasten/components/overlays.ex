@@ -125,11 +125,20 @@ defmodule Setzkasten.Components.Overlays do
       </form>
     </dialog>
     <script :type={ColocatedHook} name=".Modal">
+      const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled], [type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"
+      const visible = (el) => el.isConnected && el.getClientRects().length > 0
+      const usable = (el) => visible(el) && el.matches(FOCUSABLE)
+      const focusIn = (el) => {
+        const target = [el, ...el.querySelectorAll(FOCUSABLE)].find(usable)
+        if (target) target.focus()
+        return !!target
+      }
       export default {
         mounted() {
           this.el.addEventListener("setzkasten:show-modal", (e) => this.open(e.detail))
           this.el.addEventListener("setzkasten:hide-modal", () => this.el.close())
           this.el.addEventListener("close", () => {
+            this.returnFocus()
             if (this.silent) { this.silent = false; return }
             const cancel = this.el.getAttribute("data-cancel")
             if (cancel) this.js().exec(cancel)
@@ -137,9 +146,10 @@ defmodule Setzkasten.Components.Overlays do
           this.sync()
         },
         updated() { this.sync() },
+        destroyed() { if (this.unwatch) this.unwatch() },
         sync() {
           const show = this.el.getAttribute("data-show")
-          if (show === "true" && !this.el.open) this.el.showModal()
+          if (show === "true") this.show()
           if (show === "false" && this.el.open) { this.silent = true; this.el.close() }
         },
         open(detail) {
@@ -148,7 +158,66 @@ defmodule Setzkasten.Components.Overlays do
             const target = this.el.querySelector(selector)
             if (target) target.textContent = text ?? target.dataset.default ?? ""
           }
-          if (!this.el.open) this.el.showModal()
+          this.show()
+        },
+        show() {
+          if (this.el.open) return
+          this.trigger = document.activeElement
+          this.el.showModal()
+        },
+        // The browser returns focus to the trigger. A trigger in a menu that closed meanwhile is
+        // hidden, so focus goes to the menu's summary. If the trigger later disappears (the
+        // confirmed action deleted its row) or loses focus while still focused, focus moves to
+        // the row that took its place inside the closest [data-focus-fallback], else to <main>.
+        returnFocus() {
+          if (this.unwatch) this.unwatch()
+          const trigger = this.trigger
+          this.trigger = null
+          if (!trigger || trigger === document.body || !trigger.isConnected) return
+          const scope = trigger.closest("[data-focus-fallback]")
+          const row = scope && [...scope.children].find((child) => child.contains(trigger))
+          const siblings = (key) => {
+            const list = []
+            for (let n = row && row[key]; n; n = n[key]) list.push(n)
+            return list
+          }
+          const candidates = [row, ...siblings("nextElementSibling"), ...siblings("previousElementSibling")]
+          const fallback = () => {
+            if (candidates.some((el) => el && el.isConnected && focusIn(el))) return
+            const target = scope && visible(scope) ? scope : document.getElementById("main")
+            if (!target) return
+            if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
+            target.focus()
+          }
+          let current = trigger
+          if (!usable(trigger)) {
+            const menu = trigger.closest("details")
+            const summary = menu && menu.querySelector(":scope > summary")
+            if (!summary || !usable(summary)) return fallback()
+            current = summary
+            current.focus()
+          }
+          const check = () => {
+            const active = document.activeElement
+            if (active && active !== document.body) return
+            stop()
+            if (usable(current)) current.focus()
+            else fallback()
+          }
+          const observer = new MutationObserver(check)
+          const onFocus = (e) => { if (e.target !== current) stop() }
+          const stop = () => {
+            observer.disconnect()
+            document.removeEventListener("focusin", onFocus)
+            document.removeEventListener("pointerdown", stop, true)
+            clearTimeout(timer)
+            this.unwatch = null
+          }
+          const timer = setTimeout(stop, 10000)
+          observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "class", "hidden"] })
+          document.addEventListener("focusin", onFocus)
+          document.addEventListener("pointerdown", stop, true)
+          this.unwatch = stop
         }
       }
     </script>
@@ -168,6 +237,11 @@ defmodule Setzkasten.Components.Overlays do
   Render it once in the app layout. Triggers (`<.button confirm>`, list row actions,
   `show_confirm/4`) write their question into it and park their destructive command on its
   confirm button; Cancel, Escape and the backdrop only close. Focus starts on Cancel.
+
+  On close, focus returns to the trigger (the summary of its menu if the menu closed). When the
+  confirmed action removes the trigger, focus moves to the next (else previous) row of the
+  closest `[data-focus-fallback]` element (`<.list>` and `<.table>` bodies carry it), else to
+  that element, else to `<main>`. `<.modal>` behaves the same.
 
       <.confirm_dialog id="confirm-delete" />
   """
