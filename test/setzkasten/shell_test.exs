@@ -39,7 +39,7 @@ defmodule Setzkasten.ShellTest do
     assert "dock-active" in classes(doc, "nav.dock button")
   end
 
-  test "brand and nav footer know where they render" do
+  test "brand, nav footer and account know where they render" do
     assigns = %{}
 
     doc =
@@ -47,6 +47,7 @@ defmodule Setzkasten.ShellTest do
       <.app_shell layout={:sidebar}>
         <:brand :let={place}><span class="brand" id={"brand-#{place}"}>App</span></:brand>
         <:nav_footer :let={place}><span class="foot" id={"foot-#{place}"}>F</span></:nav_footer>
+        <:account :let={place}><span class="acc" id={"acc-#{place}"}>A</span></:account>
         <:nav key={:a} label="A" icon="list" navigate="/a" /> x
       </.app_shell>
       """)
@@ -61,6 +62,15 @@ defmodule Setzkasten.ShellTest do
              "foot-dialog",
              "foot-sidebar"
            ]
+
+    # The account sits in the top bar below xl and at the foot of the full sidebar from xl.
+    assert Enum.sort(doc |> find(".acc") |> LazyHTML.attribute("id")) == [
+             "acc-bar",
+             "acc-sidebar"
+           ]
+
+    assert count(doc, "aside.xl\\:flex #acc-sidebar") == 1
+    assert "xl:hidden" in classes(doc, "header:has(#acc-bar)")
   end
 
   test "dock can be dropped; then the menu stays on phones" do

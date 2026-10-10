@@ -16,11 +16,11 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       code={code(0)}
     >
       <:intro>
-        Zwei Layouts. <code>:sidebar</code>: dunkle Seitenleiste ab <code>xl</code>, Icon-Leiste von
+        Zwei Layouts. <code>:sidebar</code>: dunkle Seitenleiste mit Konto am Fuß ab <code>xl</code>, Icon-Leiste von
         <code>md</code>
         bis <code>xl</code>
         (ausklappbar als
-        Dialog), auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Die Vorschauen sind
+        Dialog) mit Kopfzeile, auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Die Vorschauen sind
         die echten Screens in festen Breiten.
       </:intro>
       <.demo
@@ -58,7 +58,9 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       <:nav key={:overview} label="Übersicht" icon="chart-line" navigate={~p"/"} />
       <:nav key={:holdings} label="Bestand" icon="list" navigate={~p"/bestand"} />
       <:nav key={:kinder} label="Kinderdepot" icon="wallet" amount={799_483} section="Depots" navigate={…} />
-      <:account><.dropdown …/></:account>
+      <:account :let={place}>
+        <.dropdown id={"account-#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …/>
+      </:account>
       {@inner_content}
     </.app_shell>
     """

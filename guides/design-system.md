@@ -294,9 +294,10 @@ Visible and accessible default strings are German; each has an attr:
 - **`tabs`** – sibling views of one object; links only, `aria-current="page"` on the active `:tab`. Scrolls
   horizontally on phones. No client-side tab panels.
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
-  `method` or `on_click`, `icon`, `active`, `danger`), `align`, `variant`, `chevron`, `trigger_class`. Closes on
-  outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives LiveView
-  patches.
+  `method` or `on_click`, `icon`, `active`, `danger`, `divider`), `align`, `position` (`:top` opens upwards),
+  `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
+  Closes on outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives
+  LiveView patches.
 
 ### Overlays
 
@@ -317,15 +318,17 @@ Visible and accessible default strings are German; each has an attr:
 ### Shell
 
 - **`app_shell`** – skip link, navigation, `<main id="main">`.
-  - `layout={:sidebar}`: dark sidebar 18.5rem from `xl`, icon rail `md`–`xl` (expands as a dialog), top bar plus
-    dock below `md`.
+  - `layout={:sidebar}`: dark sidebar 18.5rem from `xl` with the account at its foot, icon rail `md`–`xl`
+    (expands as a dialog), top bar with brand and account below `xl`, dock below `md`. Ghost buttons in the
+    sidebar take its colours.
   - `layout={:topbar}` (default): navbar from `md`, dock below. `dock={false}` keeps the menu in the navbar on phones.
   - `width` `:narrow | :default | :wide | :full` (2.7); `current` marks the active `:nav` entry.
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
     (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
     the sidebar).
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. In the sidebar layout `:brand` and `:nav_footer`
-    render more than once and receive where (`:sidebar`, `:dialog`, `:bar`) for unique ids (`:let={place}`).
+  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. In the sidebar layout `:brand`, `:nav_footer`
+    and `:account` render more than once and receive where (`:sidebar`, `:dialog`, `:bar`) for unique ids
+    (`:let={place}`); a menu in the account at the sidebar's foot opens with `position={:top}`.
     The brand shrinks before the account, so the bar stays one row; long brand text needs `truncate`.
   - Dock: daisyUI `dock` (64px + safe area), hidden while a text field has focus. Sticky action bars sit above it
     via `--setzkasten-dock-offset`.

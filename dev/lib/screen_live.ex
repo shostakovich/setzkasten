@@ -310,9 +310,21 @@ defmodule Setzkasten.Dev.ScreenLive do
         dock={false}
       />
       <:nav key={:settings} label="Einstellungen" icon="settings" navigate="/screens/holdings" />
-      <:account>
-        <.dropdown id="account" label="Konto" align={:end} variant={:ghost} chevron={false}>
-          <:trigger><.avatar initials="D" size={:sm} /></:trigger>
+      <:account :let={place}>
+        <.dropdown
+          id={"account-#{place}"}
+          label="Konto"
+          align={if place == :bar, do: :end, else: :start}
+          position={if place == :sidebar, do: :top, else: :bottom}
+          variant={:ghost}
+          chevron={false}
+          class={place == :sidebar && "w-full"}
+          trigger_class={if place == :sidebar, do: "w-full justify-start", else: "btn-square"}
+        >
+          <:trigger>
+            <.avatar initials="D" size={:sm} />
+            <span :if={place == :sidebar} class="truncate">dana@example.com</span>
+          </:trigger>
           <:item navigate="/screens/holdings" icon="settings">Einstellungen</:item>
           <:item navigate="/" icon="log-out">Abmelden</:item>
         </.dropdown>

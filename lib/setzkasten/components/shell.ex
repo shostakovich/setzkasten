@@ -10,10 +10,11 @@ defmodule Setzkasten.Components.Shell do
   @doc """
   Page shell with skip link, navigation and `<main id="main">`.
 
-  `layout={:sidebar}` (e.g. a portfolio tracker): a dark sidebar from `xl` (18.5rem), an icon rail
-  with tooltips from `md` to `xl` whose expand button opens the full sidebar as a native
-  dialog (scrim, inert page, focus return), and below `md` a top bar with brand and account
-  plus the dock.
+  `layout={:sidebar}` (e.g. a portfolio tracker): a dark sidebar from `xl` (18.5rem) with the
+  account at its foot, an icon rail with tooltips from `md` to `xl` whose expand button opens
+  the full sidebar as a native dialog (scrim, inert page, focus return), and below `xl` a top
+  bar with brand and account, below `md` plus the dock. Ghost buttons in the sidebar take its
+  colours.
 
   `layout={:topbar}` (e.g. a dashboard or a CMS): a navbar with a horizontal menu from
   `md`, the dock below. With `dock={false}` the menu stays in the navbar on phones and
@@ -32,9 +33,11 @@ defmodule Setzkasten.Components.Shell do
   text `truncate` (and a dropdown in it a `truncate` label) so it ends in an ellipsis.
 
   With `layout={:sidebar}` the brand renders in the sidebar, in the expanded sidebar dialog
-  and in the phone bar, the `:nav_footer` in the first two. Both slots receive where they
-  render (`:sidebar`, `:dialog`, `:bar`), so ids inside stay unique:
-  `<:brand :let={place}><.live_component id={"switcher-\#{place}"} … /></:brand>`.
+  and in the top bar, the `:nav_footer` in the first two, the `:account` in the top bar and
+  the sidebar. The slots receive where they render (`:sidebar`, `:dialog`, `:bar`), so ids
+  inside stay unique and a menu at the sidebar's foot can open upwards:
+  `<:brand :let={place}><.live_component id={"switcher-\#{place}"} … /></:brand>`,
+  `<:account :let={place}><.dropdown id={"account-\#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …>`.
 
       <.app_shell layout={:topbar} current={:expenses} width={:narrow}>
         <:brand><.plush name="mascot" size={:lg} /> Teilbar</:brand>
@@ -105,7 +108,10 @@ defmodule Setzkasten.Components.Shell do
       ]}
     >
       <%= if @layout == :sidebar do %>
-        <aside class="hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 h-dvh overflow-y-auto">
+        <aside class={[
+          "hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 h-dvh overflow-y-auto",
+          sidebar_ghost()
+        ]}>
           {sidebar(assign(assigns, :place, :sidebar))}
         </aside>
         <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 h-dvh">
@@ -137,7 +143,7 @@ defmodule Setzkasten.Components.Shell do
         <.modal
           id={"#{@id}-sidebar"}
           placement={:start}
-          class="bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0"
+          class={["bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0", sidebar_ghost()]}
         >
           <div class="flex h-full flex-col">{sidebar(assign(assigns, :place, :dialog))}</div>
         </.modal>
@@ -145,17 +151,14 @@ defmodule Setzkasten.Components.Shell do
       <div class={["min-w-0", @layout == :sidebar && "flex-1"]}>
         <header
           :if={@layout == :sidebar}
-          class={[
-            "navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8 mx-auto",
-            "max-md:bg-base-100 max-md:border-b max-md:border-base-content/10",
-            @account == [] && "md:hidden",
-            @width_class
-          ]}
+          class="xl:hidden bg-base-100 border-b border-base-content/10"
         >
-          <div class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
-            <span class="contents md:hidden">{render_slot(@brand, :bar)}</span>
+          <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8 mx-auto", @width_class]}>
+            <div class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
+              {render_slot(@brand, :bar)}
+            </div>
+            {render_slot(@account, :bar)}
           </div>
-          {render_slot(@account)}
         </header>
         <header :if={@layout == :topbar} class="bg-base-100 border-b border-base-content/10">
           <div class={[
@@ -188,7 +191,7 @@ defmodule Setzkasten.Components.Shell do
                 </li>
               </ul>
             </nav>
-            <div class="ms-auto flex shrink-0 items-center gap-2">{render_slot(@account)}</div>
+            <div class="ms-auto flex shrink-0 items-center gap-2">{render_slot(@account, :bar)}</div>
           </div>
         </header>
         <main
@@ -270,7 +273,22 @@ defmodule Setzkasten.Components.Shell do
     <div :if={@nav_footer != []} class="border-t border-white/10">
       {render_slot(@nav_footer, @place)}
     </div>
+    <div
+      :if={@account != [] and @place == :sidebar}
+      class="flex items-center gap-2 border-t border-white/10 px-3 py-3"
+    >
+      {render_slot(@account, :sidebar)}
+    </div>
     """
+  end
+
+  # daisyUI's ghost button turns base-200 with base-content text on hover; in the dark sidebar
+  # it keeps the sidebar text and gets the same hover and focus ring as the nav entries.
+  defp sidebar_ghost do
+    [
+      "[&_.btn-ghost]:text-sidebar-content [&_.btn-ghost:hover]:bg-white/10",
+      "[&_.btn-ghost]:border-0 [&_.btn-ghost:focus-visible]:outline-sidebar-accent"
+    ]
   end
 
   defp section_start?(nav, 0), do: Enum.at(nav, 0)[:section] != nil
