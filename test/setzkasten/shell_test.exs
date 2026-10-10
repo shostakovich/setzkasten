@@ -39,6 +39,30 @@ defmodule Setzkasten.ShellTest do
     assert "dock-active" in classes(doc, "nav.dock button")
   end
 
+  test "brand and nav footer know where they render" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand :let={place}><span class="brand" id={"brand-#{place}"}>App</span></:brand>
+        <:nav_footer :let={place}><span class="foot" id={"foot-#{place}"}>F</span></:nav_footer>
+        <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    assert Enum.sort(doc |> find(".brand") |> LazyHTML.attribute("id")) == [
+             "brand-bar",
+             "brand-dialog",
+             "brand-sidebar"
+           ]
+
+    assert Enum.sort(doc |> find(".foot") |> LazyHTML.attribute("id")) == [
+             "foot-dialog",
+             "foot-sidebar"
+           ]
+  end
+
   test "dock can be dropped; then the menu stays on phones" do
     assigns = %{}
 

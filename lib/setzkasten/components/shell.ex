@@ -31,6 +31,11 @@ defmodule Setzkasten.Components.Shell do
   The brand shrinks before the account does, so the bar stays one row: give long brand
   text `truncate` (and a dropdown in it a `truncate` label) so it ends in an ellipsis.
 
+  With `layout={:sidebar}` the brand renders in the sidebar, in the expanded sidebar dialog
+  and in the phone bar, the `:nav_footer` in the first two. Both slots receive where they
+  render (`:sidebar`, `:dialog`, `:bar`), so ids inside stay unique:
+  `<:brand :let={place}><.live_component id={"switcher-\#{place}"} … /></:brand>`.
+
       <.app_shell layout={:topbar} current={:expenses} width={:narrow}>
         <:brand><.plush name="mascot" size={:lg} /> Teilbar</:brand>
         <:nav key={:expenses} label="Ausgaben" plush="receipt" navigate={~p"/"} />
@@ -101,7 +106,7 @@ defmodule Setzkasten.Components.Shell do
     >
       <%= if @layout == :sidebar do %>
         <aside class="hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 h-dvh overflow-y-auto">
-          {sidebar(assigns)}
+          {sidebar(assign(assigns, :place, :sidebar))}
         </aside>
         <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 h-dvh">
           <.link
@@ -134,7 +139,7 @@ defmodule Setzkasten.Components.Shell do
           placement={:start}
           class="bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0"
         >
-          <div class="flex h-full flex-col">{sidebar(assigns)}</div>
+          <div class="flex h-full flex-col">{sidebar(assign(assigns, :place, :dialog))}</div>
         </.modal>
       <% end %>
       <div class={["min-w-0", @layout == :sidebar && "flex-1"]}>
@@ -148,7 +153,7 @@ defmodule Setzkasten.Components.Shell do
           ]}
         >
           <div class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
-            <span class="contents md:hidden">{render_slot(@brand)}</span>
+            <span class="contents md:hidden">{render_slot(@brand, :bar)}</span>
           </div>
           {render_slot(@account)}
         </header>
@@ -159,7 +164,7 @@ defmodule Setzkasten.Components.Shell do
             @dock_items == [] && "max-md:flex-wrap"
           ]}>
             <div class="flex min-w-0 items-center gap-2 font-semibold *:min-w-0 max-md:flex-1">
-              {render_slot(@brand)}
+              {render_slot(@brand, :bar)}
             </div>
             <nav
               :if={@nav != []}
@@ -229,7 +234,9 @@ defmodule Setzkasten.Components.Shell do
 
   defp sidebar(assigns) do
     ~H"""
-    <div class="flex items-center gap-2 px-5 py-4 text-lg font-semibold">{render_slot(@brand)}</div>
+    <div class="flex items-center gap-2 px-5 py-4 text-lg font-semibold">
+      {render_slot(@brand, @place)}
+    </div>
     <nav aria-label={@nav_label} class="flex-1">
       <ul class="menu w-full gap-0.5">
         <%= for {item, index} <- Enum.with_index(@nav) do %>
@@ -260,7 +267,9 @@ defmodule Setzkasten.Components.Shell do
         <% end %>
       </ul>
     </nav>
-    <div :if={@nav_footer != []} class="border-t border-white/10">{render_slot(@nav_footer)}</div>
+    <div :if={@nav_footer != []} class="border-t border-white/10">
+      {render_slot(@nav_footer, @place)}
+    </div>
     """
   end
 

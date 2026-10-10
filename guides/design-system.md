@@ -324,7 +324,8 @@ Visible and accessible default strings are German; each has an attr:
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
     (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
     the sidebar).
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. The brand shrinks before the account, so the bar
+  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. In the sidebar layout `:brand` and `:nav_footer`
+    render more than once and receive where (`:sidebar`, `:dialog`, `:bar`) for unique ids (`:let={place}`). The brand shrinks before the account, so the bar
     stays one row; long brand text needs `truncate`.
   - Dock: daisyUI `dock` (64px + safe area), hidden while a text field has focus. Sticky action bars sit above it
     via `--setzkasten-dock-offset`.
