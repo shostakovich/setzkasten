@@ -21,6 +21,24 @@ defmodule Setzkasten.ShellTest do
     assert text(doc, "nav.dock a:last-child .dock-label") == "B"
   end
 
+  test "sidebar dock with more than five entries: four and a more button" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={:f} more_label="More">
+        <:brand>App</:brand>
+        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 4
+    assert text(doc, "nav.dock button .dock-label") == "More"
+    assert attr(doc, "nav.dock button", "phx-click") =~ "app-shell-sidebar"
+    # The current page is behind "more", so the button is the active one.
+    assert "dock-active" in classes(doc, "nav.dock button")
+  end
+
   test "dock can be dropped; then the menu stays on phones" do
     assigns = %{}
 

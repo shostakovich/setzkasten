@@ -22,7 +22,9 @@ defmodule Setzkasten.Components.Shell do
 
   `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` (Lucide) or `plush`, `count`,
   `amount` (minor units, sidebar balances), `section` (sidebar group title, shown before the
-  first entry of a section) and `dock` (default true; the first five go into the dock).
+  first entry of a section) and `dock` (default true; the first five go into the dock). With
+  `layout={:sidebar}` and more than five dock entries, the dock shows four and a `more_label`
+  button that opens the full sidebar.
   The entry whose `key` equals `current` is marked with `aria-current="page"`.
   `:fab` reserves space for a floating action above the dock.
 
@@ -46,6 +48,7 @@ defmodule Setzkasten.Components.Shell do
   attr :nav_label, :string, default: "Hauptnavigation"
   attr :skip_label, :string, default: "Zum Inhalt springen"
   attr :expand_label, :string, default: "Seitenleiste ausklappen"
+  attr :more_label, :string, default: "Mehr"
   attr :class, :any, default: nil
   slot :inner_block, required: true
   slot :brand, required: true
@@ -68,12 +71,15 @@ defmodule Setzkasten.Components.Shell do
   slot :fab
 
   def app_shell(assigns) do
-    dock_items = assigns.nav |> Enum.reject(&(&1[:dock] == false)) |> Enum.take(5)
+    dock_entries = Enum.reject(assigns.nav, &(&1[:dock] == false))
+    more? = assigns.dock and assigns.layout == :sidebar and length(dock_entries) > 5
+    dock_items = Enum.take(dock_entries, if(more?, do: 4, else: 5))
 
     assigns =
       assign(assigns,
         width_class: @widths[assigns.width],
-        dock_items: if(assigns.dock, do: dock_items, else: [])
+        dock_items: if(assigns.dock, do: dock_items, else: []),
+        dock_more?: more?
       )
 
     ~H"""
@@ -207,6 +213,15 @@ defmodule Setzkasten.Components.Shell do
         >
           {nav_icon(item, :md)}<span class="dock-label">{item.label}</span>
         </.link>
+        <button
+          :if={@dock_more?}
+          type="button"
+          class={more_current?(@nav, @dock_items, @current) && "dock-active"}
+          aria-haspopup="dialog"
+          phx-click={show_modal("#{@id}-sidebar")}
+        >
+          <.icon name="ellipsis" class="size-6" /><span class="dock-label">{@more_label}</span>
+        </button>
       </nav>
     </div>
     """
@@ -255,6 +270,10 @@ defmodule Setzkasten.Components.Shell do
     do: Enum.at(nav, index - 1)[:section] != Enum.at(nav, index)[:section]
 
   defp current?(item, current), do: current != nil and item.key == current
+
+  # The "more" button is active while the current page is one of the entries it holds.
+  defp more_current?(nav, dock_items, current),
+    do: Enum.any?(nav -- dock_items, &current?(&1, current))
 
   defp nav_icon(item, size \\ :lg)
 

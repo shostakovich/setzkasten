@@ -206,7 +206,7 @@ Visible and accessible default strings are German; each has an attr:
 | `flash_group` | `close_label`, `client_error` (Keine Verbindung), `server_error` (Etwas ist schiefgelaufen), `reconnecting` (Verbindung wird wiederhergestellt) |
 | `confirm_dialog` | `title` (Wirklich löschen?), `text` (Das lässt sich nicht rückgängig machen.), `confirm_label` (Löschen), `cancel_label` (Abbrechen), `close_label` |
 | `theme_toggle` | `label` (Farbschema), `labels` (System / Hell / Dunkel) |
-| `app_shell` | `nav_label` (Hauptnavigation), `skip_label` (Zum Inhalt springen), `expand_label` (Seitenleiste ausklappen) |
+| `app_shell` | `nav_label` (Hauptnavigation), `skip_label` (Zum Inhalt springen), `expand_label` (Seitenleiste ausklappen), `more_label` (Mehr) |
 
 ### Actions
 
@@ -322,7 +322,8 @@ Visible and accessible default strings are German; each has an attr:
   - `layout={:topbar}` (default): navbar from `md`, dock below. `dock={false}` keeps the menu in the navbar on phones.
   - `width` `:narrow | :default | :wide | :full` (2.7); `current` marks the active `:nav` entry.
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
-    (the first five go into the dock).
+    (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
+    the sidebar).
   - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. The brand shrinks before the account, so the bar
     stays one row; long brand text needs `truncate`.
   - Dock: daisyUI `dock` (64px + safe area), hidden while a text field has focus. Sticky action bars sit above it
