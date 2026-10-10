@@ -248,8 +248,11 @@ defmodule Setzkasten.Components.Feedback do
   @doc """
   A short status. `style={:dot}` (default) is a neutral badge with a coloured
   status dot and the label in base-content; `style={:solid}` fills the badge and is meant only
-  for alarm states. An icon-only badge needs `label`. A badge never wraps; in a tight row on a
-  phone its label ends in an ellipsis, from `sm` it keeps its width.
+  for alarm states; `style={:text}` is only the dot and the label in the surrounding text (no
+  pill), e.g. a status at the end of a meta line; `style={:plain}` is the pill without a dot,
+  for a label that is no status (e.g. "Du" next to one's own entry). An icon-only badge needs `label`. A badge
+  never wraps; in a tight row on a phone its label ends in an ellipsis, from `sm` it keeps
+  its width.
 
       <.badge tone={:success}>Veröffentlicht</.badge>
       <.badge tone={:error} style={:solid}>überzogen</.badge>
@@ -259,7 +262,7 @@ defmodule Setzkasten.Components.Feedback do
     default: :neutral,
     values: [:neutral, :info, :success, :warning, :error, :primary]
 
-  attr :style, :atom, default: :dot, values: [:dot, :solid]
+  attr :style, :atom, default: :dot, values: [:dot, :solid, :text, :plain]
   attr :size, :atom, default: :sm, values: [:sm, :md]
   attr :icon, :string, default: nil
   attr :label, :string, default: nil, doc: "accessible name for icon-only badges"
@@ -278,8 +281,11 @@ defmodule Setzkasten.Components.Feedback do
     ~H"""
     <span
       class={[
-        "badge whitespace-nowrap max-sm:min-w-0 sm:shrink-0",
-        @size == :sm && "badge-sm",
+        "whitespace-nowrap max-sm:min-w-0 sm:shrink-0",
+        if(@style == :text,
+          do: "inline-flex items-center gap-1.5",
+          else: ["badge", @size == :sm && "badge-sm"]
+        ),
         @style == :solid && @solid_class,
         @class
       ]}
@@ -288,7 +294,7 @@ defmodule Setzkasten.Components.Feedback do
       {@rest}
     >
       <span
-        :if={@style == :dot && !@icon}
+        :if={@style in [:dot, :text] && !@icon}
         class={["status", @status_class]}
         aria-hidden="true"
       ></span>

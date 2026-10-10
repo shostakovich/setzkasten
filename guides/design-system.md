@@ -238,8 +238,9 @@ Visible and accessible default strings are German; each has an attr:
   `busy`, `on_close`, `:actions` slot (end of the row from `sm`, under the text on phones). Tinted background,
   base-content text, icon in `error-ink`/`success-ink` for error/success. `role="alert"` only for `:error`.
 - **`badge`** – `tone` `:neutral | :info | :success | :warning | :error | :primary`; `style` `:dot` (default, neutral
-  badge with status dot) or `:solid` (alarm states only); `size` `:sm` (default) | `:md`; `icon` (icon-only needs
-  `label`).
+  badge with status dot), `:solid` (alarm states only), `:text` (dot and label without the pill, e.g. in a meta
+  line) or `:plain` (pill without dot, labels that are no status); `size` `:sm` (default) | `:md`; `icon`
+  (icon-only needs `label`). Never wraps; on phones the label may end in an ellipsis.
 - **`empty_state`** – says what goes here and how to get it, with one `:action`. `layout` `:inline` (default, in a
   section, list or card) | `:page` (centred, large plush, heading). `icon` or `plush`, `title`. Data that arrives by
   itself needs no action.
@@ -265,9 +266,12 @@ Visible and accessible default strings are German; each has an attr:
   - Default: on the page between `border-y` hairlines, edge to edge on phones, horizontal scroll in its wrapper.
 - **`list`, `list_heading`, `list_row`** – collections. Same flat default as tables; `flush` in a card.
   - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
-    a second line below `md`), `navigate`/`patch`/`href` (row link plus chevron).
+    a second line below `md`, or with `trailing_on_phone={:meta}` to the end of the meta line, then rendered twice
+    with `:let={place}`; `class` e.g. `md:w-40 md:justify-start` for a fixed status column),
+    `navigate`/`patch`/`href` (row link plus chevron).
   - `:action` entries (`label`, `icon`, target or `on_click`, `confirm`, `danger`, `disabled`): icon buttons from
-    `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions).
+    `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions), with
+    `inline` actions (e.g. move up/down) still as icon buttons from `md`.
     Accessible names include the row title ("Bearbeiten: …").
 - **`amount`** – money in de-DE (thousands dot, decimal comma, U+2212 minus, no-break space) in `<data value>`.
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,

@@ -231,7 +231,15 @@ defmodule Setzkasten.Components.Data do
   `"Aktionen: Herbst"`).
 
   Below `md` the `:trailing` content (a badge, a value) moves into a second line under the
-  title and meta, so the title keeps the width next to the `⋮` menu and the chevron.
+  title and meta, so the title keeps the width next to the `⋮` menu and the chevron. With
+  `trailing_on_phone={:meta}` it goes to the end of the meta line instead (a status that is
+  only there now and then, so rows keep two lines), and wraps below it only when the line is
+  full, so neither gets cut; it then renders twice and receives where
+  (`:meta`, `:column`) for unique ids. `<:trailing class="md:w-40 md:justify-start">` gives the
+  trailing column a fixed width, so badges line up from row to row even when most rows have none.
+
+  With `menu={:always}` an action marked `inline` still shows as an icon button from `md`
+  (e.g. move up and down), the others only in the `⋮` menu.
 
       <.list_row title={post.title} navigate={~p"/posts/\#{post}"}>
         <:leading><.icon name="file-text" class="size-5 text-base-content/70" /></:leading>
@@ -249,13 +257,17 @@ defmodule Setzkasten.Components.Data do
   attr :href, :string, default: nil
   attr :actions_label, :string, default: "Aktionen"
   attr :menu, :atom, default: :responsive, values: [:responsive, :always]
+  attr :trailing_on_phone, :atom, default: :line, values: [:line, :meta]
   attr :confirm_id, :string, default: "confirm-delete"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
   slot :leading
   slot :meta
-  slot :trailing
+
+  slot :trailing do
+    attr :class, :any
+  end
 
   slot :action do
     attr :label, :string, required: true
@@ -271,6 +283,7 @@ defmodule Setzkasten.Components.Data do
     attr :danger, :boolean
     attr :disabled, :boolean, doc: "e.g. Move up on the first row; keeps its place"
     attr :id, :string, doc: "id of the icon button; the menu entry gets `<id>-menu-item`"
+    attr :inline, :boolean, doc: "with `menu={:always}`: also an icon button from `md`"
   end
 
   def list_row(assigns) do
@@ -282,7 +295,13 @@ defmodule Setzkasten.Components.Data do
             do: "#{assigns.actions_label}: #{assigns.title}",
             else: assigns.actions_label
           ),
-        wrap?: assigns.trailing != [],
+        wrap?: assigns.trailing != [] and assigns.trailing_on_phone == :line,
+        meta_trailing?: assigns.trailing != [] and assigns.trailing_on_phone == :meta,
+        inline_actions:
+          if(assigns.menu == :always,
+            do: Enum.filter(assigns.action, & &1[:inline]),
+            else: assigns.action
+          ),
         grow_column:
           if(assigns.leading != [], do: "max-md:col-start-2", else: "max-md:col-start-1")
       )
@@ -303,20 +322,34 @@ defmodule Setzkasten.Components.Data do
           {@title}{render_slot(@inner_block)}
         </.link>
         <p :if={!@link?} class="font-medium wrap-anywhere">{@title}{render_slot(@inner_block)}</p>
-        <p :if={@meta != []} class="text-sm text-base-content/70 truncate">{render_slot(@meta)}</p>
+        <p :if={@meta != [] and !@meta_trailing?} class="text-sm text-base-content/70 truncate">
+          {render_slot(@meta)}
+        </p>
+        <div
+          :if={@meta_trailing?}
+          class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-base-content/70"
+        >
+          <p :if={@meta != []} class="min-w-0 max-w-full truncate">{render_slot(@meta)}</p>
+          <div class="flex shrink-0 items-center gap-2 md:hidden">
+            {render_slot(@trailing, :meta)}
+          </div>
+        </div>
       </div>
       <div
-        :if={@trailing != []}
+        :for={trailing <- @trailing}
         class={[
           "flex flex-wrap items-center gap-2 md:justify-end md:text-end",
-          "max-md:row-start-2 max-md:min-w-0",
-          @grow_column
+          if(@meta_trailing?,
+            do: "max-md:hidden",
+            else: ["max-md:row-start-2 max-md:min-w-0", @grow_column]
+          ),
+          trailing[:class]
         ]}
       >
-        {render_slot(@trailing)}
+        {render_slot(trailing, :column)}
       </div>
-      <div :if={@action != [] and @menu == :responsive} class="relative z-10 hidden md:flex gap-1">
-        <%= for action <- @action do %>
+      <div :if={@inline_actions != []} class="relative z-10 hidden md:flex gap-1">
+        <%= for action <- @inline_actions do %>
           <.link
             :if={action_link?(action)}
             navigate={action[:navigate]}
@@ -365,7 +398,13 @@ defmodule Setzkasten.Components.Data do
           <.icon name="ellipsis-vertical" />
         </summary>
         <ul class="menu dropdown-content bg-base-100 rounded-box border border-base-content/10 shadow-lg z-10 w-56">
-          <li :for={action <- @action} class={action[:disabled] && "menu-disabled"}>
+          <li
+            :for={action <- @action}
+            class={[
+              action[:disabled] && "menu-disabled",
+              @menu == :always && action[:inline] && "md:hidden"
+            ]}
+          >
             <.link
               :if={action_link?(action)}
               navigate={action[:navigate]}

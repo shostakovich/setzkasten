@@ -145,6 +145,44 @@ defmodule Setzkasten.DataTest do
     refute "md:hidden" in classes(doc, "details")
   end
 
+  test "list row with menu={:always} keeps inline actions as buttons from md" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Herbst" menu={:always}>
+        <:action label="Nach oben" icon="chevron-left" on_click="up" inline />
+        <:action label="Löschen" icon="trash-2" danger on_click="delete" />
+      </.list_row>
+      """)
+
+    assert count(doc, "div.md\\:flex button") == 1
+    assert attr(doc, "div.md\\:flex button", "aria-label") == "Nach oben: Herbst"
+    # In the menu the inline action is only there for phones.
+    assert "md:hidden" in classes(doc, "details li:first-child")
+    refute "md:hidden" in classes(doc, "details li:last-child")
+  end
+
+  test "list row puts trailing content at the end of the meta line on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="T" navigate="/p/1" trailing_on_phone={:meta}>
+        <:meta>07.10.2026</:meta>
+        <:trailing :let={place} class="md:w-40 md:justify-start">
+          <.badge id={"status-#{place}"}>Entwurf</.badge>
+        </:trailing>
+      </.list_row>
+      """)
+
+    refute "max-md:gap-y-1" in classes(doc, "li")
+    assert "md:hidden" in classes(doc, ".list-col-grow div:has(> #status-meta)")
+    column = classes(doc, "li > div:has(> #status-column)")
+    assert Enum.all?(~w(max-md:hidden md:w-40 md:justify-start), &(&1 in column))
+    refute "max-md:row-start-2" in column
+  end
+
   test "list row moves trailing content under the title on phones" do
     assigns = %{}
 

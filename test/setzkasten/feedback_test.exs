@@ -92,13 +92,28 @@ defmodule Setzkasten.FeedbackTest do
     doc = parse(~H|<.badge tone={:success}>Veröffentlicht</.badge>|)
 
     assert classes(doc, "span.badge") ==
-             ~w(badge whitespace-nowrap max-sm:min-w-0 sm:shrink-0 badge-sm)
+             ~w(whitespace-nowrap max-sm:min-w-0 sm:shrink-0 badge badge-sm)
 
     assert text(doc, ".badge > span.truncate") == "Veröffentlicht"
     assert classes(doc, ".status") == ~w(status status-success)
 
     doc = parse(~H|<.badge tone={:error} style={:solid}>überzogen</.badge>|)
     assert "badge-error" in classes(doc, ".badge")
+    assert count(doc, ".status") == 0
+  end
+
+  test "text badge is the dot and the label without a pill" do
+    assigns = %{}
+    doc = parse(~H|<.badge tone={:info} style={:text}>Entwurf</.badge>|)
+    refute "badge" in classes(doc, "span:first-child")
+    assert count(doc, ".status.status-info") == 1
+    assert text(doc, "span.truncate") == "Entwurf"
+  end
+
+  test "plain badge is a pill without a dot" do
+    assigns = %{}
+    doc = parse(~H|<.badge style={:plain}>Du</.badge>|)
+    assert "badge" in classes(doc, "span:first-child")
     assert count(doc, ".status") == 0
   end
 
