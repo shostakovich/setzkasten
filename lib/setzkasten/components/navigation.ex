@@ -163,9 +163,12 @@ defmodule Setzkasten.Components.Navigation do
   Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).
 
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
-  `icon`, `active` (selected, `aria-current="page"`), `danger`. `:header` is a line above the
-  items (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
-  button (e.g. `btn-square` for an icon trigger, `btn-sm`).
+  `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
+  item, e.g. before a link to the whole list). `:header` is a line above the items
+  (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
+  button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
+  above the trigger, for a trigger at the bottom of the screen. The menu sets its own text
+  colour and weight, so it reads the same inside the dark sidebar or a bold brand.
 
       <.dropdown id="account" label="Konto" align={:end} variant={:ghost}>
         <:trigger><.avatar initials="KM" size={:sm} /> kim@example.com</:trigger>
@@ -176,6 +179,7 @@ defmodule Setzkasten.Components.Navigation do
   attr :id, :string, required: true
   attr :label, :string, default: nil, doc: "accessible name when the trigger is not text"
   attr :align, :atom, default: :start, values: [:start, :end]
+  attr :position, :atom, default: :bottom, values: [:bottom, :top]
   attr :variant, :atom, default: :neutral, values: [:neutral, :ghost]
   attr :chevron, :boolean, default: true
   attr :open, :boolean, default: false
@@ -194,13 +198,19 @@ defmodule Setzkasten.Components.Navigation do
     attr :icon, :string
     attr :active, :boolean
     attr :danger, :boolean
+    attr :divider, :boolean
   end
 
   def dropdown(assigns) do
     ~H"""
     <details
       id={@id}
-      class={["dropdown", @align == :end && "dropdown-end", @class]}
+      class={[
+        "dropdown",
+        @align == :end && "dropdown-end",
+        @position == :top && "dropdown-top",
+        @class
+      ]}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-click-away={JS.remove_attribute("open")}
@@ -216,9 +226,16 @@ defmodule Setzkasten.Components.Navigation do
       >
         {render_slot(@trigger)}<.icon :if={@chevron} name="chevron-down" />
       </summary>
-      <ul class="menu dropdown-content bg-base-100 rounded-box border border-base-content/10 shadow-lg z-20 w-56 mt-1">
+      <ul class={[
+        "menu dropdown-content bg-base-100 text-base-content text-sm font-normal rounded-box",
+        "border border-base-content/10 shadow-lg z-20 w-56",
+        if(@position == :top, do: "mb-1", else: "mt-1")
+      ]}>
         <li :for={header <- @header} class="menu-title min-w-0 truncate">{render_slot(header)}</li>
-        <li :for={item <- @item}>
+        <li
+          :for={item <- @item}
+          class={item[:divider] && "mt-1 border-t border-base-content/10 pt-1"}
+        >
           <.link
             :if={item[:navigate] || item[:patch] || item[:href]}
             navigate={item[:navigate]}

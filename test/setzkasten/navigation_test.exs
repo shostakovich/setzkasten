@@ -125,6 +125,24 @@ defmodule Setzkasten.NavigationTest do
     assert count(doc, "[role=menu]") == 0
   end
 
+  test "dropdown opens upwards, divides items and keeps its own text colour" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="acc" label="Konto" position={:top}>
+        <:trigger>RC</:trigger>
+        <:item navigate="/a">A</:item>
+        <:item navigate="/" divider>Alle</:item>
+      </.dropdown>
+      """)
+
+    assert "dropdown-top" in classes(doc, "details")
+    assert Enum.all?(~w(text-base-content font-normal mb-1), &(&1 in classes(doc, "ul")))
+    assert classes(doc, "li:first-child") == []
+    assert "border-t" in classes(doc, "li:has(a[href='/'])")
+  end
+
   test "dropdown returns focus to its trigger on Escape and after choosing an item" do
     assigns = %{}
 
