@@ -13,17 +13,14 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       id="app-shell"
       name="<.app_shell>"
       title="Navigations-Gerüst"
-      apps="alle fünf"
       code={code(0)}
     >
       <:intro>
-        Zwei Layouts. <code>:sidebar</code>
-        (Depot, Budget): dunkle Seitenleiste ab <code>xl</code>, Icon-Leiste von <code>md</code>
+        Zwei Layouts. <code>:sidebar</code>: dunkle Seitenleiste ab <code>xl</code>, Icon-Leiste von
+        <code>md</code>
         bis <code>xl</code>
         (ausklappbar als
-        Dialog), auf dem Handy Kopfzeile + Dock. <code>:topbar</code>
-        (Hausautomation, Ausgaben,
-        CMS): Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Die Vorschauen sind
+        Dialog), auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Die Vorschauen sind
         die echten Screens in festen Breiten.
       </:intro>
       <.demo

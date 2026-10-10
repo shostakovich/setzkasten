@@ -9,10 +9,10 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
 
   def render(assigns) do
     ~H"""
-    <.showcase id="alert" name="<.alert>" title="Hinweis im Inhalt" apps="alle fünf" code={code(0)}>
+    <.showcase id="alert" name="<.alert>" title="Hinweis im Inhalt" code={code(0)}>
       <:intro>
         Dauerhafte Hinweise auf der Seite; getönt, Schrift in Grundfarbe, Icon in der Tonfarbe,
-        bei Fehler und Erfolg in der Tinte (E3a). <code>role="alert"</code> nur für Fehler.
+        bei Fehler und Erfolg in der Tinte. <code>role="alert"</code> nur für Fehler.
       </:intro>
       <.demo title="Töne" class="space-y-3">
         <.alert tone={:info} title="Abruf läuft täglich um 18:00">
@@ -43,12 +43,10 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       id="flash"
       name="<.flash>, <.flash_group>"
       title="Rückmeldung"
-      apps="alle fünf"
       code={code(1)}
     >
       <:intro>
-        Phoenix-Flash als Toast oben (unten liegen Dock und Aktionsleiste). <code>:info</code>
-        ist <code>alert-info</code>.
+        Phoenix-Flash als Toast oben (unten liegen Dock und Aktionsleiste).
       </:intro>
       <.demo title="Echt auslösen" class="flex flex-wrap gap-3">
         <.button phx-click="flash" phx-value-kind="info" icon="check">Info-Flash</.button>
@@ -72,9 +70,9 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       </.demo>
     </.showcase>
 
-    <.showcase id="badge" name="<.badge>" title="Status-Badge" apps="alle fünf" code={code(2)}>
+    <.showcase id="badge" name="<.badge>" title="Status-Badge" code={code(2)}>
       <:intro>
-        Standard: neutrales Badge mit farbigem Punkt; gefüllt nur für Alarmzustände (E5a). Keine
+        Standard: neutrales Badge mit farbigem Punkt; gefüllt nur für Alarmzustände. Keine
         getönten Badges.
       </:intro>
       <.demo title="Punkt (Standard), Größe :sm" class="flex flex-wrap items-center gap-2">
@@ -104,7 +102,6 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       id="empty-state"
       name="<.empty_state>"
       title="Leerzustand"
-      apps="alle fünf (heute 18 Varianten)"
       code={code(3)}
     >
       <:intro>
@@ -114,7 +111,7 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       <.demo title="Inline mit Aktion">
         <.section_heading>Depots</.section_heading>
         <.empty_state icon="inbox" title="Noch keine Depots">
-          Lege ein Depot an oder importiere es aus Portfolio Performance.
+          Lege ein Depot an oder importiere eine CSV-Datei.
           <:action><.button variant={:primary} icon="plus">Depot anlegen</.button></:action>
         </.empty_state>
       </.demo>
@@ -166,7 +163,7 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
   defp code(3) do
     ~S"""
     <.empty_state icon="inbox" title="Noch keine Depots">
-      Lege ein Depot an oder importiere es aus Portfolio Performance.
+      Lege ein Depot an oder importiere eine CSV-Datei.
       <:action><.button variant={:primary} icon="plus">Depot anlegen</.button></:action>
     </.empty_state>
     <.empty_state plush="receipt" layout={:page} title="Noch keine Ausgaben">…</.empty_state>

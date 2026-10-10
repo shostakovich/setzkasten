@@ -29,7 +29,7 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @doc """
-  A message inside the page (decision E3a): `alert alert-soft alert-<tone>`, text in
+  A message inside the page: `alert alert-soft alert-<tone>`, text in
   base-content, icon in the tone colour (`error-ink`/`success-ink` for error and success).
 
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
@@ -113,7 +113,7 @@ defmodule Setzkasten.Components.Feedback do
 
   @doc """
   Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom).
-  Same API as the generated `<.flash>`; `:info` is `alert-info`. Dismiss is a real button.
+  Same API as Phoenix's generated `<.flash>`. Dismiss is a real button.
 
       <.flash kind={:info} flash={@flash} />
   """
@@ -185,7 +185,7 @@ defmodule Setzkasten.Components.Feedback do
   end
 
   @doc """
-  All flashes of a page in one toast stack, plus the generator's connection-lost messages.
+  All flashes of a page in one toast stack, plus the connection-lost messages.
 
       <.flash_group flash={@flash} />
   """
@@ -246,7 +246,7 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @doc """
-  A short status (decision E5a). `style={:dot}` (default) is a neutral badge with a coloured
+  A short status. `style={:dot}` (default) is a neutral badge with a coloured
   status dot and the label in base-content; `style={:solid}` fills the badge and is meant only
   for alarm states. An icon-only badge needs `label`.
 
@@ -305,7 +305,7 @@ defmodule Setzkasten.Components.Feedback do
   (`level`, default 2) in `text-lg`.
 
       <.empty_state icon="inbox" title="Noch keine Depots">
-        Lege ein Depot an oder importiere es aus Portfolio Performance.
+        Lege ein Depot an oder importiere eine CSV-Datei.
         <:action><.button variant={:primary} icon="plus">Depot anlegen</.button></:action>
       </.empty_state>
   """

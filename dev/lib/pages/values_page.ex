@@ -13,7 +13,6 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       id="amount"
       name="<.amount>"
       title="Betrag"
-      apps="Depot, Budget, Ausgaben"
       code={code(0)}
     >
       <:intro>
@@ -36,7 +35,6 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       id="stat"
       name="<.stat>"
       title="Kennzahl"
-      apps="Hausautomation, Depot, Budget, Ausgaben"
       code={code(1)}
     >
       <:intro>
@@ -67,7 +65,6 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       id="description-list"
       name="<.description_list>"
       title="Steckbrief"
-      apps="Hausautomation, Depot, Ausgaben"
       code={code(2)}
     >
       <:intro>Label → Wert, Werte rechtsbündig mit festen Ziffernbreiten.</:intro>
@@ -82,7 +79,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       </.demo>
     </.showcase>
 
-    <.showcase id="bar" name="<.bar>" title="Balken" apps="Hausautomation, Depot" code={code(3)}>
+    <.showcase id="bar" name="<.bar>" title="Balken" code={code(3)}>
       <:intro>
         Anteil oder Füllstand als natives <code>&lt;progress&gt;</code> mit Label und Wert; die
         Zielmarke ist SVG-Geometrie, kein Inline-Style (strikte CSP).
@@ -101,7 +98,6 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       id="avatar"
       name="<.avatar>"
       title="Avatar"
-      apps="CMS, Depot"
       code={code(4)}
     >
       <:intro>
@@ -122,7 +118,6 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       id="chart-card"
       name="<.chart_card>, <.legend>"
       title="Diagramm-Rahmen"
-      apps="Hausautomation, Depot (nur Rahmen)"
       code={code(5)}
     >
       <:intro>

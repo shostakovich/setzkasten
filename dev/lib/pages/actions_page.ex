@@ -13,10 +13,9 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
       id="button"
       name="<.button>"
       title="Schaltfläche"
-      apps="alle fünf"
       code={code(0)}
     >
-      <:intro>Jede Aktion; feste Varianten statt freier Klassen-Strings.</:intro>
+      <:intro>Jede Aktion; feste Varianten.</:intro>
       <.demo title="Varianten" class="flex flex-wrap items-center gap-3">
         <.button variant={:primary}>Speichern</.button>
         <.button>Abbrechen</.button>
@@ -73,7 +72,6 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
       id="fab"
       name="<.fab>"
       title="Schwebende Aktion"
-      apps="Ausgaben, Budget"
       code={code(1)}
     >
       <:intro>

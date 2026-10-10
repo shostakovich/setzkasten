@@ -23,7 +23,6 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       id="table"
       name="<.table>"
       title="Tabelle"
-      apps="Depot, Budget, Ausgaben"
       code={code(0)}
     >
       <:intro>
@@ -76,7 +75,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       <Setzkasten.Dev.Holdings.holdings_table groups={@groups} />
     </section>
 
-    <.showcase id="list" name="<.list>, <.list_row>" title="Liste" apps="alle fünf" code={code(2)}>
+    <.showcase id="list" name="<.list>, <.list_row>" title="Liste" code={code(2)}>
       <:intro>
         Sammlungen mit Bild vorne, Titel, Meta-Zeile, Wert und Zeilenaktionen. Aktionen ab
         <code>md</code>

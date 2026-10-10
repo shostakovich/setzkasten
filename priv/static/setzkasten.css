@@ -9,7 +9,7 @@
  * The themes are plain CSS with the selectors daisyUI's theme plugin generates, so this file does
  * not depend on where an app keeps daisyUI. Light is the default; dark follows
  * prefers-color-scheme while <html> has no data-theme; an explicit choice sets
- * data-theme="zipfel-light" or "zipfel-dark". Contrast figures: guides/design-system.md, 2.4.
+ * data-theme="zipfel-light" or "zipfel-dark". Contrast figures: guides/design-system.md.
  */
 
 /* Tailwind scans the package's HEEx for class names (path relative to this file). */
@@ -193,7 +193,7 @@
  * text-sidebar-content, … The values here are only fallbacks: both theme blocks above set every
  * one of them, and daisyUI's theme rules come later in the cascade than @theme's :root.
  * Chart series are the colour roles: chart-N-fill is the role fill (bars, areas, slices),
- * chart-N the line/outline colour that reaches 3:1 on base-100/200 (guides/design-system.md, 2.2).
+ * chart-N the line/outline colour that reaches 3:1 on base-100/200.
  * Charts read them at runtime with getComputedStyle.
  * ------------------------------------------------------------------------------------------ */
 @theme {
@@ -222,7 +222,7 @@
 }
 
 /* Tailwind's dark: variant for both ways into dark mode (system and explicit choice).
-   Phoenix's generator only matches [data-theme=dark]. Library components avoid dark: and rely
+   Library components avoid dark: and rely
    on the theme colours; this is for app code and the plush light/dark image swap. */
 @custom-variant dark {
   &:where([data-theme="zipfel-dark"], [data-theme="zipfel-dark"] *) {
@@ -235,19 +235,18 @@
   }
 }
 
-/* LiveView loading variants, as in Phoenix's generated app.css. */
+/* LiveView loading variants. */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
 /* ------------------------------------------------------------------------------------------
- * Accessibility patches on daisyUI defaults. Each one answers a threshold that the default
- * misses (recorded in the deviation log of the design system). Layer placement matters:
+ * Accessibility patches on daisyUI defaults. Each one meets a threshold that the default
+ * misses. Layer placement matters:
  *   utilities.daisyui.l1.l2.l3  = daisyUI's base component rules; variants (input-error …)
  *                                 live in l1.l2 and still win over a rule placed here.
  *   utilities.setzkasten           = declared after daisyUI's sublayers, so it beats daisyUI but
  *                                 loses to plain Tailwind utilities written in markup.
- * The catalog build has this order (utilities.daisyui before utilities.setzkasten).
  * ------------------------------------------------------------------------------------------ */
 
 /* Field boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1. */
@@ -259,7 +258,7 @@
 
 @layer utilities.setzkasten {
   /* Menu: daisyUI marks keyboard focus with a 10 % tint only (≈1.2:1) and the active item with
-     neutral, which is below 3:1 against dark base-100. Selection is primary ("Auswahl = Primary", recorded as "Auswahl = Denim"). */
+     neutral, which is below 3:1 against dark base-100. Selection is primary. */
   .menu {
     --menu-active-bg: var(--color-primary);
     --menu-active-fg: var(--color-primary-content);
@@ -323,7 +322,7 @@
 
 /* Soft alerts: daisyUI mixes 8 % of the tone into base-100. On white the pastel tones are barely
    visible at 8 %, so the light theme uses 25 %; dark keeps 8 %. The amount is the token
-   --setzkasten-alert-tint (see README, "Alert tint"). */
+   --setzkasten-alert-tint (see guides/design-system.md). */
 @layer utilities.setzkasten {
   .alert-soft {
     background: color-mix(

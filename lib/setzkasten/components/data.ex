@@ -37,7 +37,7 @@ defmodule Setzkasten.Components.Data do
   A data table (`table tabular-nums`, daisyUI md or `:sm`), as Phoenix's `<.table>` with
   streams, plus column priorities, group rows, a total row and an empty row.
 
-  Flat by default (decision E1b): the table sits on the page between `border-y` hairlines and
+  Flat by default: the table sits on the page between `border-y` hairlines and
   runs edge to edge on phones. `flush` drops both for a card's `:list` slot or a modal.
 
   `:col` attrs: `label`, `align` (`:end` right-aligns with tabular figures), `show_from`
@@ -541,8 +541,8 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   A share or fill level as native `<progress>` with label and value. The pastel tones
-  (`:info`, `:success`, `:warning`, `:error`) reach only 1.4–2.2:1 against their track in the
-  light theme, so they need `show_value`. `target` draws a 2px marker as SVG geometry (no
+  (`:info`, `:success`, `:warning`, `:error`) are below 3:1 against their track in the light
+  theme; use them with `show_value`. `target` draws a 2px marker as SVG geometry (no
   inline style, so it works under a strict CSP).
 
       <.bar label="Aktien weltweit" value={72} target={70} show_value />

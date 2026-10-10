@@ -2,7 +2,7 @@ defmodule Setzkasten.Components.Layout do
   @moduledoc """
   Page header, section headings, cards and theme switching.
 
-  Layout rule (decision E1b, flat): the page is base-100; sections are structured by
+  Layout rule: the page is base-100; sections are structured by
   `<.section_heading>`, spacing and hairlines. Tables, lists and forms sit on the page without
   a card. Cards are for independent objects only: dashboard tiles, KPI groups, titled charts,
   clickable object grids, dialogs.
@@ -62,7 +62,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  A section heading (decision E2a: sentence case, `text-base` 600) with optional count badge
+  A section heading (sentence case, `text-base` 600) with optional count badge
   and actions. `mt-8` above it, none when it is the first child.
 
       <.section_heading count={2}>Depots
@@ -94,7 +94,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  A card for an independent object (E1b): `card bg-base-100 border border-base-content/10`,
+  A card for an independent object: `card bg-base-100 border border-base-content/10`,
   flat, no margin.
 
   The header holds `:leading` (a plush, icon or avatar before the title), `title`
@@ -315,7 +315,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  The two `theme-color` meta tags, in the page surface base-100 (flat layout, E1b).
+  The two `theme-color` meta tags, in the page surface colour base-100.
   """
   def theme_meta(assigns) do
     ~H"""

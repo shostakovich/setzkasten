@@ -13,7 +13,6 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       id="segmented"
       name="<.segmented>"
       title="Segment-Auswahl"
-      apps="alle fünf (heute fünf Techniken)"
       code={code(0)}
     >
       <:intro>
@@ -65,7 +64,6 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       id="tabs"
       name="<.tabs>"
       title="Reiter-Navigation"
-      apps="CMS, Depot, Hausautomation, Budget"
       code={code(1)}
     >
       <:intro>
@@ -89,7 +87,6 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       id="dropdown"
       name="<.dropdown>"
       title="Aufklappmenü"
-      apps="CMS, Depot, Budget"
       code={code(2)}
     >
       <:intro>

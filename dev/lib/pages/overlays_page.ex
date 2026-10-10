@@ -13,7 +13,6 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       id="modal"
       name="<.modal>"
       title="Dialog"
-      apps="Hausautomation, CMS, Budget"
       code={code(0)}
     >
       <:intro>
@@ -60,7 +59,6 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       id="confirm"
       name="<.confirm_dialog>"
       title="Löschen bestätigen"
-      apps="alle (E6b)"
       code={code(1)}
     >
       <:intro>
@@ -88,7 +86,6 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       id="disclosure"
       name="<.disclosure>"
       title="Aufklappbereich"
-      apps="Hausautomation, CMS, Depot, Ausgaben"
       code={code(2)}
     >
       <:intro>

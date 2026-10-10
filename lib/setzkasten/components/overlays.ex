@@ -161,7 +161,7 @@ defmodule Setzkasten.Components.Overlays do
   defp show_attr(show), do: to_string(show)
 
   @doc """
-  The one confirmation dialog per layout for irreversible deletes (decision E6b).
+  The one confirmation dialog per layout for irreversible deletes.
 
   Render it once in the app layout. Triggers (`<.button confirm>`, list row actions,
   `show_confirm/4`) write their question into it and park their destructive command on its

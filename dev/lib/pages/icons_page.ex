@@ -45,7 +45,6 @@ defmodule Setzkasten.Dev.Pages.IconsPage do
       id="icon"
       name="<.icon>"
       title="Strich-Icon (Lucide)"
-      apps="alle fünf"
       code={code(0)}
     >
       <:intro>
@@ -85,7 +84,6 @@ defmodule Setzkasten.Dev.Pages.IconsPage do
       id="plush"
       name="<.plush>"
       title="Plüsch-Icon"
-      apps="Hausautomation, Ausgaben"
       code={code(1)}
     >
       <:intro>

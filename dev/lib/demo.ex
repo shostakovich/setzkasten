@@ -5,7 +5,6 @@ defmodule Setzkasten.Dev.Demo do
   attr :id, :string, required: true
   attr :name, :string, required: true, doc: "component call, e.g. <.button>"
   attr :title, :string, required: true
-  attr :apps, :string, default: nil
   attr :code, :string, default: nil
   slot :intro
   slot :inner_block, required: true
@@ -16,7 +15,6 @@ defmodule Setzkasten.Dev.Demo do
       <div class="space-y-1">
         <h2 class="text-xl font-semibold"><code>{@name}</code> {@title}</h2>
         <p :if={@intro != []} class="max-w-prose">{render_slot(@intro)}</p>
-        <p :if={@apps} class="text-sm text-base-content/70 max-w-prose">Apps: {@apps}</p>
       </div>
       <pre :if={@code} class="rounded-box bg-base-200 px-4 py-3 text-xs leading-5 overflow-x-auto"><code>{dedent(@code)}</code></pre>
       {render_slot(@inner_block)}

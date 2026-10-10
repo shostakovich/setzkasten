@@ -50,7 +50,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       )
 
     ~H"""
-    <.showcase id="input" name="<.input>" title="Formularfeld" apps="alle fünf" code={code(0)}>
+    <.showcase id="input" name="<.input>" title="Formularfeld" code={code(0)}>
       <:intro>
         Text, Zahl, Datum, Auswahl, Textfeld, Checkbox, Schalter, Radiogruppe. Label oben,
         Hinweis darunter, Fehler zuletzt.
@@ -158,7 +158,6 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       id="action-bar"
       name="<.action_bar>"
       title="Aktionsleiste"
-      apps="Hausautomation, CMS, Ausgaben"
       code={code(1)}
     >
       <:intro>
@@ -186,7 +185,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       <div class="space-y-1">
         <h2 class="text-xl font-semibold">Muster: Formular mit Fehlern pro Feld</h2>
         <p class="max-w-prose">
-          Flach auf der Seite in schmaler Spalte (E1b). Eine Spalte auf dem Handy, kurze Felder ab
+          Flach auf der Seite in schmaler Spalte. Eine Spalte auf dem Handy, kurze Felder ab
           <code>md</code>
           zweispaltig. Sammel-Alert oben mit Anzahl, Fehler unter jedem Feld; die
           Fehler verschwinden beim Tippen (<code>phx-change</code>).

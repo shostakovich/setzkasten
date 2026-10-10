@@ -13,7 +13,6 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       id="header"
       name="<.header>"
       title="Seitenkopf"
-      apps="Hausautomation, CMS, Depot, Budget (Ausgaben nach dem Umbau)"
       code={code(0)}
     >
       <:intro>
@@ -45,11 +44,10 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       id="section-heading"
       name="<.section_heading>"
       title="Abschnittsüberschrift"
-      apps="Hausautomation, CMS, Depot, Ausgaben"
       code={code(1)}
     >
       <:intro>
-        Gliedert eine Seite: Satzschreibung, text-base 600 (E2a), optional Anzahl und Aktionen.
+        Gliedert eine Seite: Satzschreibung, text-base 600, optional Anzahl und Aktionen.
       </:intro>
       <.demo title="Zwei Abschnitte">
         <div>
@@ -75,9 +73,9 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       </.demo>
     </.showcase>
 
-    <.showcase id="card" name="<.card>" title="Karte" apps="alle fünf" code={code(2)}>
+    <.showcase id="card" name="<.card>" title="Karte" code={code(2)}>
       <:intro>
-        Nur für eigenständige Objekte (E1b): Dashboard-Kacheln, KPI-Gruppen, Diagramme mit eigenem
+        Nur für eigenständige Objekte: Dashboard-Kacheln, KPI-Gruppen, Diagramme mit eigenem
         Titel, klickbare Objektraster, Dialoge. Flach mit Haarlinie.
       </:intro>
       <.demo
@@ -132,7 +130,6 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       id="theme-toggle"
       name="<.theme_toggle>"
       title="Farbschema"
-      apps="Budget, Ausgaben; künftig alle"
       code={code(3)}
     >
       <:intro>

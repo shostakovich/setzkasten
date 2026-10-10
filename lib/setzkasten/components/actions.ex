@@ -22,7 +22,7 @@ defmodule Setzkasten.Components.Actions do
   Variants are fixed: `:primary`, `:neutral` (default; also cancel/secondary), `:ghost`,
   `:danger`, `:danger_outline`, `:link`. `class` is appended to the base classes.
 
-  `confirm` asks in the shared `<.confirm_dialog>` (decision E6b) before the button's
+  `confirm` asks in the shared `<.confirm_dialog>` before the button's
   `phx-click` runs: the click (a `%JS{}` or an event name plus `phx-value-*`) moves to the
   dialog's confirm button.
 
