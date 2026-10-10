@@ -18,7 +18,9 @@ defmodule Setzkasten.Components.Layout do
 
   @doc """
   The page header: optional back link, title (`text-2xl`), badge, subtitle and actions.
-  The title block grows from a 16rem basis, so actions wrap below it on narrow screens.
+  The title block grows from a 10rem basis, so a short title keeps its action on the same row
+  on phones and long ones push the actions below; it is at least as tall as a button, so the
+  title sits at the same height with or without actions.
 
       <.header back={~p"/bestand"} back_label="Bestand">
         Vanguard FTSE All-World
@@ -45,7 +47,7 @@ defmodule Setzkasten.Components.Layout do
           <.icon name="chevron-left" />{@back_label}
         </.link>
       </div>
-      <div class="min-w-0 grow basis-64">
+      <div class="min-w-0 grow basis-40 min-h-10 flex flex-col justify-center">
         <div class="flex flex-wrap items-center gap-2">
           <.dynamic_tag tag_name={"h#{@level}"} class="min-w-0 text-2xl font-semibold wrap-anywhere">
             {render_slot(@inner_block)}

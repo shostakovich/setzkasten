@@ -110,6 +110,12 @@ defmodule Setzkasten.FeedbackTest do
     assert text(doc, "span.truncate") == "Entwurf"
   end
 
+  test "the neutral dot is visible (50 %), not daisyUI's 20 %" do
+    assigns = %{}
+    doc = parse(~H|<.badge>Entwurf</.badge>|)
+    assert "bg-base-content/50" in classes(doc, ".status")
+  end
+
   test "plain badge is a pill without a dot" do
     assigns = %{}
     doc = parse(~H|<.badge style={:plain}>Du</.badge>|)

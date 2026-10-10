@@ -103,7 +103,7 @@ defmodule Setzkasten.DataTest do
     assert Enum.all?(~w(hidden lg:block), &(&1 in classes(doc, "div")))
   end
 
-  test "list row with link, chevron, meta and folded actions" do
+  test "list row with link, hover, meta and folded actions" do
     assigns = %{}
 
     doc =
@@ -126,7 +126,9 @@ defmodule Setzkasten.DataTest do
     assert attr(doc, "details summary", "aria-label") == "Aktionen: Herbst"
     assert "text-error-ink" in classes(doc, "details li:last-child button")
     assert attr(doc, "details", "phx-click-away") =~ "remove_attr"
-    assert count(doc, "li > svg.lucide") == 1
+    # No chevron: the hover fill and the title say the row opens.
+    assert count(doc, "li > svg.lucide") == 0
+    assert "md:hover:bg-base-200" in classes(doc, "li.list-row")
     # An open menu lies above the menus of the rows below it.
     assert "open:z-20" in classes(doc, "details")
   end
@@ -205,7 +207,6 @@ defmodule Setzkasten.DataTest do
     assert Enum.all?(~w(max-md:row-start-2 max-md:col-start-2 md:justify-end), &(&1 in trailing))
     assert "max-md:row-[1/span_2]" in classes(doc, "li.list-row > div:first-child")
     assert "max-md:row-[1/span_2]" in classes(doc, "li.list-row > details")
-    assert "max-md:row-[1/span_2]" in classes(doc, "li.list-row > svg")
 
     without_leading =
       parse(~H"""

@@ -127,7 +127,7 @@ defmodule Setzkasten.Components.Feedback do
 
   def flash(assigns) do
     ~H"""
-    <div class="toast toast-top toast-center sm:toast-end z-50">
+    <div class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14">
       {flash_alert(assigns)}
     </div>
     """
@@ -198,7 +198,11 @@ defmodule Setzkasten.Components.Feedback do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite" class="toast toast-top toast-center sm:toast-end z-50">
+    <div
+      id={@id}
+      aria-live="polite"
+      class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14"
+    >
       <.flash_alert kind={:info} flash={@flash} close_label={@close_label} />
       <.flash_alert kind={:error} flash={@flash} close_label={@close_label} />
       <.flash_alert
@@ -237,7 +241,7 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @status_classes %{
-    neutral: nil,
+    neutral: "bg-base-content/50",
     info: "status-info",
     success: "status-success",
     warning: "status-warning",
@@ -341,7 +345,7 @@ defmodule Setzkasten.Components.Feedback do
       <p :if={@inner_block != []} class="text-sm text-base-content/70 max-w-prose wrap-anywhere">
         {render_slot(@inner_block)}
       </p>
-      <div :if={@action != []}>{render_slot(@action)}</div>
+      <div :if={@action != []} class="mt-3">{render_slot(@action)}</div>
     </div>
     """
   end

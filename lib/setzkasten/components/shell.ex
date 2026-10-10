@@ -41,7 +41,10 @@ defmodule Setzkasten.Components.Shell do
 
   `:bar` is for detail pages: it takes the brand's place in the top bar (breadcrumbs, then a
   status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `xl`
-  (without the account, which sits in the sidebar there). Pages render it through their layout:
+  (without the account, which sits in the sidebar there). On phones a badge in the bar shows
+  as its dot (the label stays for screen readers), and a page with a bar has no dock: the
+  bar's back link is the way back. Buttons in the sidebar without a colour variant take a
+  quiet sidebar style, so a global action there does not compete with the page's primary. Pages render it through their layout:
 
       <:bar>
         <.breadcrumbs><:crumb navigate={~p"/beitraege"}>Beiträge</:crumb><:crumb>{@title}</:crumb></.breadcrumbs>
@@ -90,13 +93,15 @@ defmodule Setzkasten.Components.Shell do
 
   def app_shell(assigns) do
     dock_entries = Enum.reject(assigns.nav, &(&1[:dock] == false))
-    more? = assigns.dock and assigns.layout == :sidebar and length(dock_entries) > 5
+    # Detail pages (a `:bar`) go back through the bar, so they keep the screen without the dock.
+    dock? = assigns.dock and assigns.bar == []
+    more? = dock? and assigns.layout == :sidebar and length(dock_entries) > 5
     dock_items = Enum.take(dock_entries, if(more?, do: 4, else: 5))
 
     assigns =
       assign(assigns,
         width_class: @widths[assigns.width],
-        dock_items: if(assigns.dock, do: dock_items, else: []),
+        dock_items: if(dock?, do: dock_items, else: []),
         dock_more?: more?
       )
 
@@ -119,7 +124,8 @@ defmodule Setzkasten.Components.Shell do
     >
       <%= if @layout == :sidebar do %>
         <aside class={[
-          "hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh overflow-y-auto",
+          "setzkasten-sidebar hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content",
+          "sticky top-0 z-30 h-dvh overflow-y-auto",
           sidebar_ghost()
         ]}>
           {sidebar(assign(assigns, :place, :sidebar))}
@@ -153,7 +159,10 @@ defmodule Setzkasten.Components.Shell do
         <.modal
           id={"#{@id}-sidebar"}
           placement={:start}
-          class={["bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0", sidebar_ghost()]}
+          class={[
+            "setzkasten-sidebar bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0",
+            sidebar_ghost()
+          ]}
         >
           <div class="flex h-full flex-col">{sidebar(assign(assigns, :place, :dialog))}</div>
         </.modal>
@@ -170,7 +179,7 @@ defmodule Setzkasten.Components.Shell do
             <div :if={@bar == []} class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
               {render_slot(@brand, :bar)}
             </div>
-            <div :if={@bar != []} class="flex-1 flex min-w-0 items-center gap-3">
+            <div :if={@bar != []} class="setzkasten-page-bar flex-1 flex min-w-0 items-center gap-3">
               {render_slot(@bar)}
             </div>
             <div class={["flex shrink-0 items-center gap-2", @bar != [] && "xl:hidden"]}>
@@ -193,7 +202,7 @@ defmodule Setzkasten.Components.Shell do
             >
               {render_slot(@brand, :bar)}
             </div>
-            <div :if={@bar != []} class="flex flex-1 min-w-0 items-center gap-3">
+            <div :if={@bar != []} class="setzkasten-page-bar flex flex-1 min-w-0 items-center gap-3">
               {render_slot(@bar)}
             </div>
             <nav
@@ -255,7 +264,7 @@ defmodule Setzkasten.Components.Shell do
           aria-haspopup="dialog"
           phx-click={show_modal("#{@id}-sidebar")}
         >
-          <.icon name="ellipsis" class="size-6" /><span class="dock-label">{@more_label}</span>
+          <.icon name="ellipsis" class="size-5" /><span class="dock-label">{@more_label}</span>
         </button>
       </nav>
     </div>
@@ -264,7 +273,10 @@ defmodule Setzkasten.Components.Shell do
 
   defp sidebar(assigns) do
     ~H"""
-    <div class="flex items-center gap-2 px-5 py-4 text-lg font-semibold">
+    <%!-- One inner edge (20px) for everything in the sidebar: ghost buttons in the brand and the
+         account pull their padding into the gutter, so their icon or text lines up with the nav
+         icons; the account's hover pill spans like the nav pills. --%>
+    <div class="flex items-center gap-2 px-5 py-4 text-lg font-semibold [&_.btn-ghost]:-ms-2 [&_.btn-ghost]:px-2">
       {render_slot(@brand, @place)}
     </div>
     <nav aria-label={@nav_label} class="flex-1">
@@ -302,7 +314,7 @@ defmodule Setzkasten.Components.Shell do
     </div>
     <div
       :if={@account != [] and @place == :sidebar}
-      class="flex items-center gap-2 border-t border-white/10 px-3 py-3"
+      class="flex items-center gap-2 border-t border-white/10 px-5 py-3 [&_.btn-ghost]:-mx-3 [&_.btn-ghost]:px-3"
     >
       {render_slot(@account, :sidebar)}
     </div>

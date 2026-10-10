@@ -26,7 +26,8 @@ defmodule Setzkasten.FormsTest do
     assert attr(doc, "input", "aria-invalid") == "true"
     assert attr(doc, "input", "inputmode") == "decimal"
     assert "tabular-nums" in classes(doc, "input")
-    assert text(doc, "#expense_amount-error-0") == "muss größer als 0 sein"
+    # Like the labels, the message starts as a sentence.
+    assert text(doc, "#expense_amount-error-0") == "Muss größer als 0 sein"
     assert "text-error-ink" in classes(doc, "#expense_amount-error-0")
     assert text(doc, "label.input .label") == "€"
   end

@@ -257,9 +257,15 @@ defmodule Setzkasten.Components.Forms do
       id={"#{@id}-error-#{i}"}
       class="flex items-center gap-1.5 text-sm text-error-ink"
     >
-      <.icon name="circle-alert" class="size-4 shrink-0" />{msg}
+      <.icon name="circle-alert" class="size-4 shrink-0" />{upcase_first(msg)}
     </p>
     """
+  end
+
+  # Error messages start like a sentence ("can't be blank" -> "Can't be blank"), as the labels do.
+  defp upcase_first(msg) do
+    {first, rest} = String.split_at(msg, 1)
+    String.upcase(first) <> rest
   end
 
   @doc """

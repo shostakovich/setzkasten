@@ -72,6 +72,8 @@
     --noise: 0;
     --setzkasten-alert-tint: 25%;
     --setzkasten-alert-border: 10%;
+    --setzkasten-danger-fill: var(--color-error-ink);
+    --setzkasten-danger-fg: oklch(100.00% 0 0);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -129,6 +131,8 @@
       --noise: 0;
       --setzkasten-alert-tint: 8%;
       --setzkasten-alert-border: 40%;
+      --setzkasten-danger-fill: var(--color-error);
+      --setzkasten-danger-fg: var(--color-error-content);
     }
   }
 
@@ -187,6 +191,8 @@
     --noise: 0;
     --setzkasten-alert-tint: 8%;
     --setzkasten-alert-border: 40%;
+    --setzkasten-danger-fill: var(--color-error);
+    --setzkasten-danger-fg: var(--color-error-content);
   }
 }
 
@@ -326,6 +332,13 @@
   .btn-error:focus-visible {
     outline-color: var(--color-error-ink);
   }
+  /* A filled destructive button (Delete in the confirm dialog) must not look weaker than the
+     primary next to it: in light it is error-ink with white text (5.39:1), in dark the error
+     fill as before (--setzkasten-danger-fill / -fg). */
+  .btn-error:not(.btn-outline, .btn-soft, .btn-ghost, .btn-link) {
+    --btn-color: var(--setzkasten-danger-fill, var(--color-error));
+    --btn-fg: var(--setzkasten-danger-fg, var(--color-error-content));
+  }
 }
 
 /* Soft alerts: daisyUI mixes 8 % of the tone into base-100. On white the pastel tones are barely
@@ -345,6 +358,53 @@
       var(--alert-color, var(--color-base-content)) var(--setzkasten-alert-border, 10%),
       var(--color-base-100)
     );
+  }
+}
+
+/* Flat lists (E1) have no box around them: daisyUI insets the row dividers by the box radius,
+   which leaves them 8px short of the list's top and bottom rules. They run through. */
+@layer utilities.setzkasten {
+  .list .list-row::after {
+    inset-inline: 0;
+  }
+}
+
+/* The page bar of detail pages (app_shell's :bar) on phones: a badge shows as its dot only,
+   the label stays for screen readers, so the title keeps the room. */
+@media (width < 40rem) {
+  .setzkasten-page-bar .badge {
+    padding-inline: 0.25rem;
+    border-color: transparent;
+    background: none;
+  }
+  .setzkasten-page-bar .badge > .truncate {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* A button without a colour variant in the dark sidebar (a global action such as Deploy):
+   a quiet translucent fill in the sidebar's colours, so it does not compete with the page's
+   primary button. */
+@layer utilities.setzkasten {
+  .setzkasten-sidebar
+    .btn:not(.btn-ghost, .btn-link, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral) {
+    --btn-color: color-mix(in oklab, var(--color-sidebar-content) 12%, transparent);
+    --btn-fg: var(--color-sidebar-content);
+    --btn-border: transparent;
+    --btn-shadow: none;
+    --btn-noise: none;
+  }
+  .setzkasten-sidebar
+    .btn:not(.btn-ghost, .btn-link, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral):hover {
+    --btn-color: color-mix(in oklab, var(--color-sidebar-content) 20%, transparent);
+  }
+  .setzkasten-sidebar .btn:focus-visible {
+    outline-color: var(--color-sidebar-accent);
   }
 }
 

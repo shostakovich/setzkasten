@@ -31,9 +31,9 @@ docs are the exact API; this guide gives the rules.
 | info / -content | `#47d2e8` / `#002934` | `#60d8eb` / `#002631` | info alerts and flashes |
 | success / -content | `#54dd7d` / `#092c13` | `#65e287` / `#062911` | success fills |
 | warning / -content | `#ffc845` / `#3b1e02` | `#ffcc59` / `#381c01` | warnings |
-| error / -content | `#fd7273` / `#34080b` | `#ff8382` / `#34080b` | errors, destructive buttons |
+| error / -content | `#fd7273` / `#34080b` | `#ff8382` / `#34080b` | errors, destructive buttons (dark) |
 | success-ink | `#007f38` | `#65e287` | positive amounts, success icons |
-| error-ink | `#cc272e` | `#ff8382` | negative amounts, error lines and borders |
+| error-ink | `#cc272e` | `#ff8382` | negative amounts, error lines and borders, filled destructive buttons with white text (light) |
 
 `success-ink` and `error-ink` are extra tokens (`text-success-ink`, `text-error-ink`): the light fills are pastels
 and too faint as text or thin lines.
@@ -130,7 +130,7 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 
 The light pastel fills as marks (status dots, `progress-success|warning|error|info`, info/warning alert icons) are
 below 3:1. Use them only next to a word that carries the meaning; a mark that must stand alone uses `primary` or a
-chart token.
+chart token. The neutral status dot is base-content 50 % (about 3:1), not daisyUI's 20 % (1.6:1).
 
 Avoid: `btn-soft`/`badge-soft` with coloured text, coloured text in light fills other than `primary`, `tabs-box`.
 
@@ -214,7 +214,9 @@ Visible and accessible default strings are German; each has an attr:
   `:danger_outline` · `:link`; `size` `:sm | :md | :lg`; `icon` (Lucide, before the label); `icon_only` (needs
   `label`, raises without); `loading` (spinner, `aria-busy`, disabled); `href`/`navigate`/`patch` render a link;
   `confirm` (+ `confirm_text`, `confirm_label`, `confirm_id`) asks in the shared confirmation dialog, see Overlays.
-  40px on fine pointers, 44px on coarse.
+  40px on fine pointers, 44px on coarse. `:danger` is filled `error-ink` with white text in light (as strong as
+  primary), the error fill in dark. In the dark sidebar a `:neutral` button takes a quiet translucent fill, for a
+  global action that should not compete with the page's primary.
 - **`fab`** – the one main action on phones, above the dock (`md:hidden`); `label` becomes `aria-label`.
 
 ### Forms
@@ -223,8 +225,8 @@ Visible and accessible default strings are German; each has an attr:
   `hide_label`, `help`, `prefix`/`suffix` (€, %), `icon`, `numeric` (right-aligned, `tabular-nums`,
   `inputmode="decimal"`), `options`/`prompt`/`multiple`. `class` lands on the field box (`max-w-40` for narrow amounts).
   - Markup: `fieldset` > label > field > help > errors.
-  - Errors show after `used_input?/1`: `aria-invalid`, border in `error-ink`, lines with `circle-alert`, linked by
-    `aria-describedby`. Ecto messages via `config :setzkasten, translate_error: {Mod, :fun}`.
+  - Errors show after `used_input?/1`: `aria-invalid`, border in `error-ink`, lines with `circle-alert` (first
+    letter upper case), linked by `aria-describedby`. Ecto messages via `config :setzkasten, translate_error: {Mod, :fun}`.
   - Checkbox and radio rows are labels with 44px height on coarse pointers.
 - **`action_bar`** – form footer: primary at the end, cancel before it, destructive in `:secondary` at the start.
   Below `sm`: full width, stacked, primary on top. `sticky` pins it to the bottom (above the dock); primary and cancel
@@ -268,10 +270,12 @@ Visible and accessible default strings are German; each has an attr:
   - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
     a second line below `md`, or with `trailing_on_phone={:meta}` to the end of the meta line, then rendered twice
     with `:let={place}`; `class` e.g. `md:w-40 md:justify-start` for a fixed status column),
-    `navigate`/`patch`/`href` (row link plus chevron).
+    `navigate`/`patch`/`href` (the title link covers the row; a light fill under the pointer, no chevron).
+    Dividers run the full width of a flat list.
   - `:action` entries (`label`, `icon`, target or `on_click`, `confirm`, `danger`, `disabled`): icon buttons from
     `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions), with
-    `inline` actions (e.g. move up/down) still as icon buttons from `md`.
+    `inline` actions (e.g. move up/down) still as icon buttons from `md`; `actions_class` (e.g. `md:w-20
+    justify-end`) fixes that column's width so trailing columns line up across lists.
     Accessible names include the row title ("Bearbeiten: …").
 - **`amount`** – money in de-DE (thousands dot, decimal comma, U+2212 minus, no-break space) in `<data value>`.
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,
@@ -298,11 +302,12 @@ Visible and accessible default strings are German; each has an attr:
 - **`tabs`** – sibling views of one object; links only, `aria-current="page"` on the active `:tab`. Scrolls
   horizontally on phones. No client-side tab panels.
 - **`breadcrumbs`** – where a detail page sits: `:crumb` (`navigate`/`patch`/`href`; the last is the current
-  page, an `<h1>` unless `heading={false}`, cut with an ellipsis). Below `sm` only the nearest parent shows, as a
-  back link. Goes into the `:bar` of `app_shell`, followed by the page's status badge.
+  page, an `<h1>` unless `heading={false}`, cut with an ellipsis). Below `sm` a back chevron to the nearest
+  parent and the current page. Goes into the `:bar` of `app_shell`, followed by the page's status badge (a dot on
+  phones).
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
   `method` or `on_click`, `icon`, `active`, `danger`, `divider`, `id`, `disabled`, `confirm` (+ `confirm_text`,
-  `confirm_label`) for the shared confirmation dialog), `align`, `position` (`:top` opens upwards),
+  `confirm_label`) for the shared confirmation dialog, `class`), `align`, `position` (`:top` opens upwards),
   `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
   Closes on outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives
   LiveView patches.
@@ -327,8 +332,8 @@ Visible and accessible default strings are German; each has an attr:
 
 - **`app_shell`** – skip link, navigation, `<main id="main">`.
   - `layout={:sidebar}`: dark sidebar 18.5rem from `xl` with the account at its foot, icon rail `md`–`xl`
-    (expands as a dialog), top bar with brand and account below `xl`, dock below `md`. Ghost buttons in the
-    sidebar take its colours.
+    (expands as a dialog), top bar with brand and account below `xl`, dock below `md` (not on pages with a
+    `:bar`). Ghost and neutral buttons in the sidebar take its colours.
   - `layout={:topbar}` (default): navbar from `md`, dock below. `dock={false}` keeps the menu in the navbar on phones.
   - `width` `:narrow | :default | :wide | :full` (2.7); `current` marks the active `:nav` entry.
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`

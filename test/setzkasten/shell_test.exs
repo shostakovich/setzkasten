@@ -162,5 +162,7 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "header .brand") == 0
     assert count(doc, "aside .brand") == 1
     assert "xl:hidden" in classes(doc, "header div:has(> #acc-bar)")
+    # Detail pages go back through the bar, without the dock.
+    assert count(doc, "nav.dock") == 0
   end
 end

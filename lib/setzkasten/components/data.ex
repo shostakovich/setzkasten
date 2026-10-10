@@ -218,7 +218,8 @@ defmodule Setzkasten.Components.Data do
   @doc """
   A list row: `:leading` (plush, icon, avatar), title (`title` or the inner block,
   `font-medium`), `:meta` (70 %, truncates), `:trailing` (value, amount, badge) and `:action`
-  entries. With `navigate`/`patch`/`href` the title link covers the row and a chevron shows.
+  entries. With `navigate`/`patch`/`href` the title link covers the row, which takes a light
+  fill under the pointer (no chevron: the row's title and its hover say it opens).
 
   Actions are icon buttons from `md` and fold into a `⋮` menu below (Escape and choosing an
   entry return focus to the `⋮` button). `menu={:always}` uses the `⋮` menu at every width,
@@ -239,7 +240,9 @@ defmodule Setzkasten.Components.Data do
   trailing column a fixed width, so badges line up from row to row even when most rows have none.
 
   With `menu={:always}` an action marked `inline` still shows as an icon button from `md`
-  (e.g. move up and down), the others only in the `⋮` menu.
+  (e.g. move up and down), the others only in the `⋮` menu. `actions_class` sets the width of
+  the icon buttons' column (e.g. `md:w-20 justify-end`), so trailing columns line up across
+  lists whose rows have a different number of actions.
 
       <.list_row title={post.title} navigate={~p"/posts/\#{post}"}>
         <:leading><.icon name="file-text" class="size-5 text-base-content/70" /></:leading>
@@ -258,6 +261,7 @@ defmodule Setzkasten.Components.Data do
   attr :actions_label, :string, default: "Aktionen"
   attr :menu, :atom, default: :responsive, values: [:responsive, :always]
   attr :trailing_on_phone, :atom, default: :line, values: [:line, :meta]
+  attr :actions_class, :any, default: nil, doc: "the icon buttons' column, e.g. a fixed width"
   attr :confirm_id, :string, default: "confirm-delete"
   attr :class, :any, default: nil
   attr :rest, :global
@@ -307,7 +311,16 @@ defmodule Setzkasten.Components.Data do
       )
 
     ~H"""
-    <li id={@id} class={["list-row items-center", @wrap? && "max-md:gap-y-1", @class]} {@rest}>
+    <li
+      id={@id}
+      class={[
+        "list-row items-center",
+        @link? && "md:hover:bg-base-200",
+        @wrap? && "max-md:gap-y-1",
+        @class
+      ]}
+      {@rest}
+    >
       <div :if={@leading != []} class={["flex items-center", @wrap? && "max-md:row-[1/span_2]"]}>
         {render_slot(@leading)}
       </div>
@@ -348,7 +361,10 @@ defmodule Setzkasten.Components.Data do
       >
         {render_slot(trailing, :column)}
       </div>
-      <div :if={@inline_actions != []} class="relative z-10 hidden md:flex gap-1">
+      <div
+        :if={@inline_actions != []}
+        class={["relative z-10 hidden md:flex gap-1", @actions_class]}
+      >
         <%= for action <- @inline_actions do %>
           <.link
             :if={action_link?(action)}
@@ -437,11 +453,6 @@ defmodule Setzkasten.Components.Data do
           </li>
         </ul>
       </details>
-      <.icon
-        :if={@link?}
-        name="chevron-right"
-        class={["size-4 text-base-content/70", @wrap? && "max-md:row-[1/span_2]"]}
-      />
     </li>
     """
   end

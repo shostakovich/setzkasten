@@ -173,13 +173,13 @@ defmodule Setzkasten.NavigationTest do
       parse(~H"""
       <.dropdown id="more" label="Mehr">
         <:trigger>…</:trigger>
-        <:item id="undo" on_click="undo" disabled>Rückgängig</:item>
+        <:item id="undo" on_click="undo" disabled class="sm:hidden">Rückgängig</:item>
         <:item id="drop" on_click="delete" danger confirm="Löschen?">Löschen</:item>
       </.dropdown>
       """)
 
     assert attr(doc, "#undo", "disabled") != nil
-    assert "menu-disabled" in classes(doc, "li:has(#undo)")
+    assert Enum.all?(~w(menu-disabled sm:hidden), &(&1 in classes(doc, "li:has(#undo)")))
     assert attr(doc, "#drop", "aria-haspopup") == "dialog"
     assert attr(doc, "#drop", "phx-click") =~ "confirm-delete"
   end
@@ -203,10 +203,13 @@ defmodule Setzkasten.NavigationTest do
     assert "max-sm:hidden" in classes(doc, "li:has(a[href='/'])")
     assert "max-sm:before:hidden" in classes(doc, "li:has(a[href='/posts'])")
     assert count(doc, "a[href='/posts'] svg") == 1
-    assert "max-sm:sr-only" in classes(doc, "li:has(h1)")
+    # On phones the parent's name is for screen readers, the current page stays visible.
+    assert "max-sm:sr-only" in classes(doc, "a[href='/posts'] span")
+    refute "max-sm:sr-only" in classes(doc, "li:has(h1)")
+    assert "max-sm:before:hidden" in classes(doc, "li:has(h1)")
   end
 
-  test "breadcrumbs with the current page only keep it visible on phones" do
+  test "breadcrumbs with the current page only" do
     assigns = %{}
     doc = parse(~H|<.breadcrumbs heading={false}>
   <:crumb>Neu</:crumb>

@@ -18,7 +18,7 @@ defmodule Setzkasten.LayoutTest do
 
     assert text(doc, "h1.text-2xl") == "Titel"
     assert attr(doc, "a.btn-ghost", "href") == "/bestand"
-    assert "basis-64" in classes(doc, "header > div.grow")
+    assert Enum.all?(~w(basis-40 min-h-10), &(&1 in classes(doc, "header > div.grow")))
     assert text(doc, "p.text-sm") == "Sub"
   end
 

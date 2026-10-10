@@ -161,7 +161,7 @@ defmodule Setzkasten.Components.Navigation do
   @doc """
   Where a page sits: the parent pages as links, then the current page as the page heading
   (`<h1>` by default, `aria-current="page"`), long titles cut with an ellipsis. Below `sm`
-  only the nearest parent shows, as a back link; the current page stays for screen readers.
+  it is a back chevron to the nearest parent (named for screen readers) and the current page.
   Made for the `:bar` of `app_shell/1`, followed by a status badge if the page has one.
 
       <.breadcrumbs label="Pfad">
@@ -188,7 +188,7 @@ defmodule Setzkasten.Components.Navigation do
     ~H"""
     <nav
       aria-label={@label}
-      class={["breadcrumbs min-w-0 overflow-hidden py-0 max-sm:shrink-0", @class]}
+      class={["breadcrumbs min-w-0 overflow-hidden py-0", @class]}
       {@rest}
     >
       <ol class="min-w-0">
@@ -203,13 +203,16 @@ defmodule Setzkasten.Components.Navigation do
             navigate={crumb[:navigate]}
             patch={crumb[:patch]}
             href={crumb[:href]}
-            class="flex items-center gap-1 text-base-content/70 pointer-coarse:min-h-11"
+            class={[
+              "flex items-center gap-1 text-base-content/70 pointer-coarse:min-h-11",
+              index == @last_parent && "max-sm:-ms-1 max-sm:min-w-8 max-sm:pointer-coarse:min-w-11"
+            ]}
           >
-            <.icon :if={index == @last_parent} name="chevron-left" class="size-4 sm:hidden" />
-            {render_slot(crumb)}
+            <.icon :if={index == @last_parent} name="chevron-left" class="size-5 sm:hidden" />
+            <span class={index == @last_parent && "max-sm:sr-only"}>{render_slot(crumb)}</span>
           </.link>
         </li>
-        <li class={["min-w-0", @parents != [] && "max-sm:sr-only"]}>
+        <li class={["min-w-0", @parents != [] && "max-sm:before:hidden"]}>
           <.dynamic_tag
             tag_name={if @heading, do: "h1", else: "span"}
             class="truncate font-semibold"
@@ -230,7 +233,8 @@ defmodule Setzkasten.Components.Navigation do
 
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
   `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
-  item, e.g. before a link to the whole list), `id`, `disabled`, and `confirm` (+
+  item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
+  for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
   `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
   (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
   button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
@@ -269,6 +273,7 @@ defmodule Setzkasten.Components.Navigation do
     attr :divider, :boolean
     attr :id, :string
     attr :disabled, :boolean
+    attr :class, :any
     attr :confirm, :string
     attr :confirm_text, :string
     attr :confirm_label, :string
@@ -309,7 +314,8 @@ defmodule Setzkasten.Components.Navigation do
           :for={item <- @item}
           class={[
             item[:divider] && "mt-1 border-t border-base-content/10 pt-1",
-            item[:disabled] && "menu-disabled"
+            item[:disabled] && "menu-disabled",
+            item[:class]
           ]}
         >
           <.link
