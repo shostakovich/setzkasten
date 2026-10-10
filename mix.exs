@@ -81,6 +81,8 @@ defmodule Setzkasten.MixProject do
   defp docs do
     [
       main: "readme",
+      logo: "guides/assets/setzkasten-128.png",
+      assets: %{"guides/assets" => "guides/assets"},
       source_ref: "v#{@version}",
       extras: ["README.md", "guides/design-system.md", "CHANGELOG.md"],
       groups_for_modules: [

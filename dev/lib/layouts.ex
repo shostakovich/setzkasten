@@ -12,6 +12,7 @@ defmodule Setzkasten.Dev.Layouts do
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
         <.live_title suffix=" · setzkasten">{assigns[:page_title] || "Katalog"}</.live_title>
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <.theme_meta />
         <.theme_script />
         <script>

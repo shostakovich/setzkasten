@@ -1,3 +1,5 @@
+<img src="guides/assets/setzkasten.webp" width="128" alt="">
+
 # Setzkasten
 
 HEEx components and design system for Phoenix admin backends: the shared component library of a

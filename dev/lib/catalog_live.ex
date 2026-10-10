@@ -85,7 +85,7 @@ defmodule Setzkasten.Dev.CatalogLive do
     <header class="border-b border-base-content/10">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div class="flex items-center gap-3 min-w-0 grow basis-72">
-          <.plush name="buddy" size={:xl} />
+          <img src="/images/setzkasten.webp" alt="" class="size-12 shrink-0" />
           <div class="min-w-0">
             <p class="text-2xl font-semibold">setzkasten</p>
             <p class="text-sm text-base-content/70 max-w-prose">
