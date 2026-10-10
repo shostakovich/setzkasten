@@ -1,0 +1,21 @@
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+*.ez
+setzkasten-*.tar
+/tmp/
+node_modules/
+
+# Catalog build output
+/dev/static/assets/
+/catalog-export/
+
+# Design-tool working files, never committed
+PRODUCT.md
+DESIGN.md
+
+.DS_Store
+.elixir_ls/

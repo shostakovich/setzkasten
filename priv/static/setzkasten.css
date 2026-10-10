@@ -1,0 +1,355 @@
+/*
+ * setzkasten: daisyUI 5 themes zipfel-light / zipfel-dark, extra tokens and accessibility patches.
+ * Import it in assets/css/app.css after the daisyUI plugin (loaded with `themes: false`):
+ *
+ *   @import "tailwindcss" source(none);
+ *   @plugin "daisyui/packages/bundle/daisyui" { themes: false; }
+ *   @import "lib/setzkasten/priv/static/setzkasten.css";   (via NODE_PATH = Mix build path)
+ *
+ * The themes are plain CSS with the selectors daisyUI's theme plugin generates, so this file does
+ * not depend on where an app keeps daisyUI. Light is the default; dark follows
+ * prefers-color-scheme while <html> has no data-theme; an explicit choice sets
+ * data-theme="zipfel-light" or "zipfel-dark". Contrast figures: guides/design-system.md, 2.4.
+ */
+
+/* Tailwind scans the package's HEEx for class names (path relative to this file). */
+@source "../../lib";
+
+@layer base {
+  :where(:root),
+  :root:has(input.theme-controller[value="zipfel-light"]:checked),
+  [data-theme="zipfel-light"] {
+    color-scheme: light;
+    --color-base-100: oklch(100.00% 0 0);
+    --color-base-200: oklch(97.70% 0.006 239.82);
+    --color-base-300: oklch(94.18% 0.012 239.91);
+    --color-base-content: oklch(21.05% 0.035 254.61);
+    --color-primary: oklch(54.52% 0.129 241.86);
+    --color-primary-content: oklch(100.00% 0 0);
+    --color-secondary: oklch(82.01% 0.100 54.92);
+    --color-secondary-content: oklch(26.95% 0.061 43.79);
+    --color-accent: oklch(75.97% 0.120 295.43);
+    --color-accent-content: oklch(23.84% 0.070 295.09);
+    --color-neutral: oklch(40.09% 0.030 254.17);
+    --color-neutral-content: oklch(98.07% 0.005 247.88);
+    --color-info: oklch(79.89% 0.120 210.17);
+    --color-info-content: oklch(26.00% 0.048 220.61);
+    --color-success: oklch(80.01% 0.180 150.13);
+    --color-success-content: oklch(26.06% 0.061 149.46);
+    --color-warning: oklch(86.00% 0.154 85.00);
+    --color-warning-content: oklch(26.94% 0.060 60.30);
+    --color-error: oklch(71.94% 0.170 21.89);
+    --color-error-content: oklch(21.87% 0.070 21.41);
+    --color-success-ink: oklch(52.13% 0.144 149.89);
+    --color-error-ink: oklch(54.94% 0.199 25.12);
+    --color-sidebar: oklch(34.05% 0.035 255.32);
+    --color-sidebar-content: oklch(98.07% 0.005 247.88);
+    --color-sidebar-muted: oklch(83.02% 0.024 250.11);
+    --color-sidebar-accent: oklch(79.98% 0.108 245.09);
+    --color-chart-1-fill: var(--color-primary);
+    --color-chart-1: var(--color-primary);
+    --color-chart-2-fill: var(--color-warning);
+    --color-chart-2: oklch(60.02% 0.127 74.60);
+    --color-chart-3-fill: var(--color-success);
+    --color-chart-3: var(--color-success-ink);
+    --color-chart-4-fill: var(--color-error);
+    --color-chart-4: var(--color-error-ink);
+    --color-chart-5-fill: var(--color-accent);
+    --color-chart-5: oklch(60.00% 0.136 295.00);
+    --color-chart-6-fill: var(--color-info);
+    --color-chart-6: oklch(60.00% 0.101 200.00);
+    --color-chart-7-fill: var(--color-secondary);
+    --color-chart-7: oklch(59.95% 0.150 52.21);
+    --color-chart-8-fill: var(--color-neutral);
+    --color-chart-8: var(--color-neutral);
+    --radius-selector: 0.5rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 1;
+    --noise: 0;
+    --setzkasten-alert-tint: 25%;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      color-scheme: dark;
+      --color-base-100: oklch(30.48% 0.008 264.45);
+      --color-base-200: oklch(27.09% 0.007 248.09);
+      --color-base-300: oklch(23.95% 0.006 271.17);
+      --color-base-content: oklch(93.97% 0.006 264.53);
+      --color-primary: oklch(76.88% 0.129 242.25);
+      --color-primary-content: oklch(21.89% 0.055 245.19);
+      --color-secondary: oklch(83.01% 0.090 54.59);
+      --color-secondary-content: oklch(25.97% 0.051 44.09);
+      --color-accent: oklch(78.08% 0.119 294.97);
+      --color-accent-content: oklch(23.03% 0.071 294.80);
+      --color-neutral: oklch(22.02% 0.007 248.17);
+      --color-neutral-content: oklch(93.97% 0.006 264.53);
+      --color-info: oklch(82.11% 0.110 209.37);
+      --color-info-content: oklch(24.90% 0.046 221.88);
+      --color-success: oklch(81.97% 0.170 150.02);
+      --color-success-content: oklch(24.88% 0.060 150.12);
+      --color-warning: oklch(86.93% 0.142 84.86);
+      --color-warning-content: oklch(26.00% 0.059 60.77);
+      --color-error: oklch(74.93% 0.151 21.82);
+      --color-error-content: oklch(21.87% 0.070 21.41);
+      --color-success-ink: oklch(81.97% 0.170 150.02);
+      --color-error-ink: oklch(74.93% 0.151 21.82);
+      --color-sidebar: oklch(22.60% 0.008 264.39);
+      --color-sidebar-content: oklch(95.07% 0.005 247.88);
+      --color-sidebar-muted: oklch(79.07% 0.010 258.34);
+      --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+      --color-chart-1-fill: var(--color-primary);
+      --color-chart-1: var(--color-primary);
+      --color-chart-2-fill: var(--color-warning);
+      --color-chart-2: var(--color-warning);
+      --color-chart-3-fill: var(--color-success);
+      --color-chart-3: var(--color-success);
+      --color-chart-4-fill: var(--color-error);
+      --color-chart-4: var(--color-error);
+      --color-chart-5-fill: var(--color-accent);
+      --color-chart-5: var(--color-accent);
+      --color-chart-6-fill: var(--color-info);
+      --color-chart-6: var(--color-info);
+      --color-chart-7-fill: var(--color-secondary);
+      --color-chart-7: var(--color-secondary);
+      --color-chart-8-fill: oklch(72.00% 0.025 254.17);
+      --color-chart-8: oklch(72.00% 0.025 254.17);
+      --radius-selector: 0.5rem;
+      --radius-field: 0.25rem;
+      --radius-box: 0.5rem;
+      --size-selector: 0.25rem;
+      --size-field: 0.25rem;
+      --border: 1px;
+      --depth: 1;
+      --noise: 0;
+      --setzkasten-alert-tint: 8%;
+    }
+  }
+
+  :root:has(input.theme-controller[value="zipfel-dark"]:checked),
+  [data-theme="zipfel-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(30.48% 0.008 264.45);
+    --color-base-200: oklch(27.09% 0.007 248.09);
+    --color-base-300: oklch(23.95% 0.006 271.17);
+    --color-base-content: oklch(93.97% 0.006 264.53);
+    --color-primary: oklch(76.88% 0.129 242.25);
+    --color-primary-content: oklch(21.89% 0.055 245.19);
+    --color-secondary: oklch(83.01% 0.090 54.59);
+    --color-secondary-content: oklch(25.97% 0.051 44.09);
+    --color-accent: oklch(78.08% 0.119 294.97);
+    --color-accent-content: oklch(23.03% 0.071 294.80);
+    --color-neutral: oklch(22.02% 0.007 248.17);
+    --color-neutral-content: oklch(93.97% 0.006 264.53);
+    --color-info: oklch(82.11% 0.110 209.37);
+    --color-info-content: oklch(24.90% 0.046 221.88);
+    --color-success: oklch(81.97% 0.170 150.02);
+    --color-success-content: oklch(24.88% 0.060 150.12);
+    --color-warning: oklch(86.93% 0.142 84.86);
+    --color-warning-content: oklch(26.00% 0.059 60.77);
+    --color-error: oklch(74.93% 0.151 21.82);
+    --color-error-content: oklch(21.87% 0.070 21.41);
+    --color-success-ink: oklch(81.97% 0.170 150.02);
+    --color-error-ink: oklch(74.93% 0.151 21.82);
+    --color-sidebar: oklch(22.60% 0.008 264.39);
+    --color-sidebar-content: oklch(95.07% 0.005 247.88);
+    --color-sidebar-muted: oklch(79.07% 0.010 258.34);
+    --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+    --color-chart-1-fill: var(--color-primary);
+    --color-chart-1: var(--color-primary);
+    --color-chart-2-fill: var(--color-warning);
+    --color-chart-2: var(--color-warning);
+    --color-chart-3-fill: var(--color-success);
+    --color-chart-3: var(--color-success);
+    --color-chart-4-fill: var(--color-error);
+    --color-chart-4: var(--color-error);
+    --color-chart-5-fill: var(--color-accent);
+    --color-chart-5: var(--color-accent);
+    --color-chart-6-fill: var(--color-info);
+    --color-chart-6: var(--color-info);
+    --color-chart-7-fill: var(--color-secondary);
+    --color-chart-7: var(--color-secondary);
+    --color-chart-8-fill: oklch(72.00% 0.025 254.17);
+    --color-chart-8: oklch(72.00% 0.025 254.17);
+    --radius-selector: 0.5rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 1;
+    --noise: 0;
+    --setzkasten-alert-tint: 8%;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Extra tokens that daisyUI has no slot for: text inks, chart series and the dark app sidebar.
+ * Registered with @theme so Tailwind generates text-success-ink, bg-chart-1-fill, stroke-chart-1,
+ * text-sidebar-content, … The values here are only fallbacks: both theme blocks above set every
+ * one of them, and daisyUI's theme rules come later in the cascade than @theme's :root.
+ * Chart series are the colour roles: chart-N-fill is the role fill (bars, areas, slices),
+ * chart-N the line/outline colour that reaches 3:1 on base-100/200 (guides/design-system.md, 2.2).
+ * Charts read them at runtime with getComputedStyle.
+ * ------------------------------------------------------------------------------------------ */
+@theme {
+  --color-success-ink: oklch(52.13% 0.144 149.89);  /* #007f38 */
+  --color-error-ink: oklch(54.94% 0.199 25.12);     /* #cc272e */
+  --color-sidebar: oklch(34.05% 0.035 255.32);      /* #2c394a */
+  --color-sidebar-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
+  --color-sidebar-muted: oklch(83.02% 0.024 250.11); /* #bcc9d7 */
+  --color-sidebar-accent: oklch(79.98% 0.108 245.09); /* #80c5ff */
+  --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
+  --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
+  --color-chart-2-fill: oklch(86.00% 0.154 85.00);  /* #ffc845 warning */
+  --color-chart-2: oklch(60.02% 0.127 74.60);       /* #ac7300 */
+  --color-chart-3-fill: oklch(80.01% 0.180 150.13); /* #54dd7d success */
+  --color-chart-3: oklch(52.13% 0.144 149.89);      /* #007f38 */
+  --color-chart-4-fill: oklch(71.94% 0.170 21.89);  /* #fd7273 error */
+  --color-chart-4: oklch(54.94% 0.199 25.12);       /* #cc272e */
+  --color-chart-5-fill: oklch(75.97% 0.120 295.43); /* #b7a1f5 accent */
+  --color-chart-5: oklch(60.00% 0.136 295.00);      /* #876dc8 */
+  --color-chart-6-fill: oklch(79.89% 0.120 210.17); /* #47d2e8 info */
+  --color-chart-6: oklch(60.00% 0.101 200.00);      /* #079298 */
+  --color-chart-7-fill: oklch(82.01% 0.100 54.92);  /* #f7b385 secondary */
+  --color-chart-7: oklch(59.95% 0.150 52.21);       /* #c3610d */
+  --color-chart-8-fill: oklch(40.09% 0.030 254.17); /* #3d4958 neutral */
+  --color-chart-8: oklch(40.09% 0.030 254.17);      /* #3d4958 */
+}
+
+/* Tailwind's dark: variant for both ways into dark mode (system and explicit choice).
+   Phoenix's generator only matches [data-theme=dark]. Library components avoid dark: and rely
+   on the theme colours; this is for app code and the plush light/dark image swap. */
+@custom-variant dark {
+  &:where([data-theme="zipfel-dark"], [data-theme="zipfel-dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
+/* LiveView loading variants, as in Phoenix's generated app.css. */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+/* ------------------------------------------------------------------------------------------
+ * Accessibility patches on daisyUI defaults. Each one answers a threshold that the default
+ * misses (recorded in the deviation log of the design system). Layer placement matters:
+ *   utilities.daisyui.l1.l2.l3  = daisyUI's base component rules; variants (input-error …)
+ *                                 live in l1.l2 and still win over a rule placed here.
+ *   utilities.setzkasten           = declared after daisyUI's sublayers, so it beats daisyUI but
+ *                                 loses to plain Tailwind utilities written in markup.
+ * The catalog build has this order (utilities.daisyui before utilities.setzkasten).
+ * ------------------------------------------------------------------------------------------ */
+
+/* Field boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1. */
+@layer utilities.daisyui.l1.l2.l3 {
+  :is(.input, .select, .textarea):not(:focus, :focus-within) {
+    --input-color: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+  }
+}
+
+@layer utilities.setzkasten {
+  /* Menu: daisyUI marks keyboard focus with a 10 % tint only (≈1.2:1) and the active item with
+     neutral, which is below 3:1 against dark base-100. Selection is primary ("Auswahl = Primary", recorded as "Auswahl = Denim"). */
+  .menu {
+    --menu-active-bg: var(--color-primary);
+    --menu-active-fg: var(--color-primary-content);
+  }
+  /* --noise is 0, so the noise layer is invisible; dropping it keeps contrast checkers exact. */
+  .menu .menu-active {
+    background-image: none;
+  }
+  .menu :where(li > a, li > button, li > summary):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  /* Bottom navigation labels: daisyUI's dock-label is 11px; 12px is the floor. */
+  .dock .dock-label {
+    font-size: 0.75rem;
+  }
+
+  /* 44px targets on touch screens without changing the desktop sizes (40px md controls). */
+  @media (pointer: coarse) {
+    .btn,
+    .input,
+    .select,
+    .tab,
+    .menu :where(li > a, li > button, li > summary),
+    .collapse > summary,
+    details > summary {
+      min-height: 2.75rem;
+    }
+    .btn-square,
+    .btn-circle {
+      min-width: 2.75rem;
+    }
+  }
+}
+
+/* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
+   70 % as for all secondary text: 6.56 / 6.37:1 light, 6.39 / 6.91:1 dark (base-100 / base-200). */
+@layer utilities.setzkasten {
+  .tab:not(:checked, label:has(:checked), :hover, .tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"]) {
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+}
+
+/* Error colour where it is a boundary or text. The light error fill (#fd7273) is a pastel: 2.68:1
+   on white, below 3:1 for a field border or an outline and below 4.5:1 for text. These rules use
+   error-ink instead (5.39:1 light; in dark error-ink = error, so nothing changes there).
+   Error lines under fields and amounts use the utility text-error-ink in markup. */
+@layer utilities.setzkasten {
+  :is(.input, .select, .textarea):is(.input-error, .select-error, .textarea-error) {
+    --input-color: var(--color-error-ink);
+  }
+  .btn-error.btn-outline:not(.btn-active, :hover, :active:focus, :focus-visible, :disabled, [disabled], .btn-disabled) {
+    --btn-fg: var(--color-error-ink);
+    --btn-border: var(--color-error-ink);
+  }
+  .btn-error:focus-visible {
+    outline-color: var(--color-error-ink);
+  }
+}
+
+/* Soft alerts: daisyUI mixes 8 % of the tone into base-100. On white the pastel tones are barely
+   visible at 8 %, so the light theme uses 25 %; dark keeps 8 %. The amount is the token
+   --setzkasten-alert-tint (see README, "Alert tint"). */
+@layer utilities.setzkasten {
+  .alert-soft {
+    background: color-mix(
+      in oklab,
+      var(--alert-color, var(--color-base-content)) var(--setzkasten-alert-tint, 8%),
+      var(--color-base-100)
+    );
+  }
+}
+
+/* Totals in <tfoot> are values, not labels: full base-content instead of the head's 60 %. */
+@layer utilities.setzkasten {
+  .table :where(tfoot) {
+    color: var(--color-base-content);
+  }
+}
+
+/* The bottom dock gives way to the on-screen keyboard while a text field has focus. */
+@media (pointer: coarse) {
+  body:has(:is(input:not([type="checkbox"], [type="radio"]), textarea, [contenteditable]):focus) .dock {
+    display: none;
+  }
+}
+
+/* LiveView wrapper divs take no part in layout. */
+[data-phx-session],
+[data-phx-teleported-src] {
+  display: contents;
+}

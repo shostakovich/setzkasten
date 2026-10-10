@@ -1,0 +1,65 @@
+defmodule Setzkasten.IconsTest do
+  use Setzkasten.ComponentCase, async: true
+
+  test "icon renders a decorative lucide svg with default size" do
+    assigns = %{}
+    doc = parse(~H|<.icon name="trash-2" />|)
+    assert classes(doc, "svg") == ["lucide", "size-4"]
+    assert attr(doc, "svg", "aria-hidden") == "true"
+    assert count(doc, "svg path") > 0
+  end
+
+  test "a size class replaces the default size" do
+    assigns = %{}
+    doc = parse(~H|<.icon name="x" class="size-6 text-error-ink" />|)
+    assert classes(doc, "svg") == ["lucide", "size-6", "text-error-ink"]
+  end
+
+  test "a label makes the icon an image with a title" do
+    assigns = %{}
+    doc = parse(~H|<.icon name="circle-alert" label="Fehler" />|)
+    assert attr(doc, "svg", "role") == "img"
+    assert attr(doc, "svg", "aria-hidden") == nil
+    assert text(doc, "svg title") == "Fehler"
+  end
+
+  test "app icons resolve through the configured module" do
+    assigns = %{}
+    assert count(parse(~H|<.icon name="plus" />|), "svg") == 1
+  end
+
+  test "unknown icons raise" do
+    assigns = %{}
+    assert_raise ArgumentError, ~r/unknown icon/, fn -> parse(~H|<.icon name="nope" />|) end
+  end
+
+  test "built-in set covers what the components draw" do
+    for name <- ~w(chevron-left chevron-right chevron-down x ellipsis-vertical circle-alert
+                   triangle-alert info circle-check trash-2 monitor sun moon panel-left) do
+      assert Setzkasten.Lucide.svg(name), name
+    end
+  end
+
+  test "plush with a dark file renders two images that swap with the theme" do
+    assigns = %{}
+    doc = parse(~H|<.plush name="cart" size={:lg} />|)
+    assert count(doc, "img.plush") == 2
+    assert "dark:hidden" in classes(doc, "img:first-child")
+    assert attr(doc, "img", "width") == "32"
+    assert attr(doc, "img", "alt") == ""
+  end
+
+  test "plush without a dark file renders one image, unknown names nothing" do
+    assigns = %{}
+    assert count(parse(~H|<.plush name="nav-solar" />|), "img") == 1
+    assert count(parse(~H|<.plush name="missing" />|), "img") == 0
+  end
+
+  test "plush takes direct sources" do
+    assigns = %{}
+    doc = parse(~H|<.plush src="/a.webp" size={:xl} alt="Maus" />|)
+    assert attr(doc, "img", "src") == "/a.webp"
+    assert "size-12" in classes(doc, "img")
+    assert attr(doc, "img", "alt") == "Maus"
+  end
+end

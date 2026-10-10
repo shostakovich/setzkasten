@@ -1,0 +1,16 @@
+/* Catalog styles, set up the way a Phoenix 1.8 app would import setzkasten. */
+@import "tailwindcss" source(none);
+@source "../lib";
+@plugin "daisyui/packages/bundle/daisyui" {
+  themes: false;
+}
+@import "../../priv/static/setzkasten.css";
+
+html {
+  scroll-padding-top: 4.5rem;
+}
+@media (min-width: 1024px) {
+  html {
+    scroll-padding-top: 1.5rem;
+  }
+}
