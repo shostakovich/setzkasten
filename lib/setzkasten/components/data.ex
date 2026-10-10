@@ -221,7 +221,8 @@ defmodule Setzkasten.Components.Data do
   entries. With `navigate`/`patch`/`href` the title link covers the row and a chevron shows.
 
   Actions are icon buttons from `md` and fold into a `⋮` menu below (Escape and choosing an
-  entry return focus to the `⋮` button). Each `:action` takes
+  entry return focus to the `⋮` button). `menu={:always}` uses the `⋮` menu at every width,
+  e.g. when the actions are rare or destructive and should not sit on every row. Each `:action` takes
   `label`, `icon`, a target (`navigate`/`patch`/`href`, or `on_click` as event name or
   `%JS{}`), and optionally `confirm` (+ `confirm_text`, `confirm_label`) for the shared
   confirmation dialog, `danger` (red in the menu), `disabled` and `id` (the icon button; the
@@ -247,6 +248,7 @@ defmodule Setzkasten.Components.Data do
   attr :patch, :string, default: nil
   attr :href, :string, default: nil
   attr :actions_label, :string, default: "Aktionen"
+  attr :menu, :atom, default: :responsive, values: [:responsive, :always]
   attr :confirm_id, :string, default: "confirm-delete"
   attr :class, :any, default: nil
   attr :rest, :global
@@ -313,7 +315,7 @@ defmodule Setzkasten.Components.Data do
       >
         {render_slot(@trailing)}
       </div>
-      <div :if={@action != []} class="relative z-10 hidden md:flex gap-1">
+      <div :if={@action != [] and @menu == :responsive} class="relative z-10 hidden md:flex gap-1">
         <%= for action <- @action do %>
           <.link
             :if={action_link?(action)}
@@ -343,7 +345,11 @@ defmodule Setzkasten.Components.Data do
       </div>
       <details
         :if={@action != []}
-        class={["dropdown dropdown-end relative z-10 md:hidden", @wrap? && "max-md:row-[1/span_2]"]}
+        class={[
+          "dropdown dropdown-end relative z-10 open:z-20",
+          @menu == :responsive && "md:hidden",
+          @wrap? && "max-md:row-[1/span_2]"
+        ]}
         phx-mounted={JS.ignore_attributes(["open"])}
         phx-click-away={JS.remove_attribute("open")}
         phx-window-keydown={JS.remove_attribute("open")}

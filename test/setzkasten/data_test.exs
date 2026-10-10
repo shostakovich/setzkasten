@@ -127,6 +127,22 @@ defmodule Setzkasten.DataTest do
     assert "text-error-ink" in classes(doc, "details li:last-child button")
     assert attr(doc, "details", "phx-click-away") =~ "remove_attr"
     assert count(doc, "li > svg.lucide") == 1
+    # An open menu lies above the menus of the rows below it.
+    assert "open:z-20" in classes(doc, "details")
+  end
+
+  test "list row with menu={:always} folds the actions on every width" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Herbst" menu={:always}>
+        <:action label="Löschen" icon="trash-2" danger on_click="delete" />
+      </.list_row>
+      """)
+
+    assert count(doc, "div.md\\:flex") == 0
+    refute "md:hidden" in classes(doc, "details")
   end
 
   test "list row moves trailing content under the title on phones" do

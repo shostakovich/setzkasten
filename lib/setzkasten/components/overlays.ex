@@ -236,7 +236,8 @@ defmodule Setzkasten.Components.Overlays do
 
   Render it once in the app layout. Triggers (`<.button confirm>`, list row actions,
   `show_confirm/4`) write their question into it and park their destructive command on its
-  confirm button; Cancel, Escape and the backdrop only close. Focus starts on Cancel.
+  confirm button; Cancel, Escape and the backdrop only close. Focus starts on Cancel. On phones
+  it is a bottom sheet with full-width buttons, the destructive one on top.
 
   On close, focus returns to the trigger (the summary of its menu if the menu closed). When the
   confirmed action removes the trigger, focus moves to the next (else previous) row of the
@@ -262,7 +263,7 @@ defmodule Setzkasten.Components.Overlays do
       phx-hook=".Modal"
       phx-mounted={JS.ignore_attributes(["open"])}
     >
-      <div class="modal-box">
+      <div class="modal-box max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <h2
           id={"#{@id}-title"}
           class="text-lg font-semibold wrap-anywhere"
@@ -279,7 +280,7 @@ defmodule Setzkasten.Components.Overlays do
         >
           {@text}
         </p>
-        <div class="modal-action">
+        <div class="modal-action max-sm:flex-col-reverse max-sm:*:w-full">
           <button type="button" class="btn" phx-click={hide_modal(@id)} autofocus>
             {@cancel_label}
           </button>

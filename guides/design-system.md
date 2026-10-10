@@ -21,8 +21,8 @@ docs are the exact API; this guide gives the rules.
 | Role | Light | Dark | Used for |
 |---|---|---|---|
 | base-100 | `#ffffff` | `#2d2f33` | page, cards, fields, menus, modals |
-| base-200 | `#f4f8fb` | `#24272a` | zebra rows, group rows, code |
-| base-300 | `#e5edf3` | `#1e1f22` | wells, trays, kbd |
+| base-200 | `#f4f8fb` | `#37393e` | zebra rows, group rows, code, neutral buttons, tiles |
+| base-300 | `#e5edf3` | `#414448` | wells, trays, kbd |
 | base-content | `#0d1928` | `#e9ebef` | all text |
 | primary / -content | `#0077b4` / `#fff` | `#61bdff` / `#001c32` | main action, selection, links, focus |
 | secondary / -content | `#f7b385` / `#3e1b0b` | `#f6b88f` / `#381b0e` | rare; no default button uses it |
@@ -45,7 +45,11 @@ and too faint as text or thin lines.
   base-100/200 (both themes, since components use the same classes in each).
 - **Hairlines:** `border-base-content/10` (dividers, card edge). Field borders are 50 % base-content; error fields
   use `error-ink`.
+- **Dark elevation:** in dark, base-200/300 are lighter than base-100 (daisyUI: darker), so neutral buttons and tiles
+  stand out from the page instead of reading as holes.
 - **Alert tint:** soft alerts mix `--setzkasten-alert-tint` of their tone into the background: 25 % light, 8 % dark.
+  At 8 % the tones look alike on dark grey, so dark draws the border with `--setzkasten-alert-border` 40 %
+  (light 10 %, daisyUI's).
   Override after the import:
 
   ```css
@@ -93,7 +97,7 @@ Sidebar tokens (`:sidebar` shell): `sidebar` `#2c394a`/`#1a1c20`, `sidebar-conte
 | `--radius-selector` | 0.5rem | checkbox, badge, toggle |
 | `--size-field` / `--size-selector` | 0.25rem | button/input md 40px, checkbox md 24px |
 | `--border` | 1px | |
-| `--depth` | 1 | buttons only; cards and tables stay flat |
+| `--depth` | 0 | flat buttons, no 3D edge (daisyUI: 1) |
 | `--noise` | 0 | |
 
 Radii via `rounded-box`, `rounded-field`, `rounded-selector`; `rounded-full` for avatars and dots only. Shadows:
@@ -112,14 +116,14 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 | success-content on success | 4.5 | 8.70 | 9.59 |
 | warning-content on warning | 4.5 | 9.91 | 10.51 |
 | error-content on error | 4.5 | 6.61 | 7.44 |
-| base-content/60 on base-100 / 200 | 4.5 | 4.66 / 4.58 | 5.12 / 5.51 |
-| base-content/70 (secondary text, menu titles) on base-100 / 200 / 300 | 4.5 | 6.56 / 6.37 / 6.03 | 6.39 / 6.91 / 7.42 |
-| text-primary on base-100 / 200 | 4.5 | 4.89 / 4.58 | 6.53 / 7.32 |
-| text-success-ink on base-100 / 200 | 4.5 | 5.13 / 4.81 | 8.16 / 9.14 |
-| text-error-ink on base-100 / 200 | 4.5 | 5.39 / 5.05 | 5.63 / 6.31 |
-| field border on base-100 / 200 | 3 | 3.39 / 3.36 | 4.03 / 4.27 |
+| base-content/60 on base-100 / 200 | 4.5 | 4.66 / 4.58 | 5.12 / 4.61 |
+| base-content/70 (secondary text, menu titles) on base-100 / 200 / 300 | 4.5 | 6.56 / 6.37 / 6.03 | 6.39 / 5.66 / 4.98 |
+| text-primary on base-100 / 200 | 4.5 | 4.89 / 4.58 | 6.53 / 5.62 |
+| text-success-ink on base-100 / 200 | 4.5 | 5.13 / 4.81 | 8.16 / 7.02 |
+| text-error-ink on base-100 / 200 | 4.5 | 5.39 / 5.05 | 5.63 / 4.84 |
+| field border on base-100 / 200 | 3 | 3.39 / 3.36 | 4.03 / 3.71 |
 | error border, `btn-error btn-outline` on base-100 | 3 | 5.39 | 5.63 |
-| primary as mark (focus, checkbox, menu-active, progress) on base-100 / 200 | 3 | 4.89 / 4.58 | 6.53 / 7.32 |
+| primary as mark (focus, checkbox, menu-active, progress) on base-100 / 200 | 3 | 4.89 / 4.58 | 6.53 / 5.62 |
 | alert-soft text on tint | 4.5 | 14.04–15.97 | 9.52–9.89 |
 | button hover: primary / error content | 4.5 | 5.78 / 5.49 | 6.93 / 6.14 |
 | sidebar content / muted / accent | 4.5 / 4.5 / 3 | 11.10 / 6.96 / 6.34 | 14.78 / 8.85 / 7.96 |
@@ -263,7 +267,8 @@ Visible and accessible default strings are German; each has an attr:
   - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
     a second line below `md`), `navigate`/`patch`/`href` (row link plus chevron).
   - `:action` entries (`label`, `icon`, target or `on_click`, `confirm`, `danger`, `disabled`): icon buttons from
-    `md`, a `⋮` menu below. Accessible names include the row title ("Bearbeiten: …").
+    `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions).
+    Accessible names include the row title ("Bearbeiten: …").
 - **`amount`** – money in de-DE (thousands dot, decimal comma, U+2212 minus, no-break space) in `<data value>`.
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,
   positive `success-ink`, zero 70 %); `size={:lg}` for totals.
@@ -301,7 +306,8 @@ Visible and accessible default strings are German; each has an attr:
 - **`confirm_dialog`** – one per layout. Every irreversible delete asks here; archiving does not ask. `confirm` on
   `<.button>` and on list row actions, or `show_confirm(id, question, action, text: …, label: …)`, writes the
   question into it and puts the destructive command on its confirm button. Cancel, Escape and the backdrop only
-  close. Focus starts on Cancel. No `data-confirm`, no `window.confirm`.
+  close. Focus starts on Cancel. On phones a bottom sheet with full-width buttons, destructive on top. No
+  `data-confirm`, no `window.confirm`.
   - Focus return: to the trigger, or to its menu's summary when the menu closed. If the confirmed action removes the
     trigger, focus goes to the next (else previous) row of the closest `[data-focus-fallback]` (set on `<.list>` and
     `<.table>` bodies; add it to other collections), else to that element, else to `<main>`. Same for `modal`.

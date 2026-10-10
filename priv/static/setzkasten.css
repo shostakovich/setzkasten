@@ -68,17 +68,18 @@
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
-    --depth: 1;
+    --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 25%;
+    --setzkasten-alert-border: 10%;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       color-scheme: dark;
       --color-base-100: oklch(30.48% 0.008 264.45);
-      --color-base-200: oklch(27.09% 0.007 248.09);
-      --color-base-300: oklch(23.95% 0.006 271.17);
+      --color-base-200: oklch(34.50% 0.008 264.45);
+      --color-base-300: oklch(38.50% 0.008 264.45);
       --color-base-content: oklch(93.97% 0.006 264.53);
       --color-primary: oklch(76.88% 0.129 242.25);
       --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -124,9 +125,10 @@
       --size-selector: 0.25rem;
       --size-field: 0.25rem;
       --border: 1px;
-      --depth: 1;
+      --depth: 0;
       --noise: 0;
       --setzkasten-alert-tint: 8%;
+      --setzkasten-alert-border: 40%;
     }
   }
 
@@ -134,8 +136,8 @@
   [data-theme="zipfel-dark"] {
     color-scheme: dark;
     --color-base-100: oklch(30.48% 0.008 264.45);
-    --color-base-200: oklch(27.09% 0.007 248.09);
-    --color-base-300: oklch(23.95% 0.006 271.17);
+    --color-base-200: oklch(34.50% 0.008 264.45);
+    --color-base-300: oklch(38.50% 0.008 264.45);
     --color-base-content: oklch(93.97% 0.006 264.53);
     --color-primary: oklch(76.88% 0.129 242.25);
     --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -181,9 +183,10 @@
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
-    --depth: 1;
+    --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 8%;
+    --setzkasten-alert-border: 40%;
   }
 }
 
@@ -301,7 +304,7 @@
 }
 
 /* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
-   70 % as for all secondary text: 6.56 / 6.37:1 light, 6.39 / 6.91:1 dark (base-100 / base-200). */
+   70 % as for all secondary text: 6.56 / 6.37:1 light, 6.39 / 5.66:1 dark (base-100 / base-200). */
 @layer utilities.setzkasten {
   .tab:not(:checked, label:has(:checked), :hover, .tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"]) {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -327,12 +330,19 @@
 
 /* Soft alerts: daisyUI mixes 8 % of the tone into base-100. On white the pastel tones are barely
    visible at 8 %, so the light theme uses 25 %; dark keeps 8 %. The amount is the token
-   --setzkasten-alert-tint (see guides/design-system.md). */
+   --setzkasten-alert-tint (see guides/design-system.md). At 8 % on dark grey the tones look
+   alike, so dark draws the border with 40 % of the tone (--setzkasten-alert-border; light keeps
+   daisyUI's 10 %). */
 @layer utilities.setzkasten {
   .alert-soft {
     background: color-mix(
       in oklab,
       var(--alert-color, var(--color-base-content)) var(--setzkasten-alert-tint, 8%),
+      var(--color-base-100)
+    );
+    --alert-border-color: color-mix(
+      in oklab,
+      var(--alert-color, var(--color-base-content)) var(--setzkasten-alert-border, 10%),
       var(--color-base-100)
     );
   }
