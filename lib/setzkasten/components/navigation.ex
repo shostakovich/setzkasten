@@ -158,6 +158,67 @@ defmodule Setzkasten.Components.Navigation do
   end
 
   @doc """
+  Where a page sits: the parent pages as links, then the current page as the page heading
+  (`<h1>` by default, `aria-current="page"`), long titles cut with an ellipsis. Below `sm`
+  only the nearest parent shows, as a back link; the current page stays for screen readers.
+  Made for the `:bar` of `app_shell/1`, followed by a status badge if the page has one.
+
+      <.breadcrumbs label="Pfad">
+        <:crumb navigate={~p"/beitraege"}>Beiträge</:crumb>
+        <:crumb>Vorschau: Winterprojekte</:crumb>
+      </.breadcrumbs>
+  """
+  attr :label, :string, default: "Seitenpfad"
+  attr :heading, :boolean, default: true, doc: "the current page is the page's `<h1>`"
+  attr :class, :any, default: nil
+  attr :rest, :global
+
+  slot :crumb, required: true do
+    attr :navigate, :string
+    attr :patch, :string
+    attr :href, :string
+  end
+
+  def breadcrumbs(assigns) do
+    {parents, [current]} = Enum.split(assigns.crumb, -1)
+    assigns = assign(assigns, parents: Enum.with_index(parents), current: current)
+    assigns = assign(assigns, last_parent: length(parents) - 1)
+
+    ~H"""
+    <nav aria-label={@label} class={["breadcrumbs min-w-0 overflow-hidden py-0", @class]} {@rest}>
+      <ol class="min-w-0">
+        <li
+          :for={{crumb, index} <- @parents}
+          class={[
+            "shrink-0",
+            if(index == @last_parent, do: "max-sm:before:hidden", else: "max-sm:hidden")
+          ]}
+        >
+          <.link
+            navigate={crumb[:navigate]}
+            patch={crumb[:patch]}
+            href={crumb[:href]}
+            class="flex items-center gap-1 text-base-content/70 pointer-coarse:min-h-11"
+          >
+            <.icon :if={index == @last_parent} name="chevron-left" class="size-4 sm:hidden" />
+            {render_slot(crumb)}
+          </.link>
+        </li>
+        <li class={["min-w-0", @parents != [] && "max-sm:sr-only"]}>
+          <.dynamic_tag
+            tag_name={if @heading, do: "h1", else: "span"}
+            class="truncate font-semibold"
+            aria-current="page"
+          >
+            {render_slot(@current)}
+          </.dynamic_tag>
+        </li>
+      </ol>
+    </nav>
+    """
+  end
+
+  @doc """
   A menu behind a button: `<details class="dropdown">` with a `menu`. Closes on outside
   click, Escape and after choosing an item; Escape and choosing return focus to the trigger.
   Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).

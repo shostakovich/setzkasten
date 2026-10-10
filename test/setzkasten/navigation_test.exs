@@ -165,4 +165,35 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "li button", "phx-click") =~ "logout"
     assert "menu-title" in classes(doc, "li:first-child")
   end
+
+  test "breadcrumbs: parents as links, the current page as heading, back link on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.breadcrumbs label="Pfad">
+        <:crumb navigate="/">Start</:crumb>
+        <:crumb navigate="/posts">Posts</:crumb>
+        <:crumb>Winterprojekte</:crumb>
+      </.breadcrumbs>
+      """)
+
+    assert attr(doc, "nav", "aria-label") == "Pfad"
+    assert count(doc, "nav a") == 2
+    assert text(doc, "h1[aria-current=page]") == "Winterprojekte"
+    # Below sm only the nearest parent stays, with a back chevron instead of the separator.
+    assert "max-sm:hidden" in classes(doc, "li:has(a[href='/'])")
+    assert "max-sm:before:hidden" in classes(doc, "li:has(a[href='/posts'])")
+    assert count(doc, "a[href='/posts'] svg") == 1
+    assert "max-sm:sr-only" in classes(doc, "li:has(h1)")
+  end
+
+  test "breadcrumbs with the current page only keep it visible on phones" do
+    assigns = %{}
+    doc = parse(~H|<.breadcrumbs heading={false}>
+  <:crumb>Neu</:crumb>
+</.breadcrumbs>|)
+    assert text(doc, "span[aria-current=page]") == "Neu"
+    refute "max-sm:sr-only" in classes(doc, "li")
+  end
 end

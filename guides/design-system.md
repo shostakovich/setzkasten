@@ -293,6 +293,9 @@ Visible and accessible default strings are German; each has an attr:
   `size` `:sm | :md`; options as tuples or maps with `icon`.
 - **`tabs`** – sibling views of one object; links only, `aria-current="page"` on the active `:tab`. Scrolls
   horizontally on phones. No client-side tab panels.
+- **`breadcrumbs`** – where a detail page sits: `:crumb` (`navigate`/`patch`/`href`; the last is the current
+  page, an `<h1>` unless `heading={false}`, cut with an ellipsis). Below `sm` only the nearest parent shows, as a
+  back link. Goes into the `:bar` of `app_shell`, followed by the page's status badge.
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
   `method` or `on_click`, `icon`, `active`, `danger`, `divider`), `align`, `position` (`:top` opens upwards),
   `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
@@ -326,9 +329,11 @@ Visible and accessible default strings are German; each has an attr:
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
     (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
     the sidebar).
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:fab`. In the sidebar layout `:brand`, `:nav_footer`
-    and `:account` render more than once and receive where (`:sidebar`, `:dialog`, `:bar`) for unique ids
-    (`:let={place}`); a menu in the account at the sidebar's foot opens with `position={:top}`.
+  - Slots `:brand` (required), `:nav_footer`, `:account`, `:bar`, `:fab`. `:bar` (detail pages: breadcrumbs and
+    status) replaces the brand in the top bar, sticks to the top and with `:sidebar` also shows from `xl`.
+    In the sidebar layout `:brand`, `:nav_footer` and `:account` render more than once and receive where
+    (`:sidebar`, `:dialog`, `:bar`) for unique ids (`:let={place}`); a menu in the account at the sidebar's
+    foot opens with `position={:top}`.
     The brand shrinks before the account, so the bar stays one row; long brand text needs `truncate`.
   - Dock: daisyUI `dock` (64px + safe area), hidden while a text field has focus. Sticky action bars sit above it
     via `--setzkasten-dock-offset`.

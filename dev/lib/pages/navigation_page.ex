@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Navigation"
-  def summary, do: "segmented, tabs, dropdown"
+  def summary, do: "segmented, tabs, breadcrumbs, dropdown"
 
   def render(assigns) do
     ~H"""
@@ -84,6 +84,27 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
     </.showcase>
 
     <.showcase
+      id="breadcrumbs"
+      name="<.breadcrumbs>"
+      title="Seitenpfad"
+      code={code(3)}
+    >
+      <:intro>
+        Für Detailseiten, im <code>:bar</code> des Gerüsts statt der Marke. Eltern als Links, die
+        aktuelle Seite als <code>&lt;h1&gt;</code>; auf dem Handy nur „‹ Eltern“.
+      </:intro>
+      <.demo title="Mit Status">
+        <div class="flex min-w-0 items-center gap-3 border-b border-base-content/10 pb-3">
+          <.breadcrumbs>
+            <:crumb patch="/navigation">Posts</:crumb>
+            <:crumb>Was ich aus 100 Code-Reviews gelernt habe (überarbeitet)</:crumb>
+          </.breadcrumbs>
+          <.badge tone={:info}>Ungespeicherte Änderungen</.badge>
+        </div>
+      </.demo>
+    </.showcase>
+
+    <.showcase
       id="dropdown"
       name="<.dropdown>"
       title="Aufklappmenü"
@@ -102,7 +123,7 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           <:item patch="/navigation" active>Feldnotizen</:item>
           <:item patch="/navigation">Gartenbuch</:item>
           <:item patch="/navigation">Rezepte</:item>
-          <:item patch="/navigation" icon="building-2">Alle Websites</:item>
+          <:item patch="/navigation" icon="building-2" divider>Alle Websites</:item>
         </.dropdown>
         <.dropdown id="account" label="Konto" align={:end} variant={:ghost}>
           <:trigger>
@@ -134,6 +155,18 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       <:tab navigate={~p"/sites/#{@site}/posts"} active>Posts</:tab>
       <:tab navigate={~p"/sites/#{@site}/pages"}>Seiten</:tab>
     </.tabs>
+    """
+  end
+
+  defp code(3) do
+    ~S"""
+    <:bar>
+      <.breadcrumbs>
+        <:crumb navigate={~p"/posts"}>Posts</:crumb>
+        <:crumb>{@post.title}</:crumb>
+      </.breadcrumbs>
+      <.badge tone={:info}>Ungespeicherte Änderungen</.badge>
+    </:bar>
     """
   end
 

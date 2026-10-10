@@ -39,6 +39,15 @@ defmodule Setzkasten.Components.Shell do
   `<:brand :let={place}><.live_component id={"switcher-\#{place}"} … /></:brand>`,
   `<:account :let={place}><.dropdown id={"account-\#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …>`.
 
+  `:bar` is for detail pages: it takes the brand's place in the top bar (breadcrumbs, then a
+  status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `xl`
+  (without the account, which sits in the sidebar there). Pages render it through their layout:
+
+      <:bar>
+        <.breadcrumbs><:crumb navigate={~p"/beitraege"}>Beiträge</:crumb><:crumb>{@title}</:crumb></.breadcrumbs>
+        <.badge>Entwurf</.badge>
+      </:bar>
+
       <.app_shell layout={:topbar} current={:expenses} width={:narrow}>
         <:brand><.plush name="mascot" size={:lg} /> Teilbar</:brand>
         <:nav key={:expenses} label="Ausgaben" plush="receipt" navigate={~p"/"} />
@@ -76,6 +85,7 @@ defmodule Setzkasten.Components.Shell do
 
   slot :nav_footer
   slot :account
+  slot :bar, doc: "page context (breadcrumbs, status) in place of the brand in the top bar"
   slot :fab
 
   def app_shell(assigns) do
@@ -151,23 +161,40 @@ defmodule Setzkasten.Components.Shell do
       <div class={["min-w-0", @layout == :sidebar && "flex-1"]}>
         <header
           :if={@layout == :sidebar}
-          class="xl:hidden bg-base-100 border-b border-base-content/10"
+          class={[
+            "bg-base-100 border-b border-base-content/10",
+            if(@bar == [], do: "xl:hidden", else: "sticky top-0 z-20")
+          ]}
         >
           <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8 mx-auto", @width_class]}>
-            <div class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
+            <div :if={@bar == []} class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
               {render_slot(@brand, :bar)}
             </div>
-            {render_slot(@account, :bar)}
+            <div :if={@bar != []} class="flex-1 flex min-w-0 items-center gap-3">
+              {render_slot(@bar)}
+            </div>
+            <div class={["flex shrink-0 items-center gap-2", @bar != [] && "xl:hidden"]}>
+              {render_slot(@account, :bar)}
+            </div>
           </div>
         </header>
-        <header :if={@layout == :topbar} class="bg-base-100 border-b border-base-content/10">
+        <header
+          :if={@layout == :topbar}
+          class={["bg-base-100 border-b border-base-content/10", @bar != [] && "sticky top-0 z-20"]}
+        >
           <div class={[
             "navbar mx-auto gap-4 px-4 sm:px-6 lg:px-8",
             @width_class,
             @dock_items == [] && "max-md:flex-wrap"
           ]}>
-            <div class="flex min-w-0 items-center gap-2 font-semibold *:min-w-0 max-md:flex-1">
+            <div
+              :if={@bar == []}
+              class="flex min-w-0 items-center gap-2 font-semibold *:min-w-0 max-md:flex-1"
+            >
               {render_slot(@brand, :bar)}
+            </div>
+            <div :if={@bar != []} class="flex flex-1 min-w-0 items-center gap-3">
+              {render_slot(@bar)}
             </div>
             <nav
               :if={@nav != []}

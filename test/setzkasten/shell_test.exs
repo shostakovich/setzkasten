@@ -139,4 +139,25 @@ defmodule Setzkasten.ShellTest do
     assert Enum.all?(~w(min-w-0 *:min-w-0 max-md:flex-1), &(&1 in brand))
     assert "shrink-0" in classes(doc, ".navbar > div.ms-auto")
   end
+
+  test "a page bar takes the brand's place, sticks and stays from xl without the account" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand><span class="brand">App</span></:brand>
+        <:account :let={place}><span class="acc" id={"acc-#{place}"}>A</span></:account>
+        <:bar><span class="page-bar">Posts › Winter</span></:bar>
+        <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    header = classes(doc, "header:has(.page-bar)")
+    assert "sticky" in header
+    refute "xl:hidden" in header
+    assert count(doc, "header .brand") == 0
+    assert count(doc, "aside .brand") == 1
+    assert "xl:hidden" in classes(doc, "header div:has(> #acc-bar)")
+  end
 end
