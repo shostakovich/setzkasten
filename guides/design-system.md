@@ -113,7 +113,7 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 | warning-content on warning | 4.5 | 9.91 | 10.51 |
 | error-content on error | 4.5 | 6.61 | 7.44 |
 | base-content/60 on base-100 / 200 | 4.5 | 4.66 / 4.58 | 5.12 / 5.51 |
-| base-content/70 on base-100 / 200 / 300 | 4.5 | 6.56 / 6.37 / 6.03 | 6.39 / 6.91 / 7.42 |
+| base-content/70 (secondary text, menu titles) on base-100 / 200 / 300 | 4.5 | 6.56 / 6.37 / 6.03 | 6.39 / 6.91 / 7.42 |
 | text-primary on base-100 / 200 | 4.5 | 4.89 / 4.58 | 6.53 / 7.32 |
 | text-success-ink on base-100 / 200 | 4.5 | 5.13 / 4.81 | 8.16 / 9.14 |
 | text-error-ink on base-100 / 200 | 4.5 | 5.39 / 5.05 | 5.63 / 6.31 |
