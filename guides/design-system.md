@@ -187,9 +187,22 @@ Tailwind's 4px scale; steps in use `1` `1.5` `2` `3` `4` `6` `8` `12`.
 ## 3. Components
 
 `use Setzkasten` imports all component modules; each can be imported alone. Every component appends `class` to its
-base classes; most accept global attrs. Visible default strings are German and can be overridden by attrs.
-Text in components wraps long unbroken strings (host names, URLs) instead of widening the page (`wrap-anywhere`;
-`fieldset-legend` and `card-title` via the CSS patch).
+base classes; most accept global attrs. Text in components wraps long unbroken strings (host names, URLs) instead
+of widening the page (`wrap-anywhere`; `fieldset-legend` and `card-title` via the CSS patch).
+
+Visible and accessible default strings are German; each has an attr:
+
+| Component | Attrs (default) |
+|---|---|
+| `header` | `back_label` (Zurück) |
+| `list_row` | `actions_label` (Aktionen) |
+| `stat` | `stale_label` (veraltet) |
+| `chart_card` | `data_label` (Werte als Tabelle) |
+| `alert`, `flash`, `modal` | `close_label` (Schließen) |
+| `flash_group` | `close_label`, `client_error` (Keine Verbindung), `server_error` (Etwas ist schiefgelaufen), `reconnecting` (Verbindung wird wiederhergestellt) |
+| `confirm_dialog` | `title` (Wirklich löschen?), `text` (Das lässt sich nicht rückgängig machen.), `confirm_label` (Löschen), `cancel_label` (Abbrechen), `close_label` |
+| `theme_toggle` | `label` (Farbschema), `labels` (System / Hell / Dunkel) |
+| `app_shell` | `nav_label` (Hauptnavigation), `skip_label` (Zum Inhalt springen), `expand_label` (Seitenleiste ausklappen) |
 
 ### Actions
 
