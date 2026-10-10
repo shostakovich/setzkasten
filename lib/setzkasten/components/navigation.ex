@@ -3,6 +3,7 @@ defmodule Setzkasten.Components.Navigation do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
+  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
 
   @doc """
   One choice out of a few (time range, view): a `join` of buttons, selected = `btn-primary`.
@@ -229,7 +230,8 @@ defmodule Setzkasten.Components.Navigation do
 
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
   `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
-  item, e.g. before a link to the whole list). `:header` is a line above the items
+  item, e.g. before a link to the whole list), `id`, `disabled`, and `confirm` (+
+  `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
   (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
   button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
   above the trigger, for a trigger at the bottom of the screen. The menu sets its own text
@@ -249,6 +251,7 @@ defmodule Setzkasten.Components.Navigation do
   attr :chevron, :boolean, default: true
   attr :open, :boolean, default: false
   attr :trigger_class, :any, default: nil
+  attr :confirm_id, :string, default: "confirm-delete"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :trigger, required: true
@@ -264,6 +267,11 @@ defmodule Setzkasten.Components.Navigation do
     attr :active, :boolean
     attr :danger, :boolean
     attr :divider, :boolean
+    attr :id, :string
+    attr :disabled, :boolean
+    attr :confirm, :string
+    attr :confirm_text, :string
+    attr :confirm_label, :string
   end
 
   def dropdown(assigns) do
@@ -299,7 +307,10 @@ defmodule Setzkasten.Components.Navigation do
         <li :for={header <- @header} class="menu-title min-w-0 truncate">{render_slot(header)}</li>
         <li
           :for={item <- @item}
-          class={item[:divider] && "mt-1 border-t border-base-content/10 pt-1"}
+          class={[
+            item[:divider] && "mt-1 border-t border-base-content/10 pt-1",
+            item[:disabled] && "menu-disabled"
+          ]}
         >
           <.link
             :if={item[:navigate] || item[:patch] || item[:href]}
@@ -307,6 +318,7 @@ defmodule Setzkasten.Components.Navigation do
             patch={item[:patch]}
             href={item[:href]}
             method={item[:method]}
+            id={item[:id]}
             class={[item[:active] && "menu-active", item[:danger] && "text-error-ink"]}
             aria-current={item[:active] && "page"}
             phx-click={close_menu("##{@id}")}
@@ -318,8 +330,11 @@ defmodule Setzkasten.Components.Navigation do
           <button
             :if={!(item[:navigate] || item[:patch] || item[:href])}
             type="button"
+            id={item[:id]}
             class={item[:danger] && "text-error-ink"}
-            phx-click={close_menu("##{@id}") |> JS.concat(click(item))}
+            disabled={item[:disabled]}
+            aria-haspopup={item[:confirm] && "dialog"}
+            phx-click={close_menu("##{@id}") |> JS.concat(click(item, @confirm_id))}
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
@@ -336,11 +351,21 @@ defmodule Setzkasten.Components.Navigation do
   # only on the focused element itself, so the summary and every item carry the Escape binding.
   defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
 
-  defp click(item) do
-    case item[:on_click] do
-      %JS{} = js -> js
-      event when is_binary(event) -> JS.push(event)
-      nil -> %JS{}
+  defp click(item, confirm_id) do
+    js =
+      case item[:on_click] do
+        %JS{} = js -> js
+        event when is_binary(event) -> JS.push(event)
+        nil -> %JS{}
+      end
+
+    if item[:confirm] do
+      show_confirm(%JS{}, confirm_id, item[:confirm], js,
+        text: item[:confirm_text],
+        label: item[:confirm_label]
+      )
+    else
+      js
     end
   end
 end

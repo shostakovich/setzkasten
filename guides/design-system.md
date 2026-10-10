@@ -301,7 +301,8 @@ Visible and accessible default strings are German; each has an attr:
   page, an `<h1>` unless `heading={false}`, cut with an ellipsis). Below `sm` only the nearest parent shows, as a
   back link. Goes into the `:bar` of `app_shell`, followed by the page's status badge.
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
-  `method` or `on_click`, `icon`, `active`, `danger`, `divider`), `align`, `position` (`:top` opens upwards),
+  `method` or `on_click`, `icon`, `active`, `danger`, `divider`, `id`, `disabled`, `confirm` (+ `confirm_text`,
+  `confirm_label`) for the shared confirmation dialog), `align`, `position` (`:top` opens upwards),
   `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
   Closes on outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives
   LiveView patches.

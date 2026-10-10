@@ -166,6 +166,24 @@ defmodule Setzkasten.NavigationTest do
     assert "menu-title" in classes(doc, "li:first-child")
   end
 
+  test "dropdown items with id, disabled and a confirmation" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="more" label="Mehr">
+        <:trigger>…</:trigger>
+        <:item id="undo" on_click="undo" disabled>Rückgängig</:item>
+        <:item id="drop" on_click="delete" danger confirm="Löschen?">Löschen</:item>
+      </.dropdown>
+      """)
+
+    assert attr(doc, "#undo", "disabled") != nil
+    assert "menu-disabled" in classes(doc, "li:has(#undo)")
+    assert attr(doc, "#drop", "aria-haspopup") == "dialog"
+    assert attr(doc, "#drop", "phx-click") =~ "confirm-delete"
+  end
+
   test "breadcrumbs: parents as links, the current page as heading, back link on phones" do
     assigns = %{}
 
