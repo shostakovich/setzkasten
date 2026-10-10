@@ -115,6 +115,9 @@ defmodule Setzkasten.ShellTest do
 
     assert count(doc, "aside.xl\\:flex") == 1
     assert attr(doc, "aside.md\\:flex a[aria-current=page]", "data-tip") == "Kinderdepot"
+    # Sticky makes a stacking context: without a z-index the rail's tooltips end up below
+    # positioned page content such as form fields.
+    assert "z-30" in classes(doc, "aside.md\\:flex")
 
     assert attr(doc, "dialog#app-shell-sidebar", "phx-hook") ==
              "Setzkasten.Components.Overlays.Modal"

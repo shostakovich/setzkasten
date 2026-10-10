@@ -90,7 +90,11 @@ defmodule Setzkasten.FeedbackTest do
   test "badge with dot by default, solid for alarms" do
     assigns = %{}
     doc = parse(~H|<.badge tone={:success}>Veröffentlicht</.badge>|)
-    assert classes(doc, "span.badge") == ~w(badge badge-sm)
+
+    assert classes(doc, "span.badge") ==
+             ~w(badge whitespace-nowrap max-sm:min-w-0 sm:shrink-0 badge-sm)
+
+    assert text(doc, ".badge > span.truncate") == "Veröffentlicht"
     assert classes(doc, ".status") == ~w(status status-success)
 
     doc = parse(~H|<.badge tone={:error} style={:solid}>überzogen</.badge>|)

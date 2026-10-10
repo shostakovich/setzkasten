@@ -119,12 +119,12 @@ defmodule Setzkasten.Components.Shell do
     >
       <%= if @layout == :sidebar do %>
         <aside class={[
-          "hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 h-dvh overflow-y-auto",
+          "hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh overflow-y-auto",
           sidebar_ghost()
         ]}>
           {sidebar(assign(assigns, :place, :sidebar))}
         </aside>
-        <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 h-dvh">
+        <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh">
           <.link
             :for={item <- @nav}
             navigate={item[:navigate]}

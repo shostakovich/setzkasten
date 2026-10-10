@@ -185,7 +185,11 @@ defmodule Setzkasten.Components.Navigation do
     assigns = assign(assigns, last_parent: length(parents) - 1)
 
     ~H"""
-    <nav aria-label={@label} class={["breadcrumbs min-w-0 overflow-hidden py-0", @class]} {@rest}>
+    <nav
+      aria-label={@label}
+      class={["breadcrumbs min-w-0 overflow-hidden py-0 max-sm:shrink-0", @class]}
+      {@rest}
+    >
       <ol class="min-w-0">
         <li
           :for={{crumb, index} <- @parents}

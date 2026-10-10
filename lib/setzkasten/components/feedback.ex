@@ -248,7 +248,8 @@ defmodule Setzkasten.Components.Feedback do
   @doc """
   A short status. `style={:dot}` (default) is a neutral badge with a coloured
   status dot and the label in base-content; `style={:solid}` fills the badge and is meant only
-  for alarm states. An icon-only badge needs `label`.
+  for alarm states. An icon-only badge needs `label`. A badge never wraps; in a tight row on a
+  phone its label ends in an ellipsis, from `sm` it keeps its width.
 
       <.badge tone={:success}>Veröffentlicht</.badge>
       <.badge tone={:error} style={:solid}>überzogen</.badge>
@@ -277,7 +278,7 @@ defmodule Setzkasten.Components.Feedback do
     ~H"""
     <span
       class={[
-        "badge",
+        "badge whitespace-nowrap max-sm:min-w-0 sm:shrink-0",
         @size == :sm && "badge-sm",
         @style == :solid && @solid_class,
         @class
@@ -291,7 +292,10 @@ defmodule Setzkasten.Components.Feedback do
         class={["status", @status_class]}
         aria-hidden="true"
       ></span>
-      <.icon :if={@icon} name={@icon} class="size-3.5" />{render_slot(@inner_block)}
+      <.icon :if={@icon} name={@icon} class="size-3.5 shrink-0" /><span
+        :if={@inner_block != []}
+        class="truncate"
+      >{render_slot(@inner_block)}</span>
     </span>
     """
   end
