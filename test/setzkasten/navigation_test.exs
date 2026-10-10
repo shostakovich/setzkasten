@@ -199,6 +199,8 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "nav", "aria-label") == "Pfad"
     assert count(doc, "nav a") == 2
     assert text(doc, "h1[aria-current=page]") == "Winterprojekte"
+    # daisyUI makes breadcrumb items flex containers, which ignore text-overflow.
+    assert Enum.all?(~w(block truncate), &(&1 in classes(doc, "h1")))
     # Below sm only the nearest parent stays, with a back chevron instead of the separator.
     assert "max-sm:hidden" in classes(doc, "li:has(a[href='/'])")
     assert "max-sm:before:hidden" in classes(doc, "li:has(a[href='/posts'])")

@@ -215,7 +215,7 @@ defmodule Setzkasten.Components.Navigation do
         <li class={["min-w-0", @parents != [] && "max-sm:before:hidden"]}>
           <.dynamic_tag
             tag_name={if @heading, do: "h1", else: "span"}
-            class="truncate font-semibold"
+            class="block truncate font-semibold"
             aria-current="page"
           >
             {render_slot(@current)}
@@ -305,7 +305,7 @@ defmodule Setzkasten.Components.Navigation do
         {render_slot(@trigger)}<.icon :if={@chevron} name="chevron-down" />
       </summary>
       <ul class={[
-        "menu dropdown-content bg-base-100 text-base-content text-sm font-normal rounded-box",
+        "menu dropdown-content bg-popover text-base-content text-sm font-normal rounded-box",
         "border border-base-content/10 shadow-lg z-20 w-56",
         if(@position == :top, do: "mb-1", else: "mt-1")
       ]}>

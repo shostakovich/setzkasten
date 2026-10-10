@@ -291,6 +291,7 @@ defmodule Setzkasten.Components.Feedback do
           else: ["badge", @size == :sm && "badge-sm"]
         ),
         @style == :solid && @solid_class,
+        @tone == :neutral && "setzkasten-badge-neutral",
         @class
       ]}
       role={@icon_only && "img"}

@@ -165,4 +165,53 @@ defmodule Setzkasten.ShellTest do
     # Detail pages go back through the bar, without the dock.
     assert count(doc, "nav.dock") == 0
   end
+
+  test "on phones a page bar leaves out the account, its actions take the right edge" do
+    for layout <- [:sidebar, :topbar] do
+      assigns = %{layout: layout}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout}>
+          <:brand>App</:brand>
+          <:account><span id="acc">A</span></:account>
+          <:bar><span class="page-bar">Winter</span></:bar>
+          <:bar_actions><button id="more">⋮</button></:bar_actions>
+          x
+        </.app_shell>
+        """)
+
+      assert "max-sm:hidden" in classes(doc, "header div:has(> #acc)")
+      refute "max-sm:hidden" in classes(doc, "header div:has(> #more)")
+      refute "setzkasten-page-bar" in classes(doc, "header div:has(> #more)")
+    end
+
+    assigns = %{}
+
+    without_bar =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand><:account><span id="acc">A</span></:account>x
+      </.app_shell>
+      """)
+
+    refute "max-sm:hidden" in classes(without_bar, "header div:has(> #acc)")
+  end
+
+  test "a sidebar section title gets room above, unless it is the first entry" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" icon="list" navigate="/a" section="Erste" />
+        <:nav key={:b} label="B" icon="list" navigate="/b" section="Zweite" /> x
+      </.app_shell>
+      """)
+
+    [first, second] = doc |> find("aside.xl\\:flex li.menu-title") |> LazyHTML.attribute("class")
+    refute "mt-4" in String.split(first)
+    assert "mt-4" in String.split(second)
+  end
 end

@@ -46,6 +46,7 @@
     --color-sidebar-content: oklch(98.07% 0.005 247.88);
     --color-sidebar-muted: oklch(83.02% 0.024 250.11);
     --color-sidebar-accent: oklch(79.98% 0.108 245.09);
+    --color-popover: var(--color-base-100);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -74,6 +75,7 @@
     --setzkasten-alert-border: 10%;
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
+    --setzkasten-popover-border: none;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -105,6 +107,7 @@
       --color-sidebar-content: oklch(95.07% 0.005 247.88);
       --color-sidebar-muted: oklch(79.07% 0.010 258.34);
       --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+      --color-popover: var(--color-base-200);
       --color-chart-1-fill: var(--color-primary);
       --color-chart-1: var(--color-primary);
       --color-chart-2-fill: var(--color-warning);
@@ -133,6 +136,7 @@
       --setzkasten-alert-border: 40%;
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
+      --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
     }
   }
 
@@ -165,6 +169,7 @@
     --color-sidebar-content: oklch(95.07% 0.005 247.88);
     --color-sidebar-muted: oklch(79.07% 0.010 258.34);
     --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+    --color-popover: var(--color-base-200);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -193,11 +198,13 @@
     --setzkasten-alert-border: 40%;
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
+    --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
   }
 }
 
 /* ------------------------------------------------------------------------------------------
- * Extra tokens that daisyUI has no slot for: text inks, chart series and the dark app sidebar.
+ * Extra tokens that daisyUI has no slot for: text inks, chart series, the dark app sidebar and
+ * the popover surface (dropdown menus, modals: base-100 in light, one step up, base-200, in dark).
  * Registered with @theme so Tailwind generates text-success-ink, bg-chart-1-fill, stroke-chart-1,
  * text-sidebar-content, … The values here are only fallbacks: both theme blocks above set every
  * one of them, and daisyUI's theme rules come later in the cascade than @theme's :root.
@@ -212,6 +219,7 @@
   --color-sidebar-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-sidebar-muted: oklch(83.02% 0.024 250.11); /* #bcc9d7 */
   --color-sidebar-accent: oklch(79.98% 0.108 245.09); /* #80c5ff */
+  --color-popover: oklch(100.00% 0 0);              /* #ffffff base-100 */
   --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
   --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
   --color-chart-2-fill: oklch(86.00% 0.154 85.00);  /* #ffc845 warning */
@@ -370,13 +378,15 @@
 }
 
 /* The page bar of detail pages (app_shell's :bar) on phones: a badge shows as its dot only,
-   the label stays for screen readers, so the title keeps the room. */
+   the label stays for screen readers, so the title keeps the room. A neutral badge has no
+   dot that says anything on its own, so it is left to screen readers entirely. */
 @media (width < 40rem) {
   .setzkasten-page-bar .badge {
     padding-inline: 0.25rem;
     border-color: transparent;
     background: none;
   }
+  .setzkasten-page-bar .badge.setzkasten-badge-neutral,
   .setzkasten-page-bar .badge > .truncate {
     position: absolute;
     width: 1px;
@@ -384,6 +394,16 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+}
+
+/* Modals share the popover surface with dropdown menus (bg-popover in markup): in dark one
+   step above the page with a hairline, so the box stands out from the dimmed backdrop. The
+   sidebar dialog keeps the sidebar's own surface. */
+@layer utilities.setzkasten {
+  .modal-box:not(.setzkasten-sidebar) {
+    background-color: var(--color-popover);
+    border: var(--setzkasten-popover-border, none);
   }
 }
 

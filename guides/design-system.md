@@ -20,8 +20,8 @@ docs are the exact API; this guide gives the rules.
 
 | Role | Light | Dark | Used for |
 |---|---|---|---|
-| base-100 | `#ffffff` | `#2d2f33` | page, cards, fields, menus, modals |
-| base-200 | `#f4f8fb` | `#37393e` | zebra rows, group rows, code, neutral buttons, tiles |
+| base-100 | `#ffffff` | `#2d2f33` | page, cards, fields; menus and modals in light |
+| base-200 | `#f4f8fb` | `#37393e` | zebra rows, group rows, code, neutral buttons, tiles; menus and modals in dark |
 | base-300 | `#e5edf3` | `#414448` | wells, trays, kbd |
 | base-content | `#0d1928` | `#e9ebef` | all text |
 | primary / -content | `#0077b4` / `#fff` | `#61bdff` / `#001c32` | main action, selection, links, focus |
@@ -46,7 +46,9 @@ and too faint as text or thin lines.
 - **Hairlines:** `border-base-content/10` (dividers, card edge). Field borders are 50 % base-content; error fields
   use `error-ink`.
 - **Dark elevation:** in dark, base-200/300 are lighter than base-100 (daisyUI: darker), so neutral buttons and tiles
-  stand out from the page instead of reading as holes.
+  stand out from the page instead of reading as holes. Dropdown menus and modal boxes take the extra token
+  `popover` (`bg-popover`): base-100 in light, base-200 in dark, where the modal box also gets a
+  `base-content/10` hairline (`--setzkasten-popover-border`).
 - **Alert tint:** soft alerts mix `--setzkasten-alert-tint` of their tone into the background: 25 % light, 8 % dark.
   At 8 % the tones look alike on dark grey, so dark draws the border with `--setzkasten-alert-border` 40 %
   (light 10 %, daisyUI's).
@@ -224,7 +226,7 @@ Visible and accessible default strings are German; each has an attr:
 - **`input`** – `field`, `type` (HTML types plus `select`, `textarea`, `checkbox`, `toggle`, `radio_group`), `label`,
   `hide_label`, `help`, `prefix`/`suffix` (€, %), `icon`, `numeric` (right-aligned, `tabular-nums`,
   `inputmode="decimal"`), `options`/`prompt`/`multiple`. `class` lands on the field box (`max-w-40` for narrow amounts).
-  - Markup: `fieldset` > label > field > help > errors.
+  - Markup: `fieldset` > label > field > errors > help.
   - Errors show after `used_input?/1`: `aria-invalid`, border in `error-ink`, lines with `circle-alert` (first
     letter upper case), linked by `aria-describedby`. Ecto messages via `config :setzkasten, translate_error: {Mod, :fun}`.
   - Checkbox and radio rows are labels with 44px height on coarse pointers.
@@ -271,7 +273,8 @@ Visible and accessible default strings are German; each has an attr:
     a second line below `md`, or with `trailing_on_phone={:meta}` to the end of the meta line, then rendered twice
     with `:let={place}`; `class` e.g. `md:w-40 md:justify-start` for a fixed status column),
     `navigate`/`patch`/`href` (the title link covers the row; a light fill under the pointer, no chevron).
-    Dividers run the full width of a flat list.
+    Dividers run the full width of a flat list. When the trailing line wraps below `md`, the leading media stays
+    with the first line.
   - `:action` entries (`label`, `icon`, target or `on_click`, `confirm`, `danger`, `disabled`): icon buttons from
     `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions), with
     `inline` actions (e.g. move up/down) still as icon buttons from `md`; `actions_class` (e.g. `md:w-20
@@ -304,7 +307,7 @@ Visible and accessible default strings are German; each has an attr:
 - **`breadcrumbs`** – where a detail page sits: `:crumb` (`navigate`/`patch`/`href`; the last is the current
   page, an `<h1>` unless `heading={false}`, cut with an ellipsis). Below `sm` a back chevron to the nearest
   parent and the current page. Goes into the `:bar` of `app_shell`, followed by the page's status badge (a dot on
-  phones).
+  phones; a neutral badge only for screen readers there).
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
   `method` or `on_click`, `icon`, `active`, `danger`, `divider`, `id`, `disabled`, `confirm` (+ `confirm_text`,
   `confirm_label`) for the shared confirmation dialog, `class`), `align`, `position` (`:top` opens upwards),
@@ -339,8 +342,10 @@ Visible and accessible default strings are German; each has an attr:
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
     (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
     the sidebar).
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:bar`, `:fab`. `:bar` (detail pages: breadcrumbs and
-    status) replaces the brand in the top bar, sticks to the top and with `:sidebar` also shows from `xl`.
+  - Slots `:brand` (required), `:nav_footer`, `:account`, `:bar`, `:bar_actions`, `:fab`. `:bar` (detail pages:
+    breadcrumbs and status) replaces the brand in the top bar, sticks to the top and with `:sidebar` also shows from
+    `xl`. `:bar_actions` (the page's own actions, e.g. a `⋮` dropdown) follow it. Below `sm` a page with a bar
+    leaves the `:account` (global actions, account menu) out of the top bar, so its actions sit at the right edge.
     In the sidebar layout `:brand`, `:nav_footer` and `:account` render more than once and receive where
     (`:sidebar`, `:dialog`, `:bar`) for unique ids (`:let={place}`); a menu in the account at the sidebar's
     foot opens with `position={:top}`.

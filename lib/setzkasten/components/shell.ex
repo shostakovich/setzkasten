@@ -41,15 +41,22 @@ defmodule Setzkasten.Components.Shell do
 
   `:bar` is for detail pages: it takes the brand's place in the top bar (breadcrumbs, then a
   status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `xl`
-  (without the account, which sits in the sidebar there). On phones a badge in the bar shows
-  as its dot (the label stays for screen readers), and a page with a bar has no dock: the
-  bar's back link is the way back. Buttons in the sidebar without a colour variant take a
-  quiet sidebar style, so a global action there does not compete with the page's primary. Pages render it through their layout:
+  (without the account, which sits in the sidebar there). `:bar_actions` holds the page's own
+  actions (e.g. a `⋮` dropdown) at the end of the bar. On phones (below `sm`) a badge in the
+  bar shows as its dot (the label stays for screen readers; a neutral badge shows no dot), the
+  top bar leaves out the `:account` (global actions and the account menu), so the bar actions
+  sit at the right edge, and a page with a bar has no dock: the bar's back link is the way
+  back. Buttons in the sidebar without a colour variant take a quiet sidebar style, so a global
+  action there does not compete with the page's primary. Pages render it through their layout:
 
       <:bar>
         <.breadcrumbs><:crumb navigate={~p"/beitraege"}>Beiträge</:crumb><:crumb>{@title}</:crumb></.breadcrumbs>
-        <.badge>Entwurf</.badge>
+        <.badge tone={:info}>Geplant</.badge>
       </:bar>
+      <:bar_actions>
+        <.dropdown id="post-menu" label="Aktionen" align={:end} variant={:ghost} chevron={false}
+          trigger_class="btn-square">…</.dropdown>
+      </:bar_actions>
 
       <.app_shell layout={:topbar} current={:expenses} width={:narrow}>
         <:brand><.plush name="mascot" size={:lg} /> Teilbar</:brand>
@@ -89,6 +96,7 @@ defmodule Setzkasten.Components.Shell do
   slot :nav_footer
   slot :account
   slot :bar, doc: "page context (breadcrumbs, status) in place of the brand in the top bar"
+  slot :bar_actions, doc: "the page's own actions at the end of the bar (e.g. a `⋮` dropdown)"
   slot :fab
 
   def app_shell(assigns) do
@@ -182,7 +190,10 @@ defmodule Setzkasten.Components.Shell do
             <div :if={@bar != []} class="setzkasten-page-bar flex-1 flex min-w-0 items-center gap-3">
               {render_slot(@bar)}
             </div>
-            <div class={["flex shrink-0 items-center gap-2", @bar != [] && "xl:hidden"]}>
+            <div :if={@bar != [] and @bar_actions != []} class="flex shrink-0 items-center gap-2">
+              {render_slot(@bar_actions)}
+            </div>
+            <div class={["flex shrink-0 items-center gap-2", @bar != [] && "max-sm:hidden xl:hidden"]}>
               {render_slot(@account, :bar)}
             </div>
           </div>
@@ -204,6 +215,9 @@ defmodule Setzkasten.Components.Shell do
             </div>
             <div :if={@bar != []} class="setzkasten-page-bar flex flex-1 min-w-0 items-center gap-3">
               {render_slot(@bar)}
+            </div>
+            <div :if={@bar != [] and @bar_actions != []} class="flex shrink-0 items-center gap-2">
+              {render_slot(@bar_actions)}
             </div>
             <nav
               :if={@nav != []}
@@ -227,7 +241,9 @@ defmodule Setzkasten.Components.Shell do
                 </li>
               </ul>
             </nav>
-            <div class="ms-auto flex shrink-0 items-center gap-2">{render_slot(@account, :bar)}</div>
+            <div class={["ms-auto flex shrink-0 items-center gap-2", @bar != [] && "max-sm:hidden"]}>
+              {render_slot(@account, :bar)}
+            </div>
           </div>
         </header>
         <main
@@ -284,7 +300,7 @@ defmodule Setzkasten.Components.Shell do
         <%= for {item, index} <- Enum.with_index(@nav) do %>
           <li
             :if={item[:section] && section_start?(@nav, index)}
-            class="menu-title text-sidebar-muted"
+            class={["menu-title text-sidebar-muted", index > 0 && "mt-4"]}
           >
             {item[:section]}
           </li>

@@ -321,7 +321,10 @@ defmodule Setzkasten.Components.Data do
       ]}
       {@rest}
     >
-      <div :if={@leading != []} class={["flex items-center", @wrap? && "max-md:row-[1/span_2]"]}>
+      <div
+        :if={@leading != []}
+        class={["flex items-center", @wrap? && "max-md:row-[1/span_2] max-md:self-start"]}
+      >
         {render_slot(@leading)}
       </div>
       <div class="list-col-grow min-w-0">
@@ -413,7 +416,7 @@ defmodule Setzkasten.Components.Data do
         >
           <.icon name="ellipsis-vertical" />
         </summary>
-        <ul class="menu dropdown-content bg-base-100 rounded-box border border-base-content/10 shadow-lg z-10 w-56">
+        <ul class="menu dropdown-content bg-popover rounded-box border border-base-content/10 shadow-lg z-10 w-56">
           <li
             :for={action <- @action}
             class={[

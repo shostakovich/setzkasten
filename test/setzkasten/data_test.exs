@@ -206,6 +206,8 @@ defmodule Setzkasten.DataTest do
     trailing = classes(doc, "li.list-row > div:has(> .badge)")
     assert Enum.all?(~w(max-md:row-start-2 max-md:col-start-2 md:justify-end), &(&1 in trailing))
     assert "max-md:row-[1/span_2]" in classes(doc, "li.list-row > div:first-child")
+    # The media stays with the first line when the trailing content wraps below.
+    assert "max-md:self-start" in classes(doc, "li.list-row > div:first-child")
     assert "max-md:row-[1/span_2]" in classes(doc, "li.list-row > details")
 
     without_leading =

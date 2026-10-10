@@ -8,6 +8,8 @@ defmodule Setzkasten.Dev.ScreenLive do
   @screens [
     {"posts", "Beiträge (CMS)",
      "Posts einer Website: Kopf mit Aktionen, Reiter, Filter, Liste mit Zeilenaktionen."},
+    {"post", "Post bearbeiten (CMS)",
+     "Detailseite: Seitenpfad, Status und ⋮-Menü in der Leiste, Formular mit Fehler."},
     {"settings", "Einstellungen (Ausgaben)",
      "Formular in schmaler Spalte, Mitglieder, Farbschema, Aktionsleiste, Dock."},
     {"holdings", "Bestand (Depot)",
@@ -153,6 +155,97 @@ defmodule Setzkasten.Dev.ScreenLive do
       <.empty_state :if={@visible == []} icon="inbox" title="Keine Posts mit diesem Status">
         Wähle „Alle“, um alle Posts zu sehen.
       </.empty_state>
+    </.app_shell>
+    <.flash_group flash={@flash} />
+    <.confirm_dialog />
+    """
+  end
+
+  def render(%{screen: "post"} = assigns) do
+    ~H"""
+    <.app_shell layout={:sidebar} current={:posts} width={:narrow}>
+      <:brand><.icon name="book-open" class="size-5 text-sidebar-accent" />Blattwerk</:brand>
+      <:nav key={:sites} label="Websites" icon="globe" navigate="/screens/posts" />
+      <:nav
+        key={:posts}
+        label="Posts"
+        icon="file-text"
+        section="Website"
+        navigate="/screens/post"
+      />
+      <:nav key={:media} label="Medien" icon="image" section="Website" navigate="/screens/post" />
+      <:nav key={:links} label="Links" icon="link" section="Website" navigate="/screens/post" />
+      <:account :let={place}>
+        <.button :if={place == :bar} size={:sm} icon="upload" icon_only label="Veröffentlichen" />
+        <.button :if={place == :sidebar} size={:sm} icon="upload">Veröffentlichen</.button>
+        <.dropdown
+          id={"post-account-#{place}"}
+          label="Konto"
+          align={:end}
+          position={if place == :sidebar, do: :top, else: :bottom}
+          variant={:ghost}
+          chevron={false}
+          class={place == :sidebar && "ms-auto"}
+          trigger_class="btn-square"
+        >
+          <:trigger><.avatar initials="JM" size={:sm} /></:trigger>
+          <:header>jonas@example.com</:header>
+          <:item navigate="/screens/settings" icon="settings">Einstellungen</:item>
+          <:item navigate="/" icon="log-out">Abmelden</:item>
+        </.dropdown>
+      </:account>
+      <:bar>
+        <.breadcrumbs>
+          <:crumb navigate="/screens/posts">Feldnotizen</:crumb>
+          <:crumb navigate="/screens/posts">Posts</:crumb>
+          <:crumb>Was ich aus 100 Code-Reviews gelernt habe (überarbeitet)</:crumb>
+        </.breadcrumbs>
+        <.badge>Entwurf</.badge>
+      </:bar>
+      <:bar_actions>
+        <.dropdown
+          id="post-menu"
+          label="Aktionen"
+          align={:end}
+          variant={:ghost}
+          chevron={false}
+          trigger_class="btn-square"
+        >
+          <:trigger><.icon name="ellipsis-vertical" /></:trigger>
+          <:item navigate="/screens/post" icon="eye">Vorschau</:item>
+          <:item on_click="archive" icon="archive">Archivieren</:item>
+          <:item
+            on_click="delete-post"
+            icon="trash-2"
+            danger
+            divider
+            confirm="Post löschen?"
+          >
+            Löschen
+          </:item>
+        </.dropdown>
+      </:bar_actions>
+      <form id="post-form" phx-submit="save" class="space-y-2">
+        <.input
+          name="post[title]"
+          id="post-title"
+          label="Titel"
+          value="Was ich aus 100 Code-Reviews gelernt habe (überarbeitet)"
+        />
+        <.input
+          name="post[slug]"
+          id="post-slug"
+          label="Adresse"
+          value="code-reviews"
+          errors={["ist schon vergeben"]}
+          help="Kleinbuchstaben und Bindestriche, z. B. code-reviews-2026."
+        />
+        <.input name="post[body]" id="post-body" type="textarea" label="Text" rows="8" />
+        <.action_bar sticky class="mt-6">
+          <.button navigate="/screens/posts">Abbrechen</.button>
+          <.button type="submit" variant={:primary}>Speichern</.button>
+        </.action_bar>
+      </form>
     </.app_shell>
     <.flash_group flash={@flash} />
     <.confirm_dialog />

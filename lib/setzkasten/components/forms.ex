@@ -4,7 +4,7 @@ defmodule Setzkasten.Components.Forms do
   import Setzkasten.Components.Icons
 
   @doc """
-  A labelled form field: `fieldset.fieldset` > label > field > help > errors.
+  A labelled form field: `fieldset.fieldset` > label > field > errors > help.
 
   Types: the HTML input types (`text`, `email`, `password`, `number`, `date`,
   `datetime-local`, `search`, `tel`, `url`, `hidden`, …) plus `select`, `textarea`,
@@ -214,8 +214,8 @@ defmodule Setzkasten.Components.Forms do
 
   defp prepare(assigns) do
     ids =
-      [assigns.help && "#{assigns.id}-help"] ++
-        for {_, i} <- Enum.with_index(assigns.errors), do: "#{assigns.id}-error-#{i}"
+      for({_, i} <- Enum.with_index(assigns.errors), do: "#{assigns.id}-error-#{i}") ++
+        [assigns.help && "#{assigns.id}-help"]
 
     assigns
     |> assign_new(:value, fn -> nil end)
@@ -251,7 +251,6 @@ defmodule Setzkasten.Components.Forms do
 
   defp field_help(assigns) do
     ~H"""
-    <p :if={@help} id={"#{@id}-help"} class="label whitespace-normal">{@help}</p>
     <p
       :for={{msg, i} <- Enum.with_index(@errors)}
       id={"#{@id}-error-#{i}"}
@@ -259,6 +258,7 @@ defmodule Setzkasten.Components.Forms do
     >
       <.icon name="circle-alert" class="size-4 shrink-0" />{upcase_first(msg)}
     </p>
+    <p :if={@help} id={"#{@id}-help"} class="label whitespace-normal">{@help}</p>
     """
   end
 

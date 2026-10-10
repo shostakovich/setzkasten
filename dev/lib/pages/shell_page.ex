@@ -27,6 +27,7 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
         :for={
           {slug, label} <- [
             {"holdings", ":sidebar"},
+            {"post", ":sidebar, Detailseite mit :bar"},
             {"posts", ":topbar mit FAB"},
             {"settings", ":topbar ohne Dock"},
             {"dashboard", ":topbar mit Plüsch-Dock"}

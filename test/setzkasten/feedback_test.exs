@@ -116,6 +116,16 @@ defmodule Setzkasten.FeedbackTest do
     assert "bg-base-content/50" in classes(doc, ".status")
   end
 
+  test "a neutral badge is marked, so the phone page bar can leave out its dot" do
+    assigns = %{}
+    assert "setzkasten-badge-neutral" in classes(parse(~H|<.badge>Entwurf</.badge>|), ".badge")
+
+    refute "setzkasten-badge-neutral" in classes(
+             parse(~H|<.badge tone={:warning}>Fällig</.badge>|),
+             ".badge"
+           )
+  end
+
   test "plain badge is a pill without a dot" do
     assigns = %{}
     doc = parse(~H|<.badge style={:plain}>Du</.badge>|)

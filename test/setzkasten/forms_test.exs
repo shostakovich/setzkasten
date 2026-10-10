@@ -32,6 +32,14 @@ defmodule Setzkasten.FormsTest do
     assert text(doc, "label.input .label") == "€"
   end
 
+  test "errors sit directly under the field, before the help, in the describedby order" do
+    assigns = %{form: form(%{"title" => ""}, title: {"leer", []})}
+    doc = parse(~H|<.input field={@form[:title]} label="Titel" help="Kurz" />|)
+    ids = doc |> find("fieldset > p") |> LazyHTML.attribute("id")
+    assert ids == ["expense_title-error-0", "expense_title-help"]
+    assert attr(doc, "input", "aria-describedby") == "expense_title-error-0 expense_title-help"
+  end
+
   test "errors stay hidden for unused fields" do
     assigns = %{form: to_form(%{}, as: :expense, errors: [title: {"leer", []}])}
     doc = parse(~H|<.input field={@form[:title]} label="Titel" />|)
