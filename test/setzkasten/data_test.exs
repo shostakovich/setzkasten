@@ -305,4 +305,16 @@ defmodule Setzkasten.DataTest do
     assert "border-chart-1" in classes(doc, "li:first-child span")
     assert "bg-error-ink" in classes(doc, "li:last-child span")
   end
+
+  test "list row titles and description list values break long strings" do
+    assigns = %{}
+    row = parse(~H|<.list_row title="a-very-long-hostname.example.com" navigate="/p/1" />|)
+    assert "wrap-anywhere" in classes(row, ".list-col-grow a")
+    plain = parse(~H|<.list_row title="a-very-long-hostname.example.com" />|)
+    assert "wrap-anywhere" in classes(plain, ".list-col-grow p")
+    doc = parse(~H|<.description_list>
+  <:item label="Host">x</:item>
+</.description_list>|)
+    assert Enum.all?(~w(min-w-0 wrap-anywhere), &(&1 in classes(doc, "dd")))
+  end
 end

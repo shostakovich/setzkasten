@@ -25,7 +25,10 @@ defmodule Setzkasten.LayoutTest do
   test "section heading with count" do
     assigns = %{}
     doc = parse(~H|<.section_heading count={3} level={3}>Depots</.section_heading>|)
-    assert classes(doc, "h3") == ~w(flex items-center gap-2 text-base font-semibold)
+
+    assert classes(doc, "h3") ==
+             ~w(flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere)
+
     assert text(doc, "h3 .badge") == "3"
   end
 
@@ -96,5 +99,22 @@ defmodule Setzkasten.LayoutTest do
     doc = parse(~H|<.theme_meta />|)
     assert attr(doc, "meta[media*=light]", "content") == "#ffffff"
     assert attr(doc, "meta[media*=dark]", "content") == "#2d2f33"
+  end
+
+  test "header and card text break long unbroken strings" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.header>
+        a-very-long-hostname.example.com<:subtitle>Sub</:subtitle>
+      </.header>
+      """)
+
+    assert Enum.all?(~w(min-w-0 wrap-anywhere), &(&1 in classes(doc, "h1")))
+    assert "wrap-anywhere" in classes(doc, "p.text-sm")
+
+    card = parse(~H|<.card title="T" subtitle="S">x</.card>|)
+    assert "wrap-anywhere" in classes(card, "p.text-sm")
   end
 end

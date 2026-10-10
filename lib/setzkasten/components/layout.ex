@@ -47,12 +47,12 @@ defmodule Setzkasten.Components.Layout do
       </div>
       <div class="min-w-0 grow basis-64">
         <div class="flex flex-wrap items-center gap-2">
-          <.dynamic_tag tag_name={"h#{@level}"} class="text-2xl font-semibold">
+          <.dynamic_tag tag_name={"h#{@level}"} class="min-w-0 text-2xl font-semibold wrap-anywhere">
             {render_slot(@inner_block)}
           </.dynamic_tag>
           {render_slot(@badge)}
         </div>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70 max-w-prose">
+        <p :if={@subtitle != []} class="text-sm text-base-content/70 max-w-prose wrap-anywhere">
           {render_slot(@subtitle)}
         </p>
       </div>
@@ -83,7 +83,7 @@ defmodule Setzkasten.Components.Layout do
       <.dynamic_tag
         tag_name={"h#{@level}"}
         id={@id}
-        class="flex items-center gap-2 text-base font-semibold"
+        class="flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere"
       >
         {render_slot(@inner_block)}
         <span :if={@count} class="badge badge-sm tabular-nums">{@count}</span>
@@ -176,7 +176,9 @@ defmodule Setzkasten.Components.Layout do
           </.link>
           <span :if={!@link?}>{@title}</span>
         </.dynamic_tag>
-        <p :if={@subtitle} class="text-sm text-base-content/70 max-w-prose">{@subtitle}</p>
+        <p :if={@subtitle} class="text-sm text-base-content/70 max-w-prose wrap-anywhere">
+          {@subtitle}
+        </p>
       </div>
       <div :if={@actions != []} class="relative z-10 flex flex-wrap items-center gap-2">
         {render_slot(@actions)}

@@ -108,7 +108,9 @@ defmodule Setzkasten.Components.Overlays do
         @class
       ]}>
         <div :if={@title || @placement != :center} class="flex items-start justify-between gap-2">
-          <h2 :if={@title} id={"#{@id}-title"} class="text-lg font-semibold">{@title}</h2>
+          <h2 :if={@title} id={"#{@id}-title"} class="min-w-0 text-lg font-semibold wrap-anywhere">
+            {@title}
+          </h2>
           <form :if={@placement != :center} method="dialog" class="ms-auto">
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
@@ -189,13 +191,18 @@ defmodule Setzkasten.Components.Overlays do
       <div class="modal-box">
         <h2
           id={"#{@id}-title"}
-          class="text-lg font-semibold"
+          class="text-lg font-semibold wrap-anywhere"
           data-default={@title}
           phx-update="ignore"
         >
           {@title}
         </h2>
-        <p id={"#{@id}-text"} class="py-2 text-sm" data-default={@text} phx-update="ignore">
+        <p
+          id={"#{@id}-text"}
+          class="py-2 text-sm wrap-anywhere"
+          data-default={@text}
+          phx-update="ignore"
+        >
           {@text}
         </p>
         <div class="modal-action">

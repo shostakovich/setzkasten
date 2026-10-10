@@ -338,6 +338,14 @@
   }
 }
 
+/* Long unbroken strings (host names, URLs, slugs) wrap instead of widening the page. The
+   components' own text carries wrap-anywhere; these are the daisyUI text classes apps use directly. */
+@layer utilities.setzkasten {
+  :is(.fieldset-legend, .card-title) {
+    overflow-wrap: anywhere;
+  }
+}
+
 /* Totals in <tfoot> are values, not labels: full base-content instead of the head's 60 %. */
 @layer utilities.setzkasten {
   .table :where(tfoot) {

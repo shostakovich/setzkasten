@@ -117,4 +117,20 @@ defmodule Setzkasten.FeedbackTest do
     assert text(doc, "h2.text-lg") == "Leer"
     assert count(doc, "img.size-12") == 2
   end
+
+  test "alert, flash and empty state text break long strings" do
+    assigns = %{}
+    alert = parse(~H|<.alert title="T">x</.alert>|)
+    assert "wrap-anywhere" in classes(alert, ".alert > div")
+
+    flash = parse(~H|<.flash kind={:info} flash={%{"info" => "x"}} />|)
+    assert "wrap-anywhere" in classes(flash, ".alert > div")
+
+    empty = parse(~H|<.empty_state title="T">x</.empty_state>|)
+    assert "wrap-anywhere" in classes(empty, "div > div")
+
+    page = parse(~H|<.empty_state layout={:page} title="T">x</.empty_state>|)
+    assert "wrap-anywhere" in classes(page, "h2")
+    assert "wrap-anywhere" in classes(page, "p")
+  end
 end

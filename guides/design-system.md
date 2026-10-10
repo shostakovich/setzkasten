@@ -188,6 +188,8 @@ Tailwind's 4px scale; steps in use `1` `1.5` `2` `3` `4` `6` `8` `12`.
 
 `use Setzkasten` imports all component modules; each can be imported alone. Every component appends `class` to its
 base classes; most accept global attrs. Visible default strings are German and can be overridden by attrs.
+Text in components wraps long unbroken strings (host names, URLs) instead of widening the page (`wrap-anywhere`;
+`fieldset-legend` and `card-title` via the CSS patch).
 
 ### Actions
 

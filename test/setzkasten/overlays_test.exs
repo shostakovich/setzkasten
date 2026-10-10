@@ -78,4 +78,14 @@ defmodule Setzkasten.OverlaysTest do
              "summary"
            ) == ["btn"]
   end
+
+  test "dialog titles and texts break long strings" do
+    assigns = %{}
+    modal = parse(~H|<.modal id="m" title="T">x</.modal>|)
+    assert "wrap-anywhere" in classes(modal, "h2")
+
+    confirm = parse(~H|<.confirm_dialog />|)
+    assert "wrap-anywhere" in classes(confirm, "h2")
+    assert "wrap-anywhere" in classes(confirm, "p")
+  end
 end

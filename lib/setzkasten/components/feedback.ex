@@ -76,7 +76,7 @@ defmodule Setzkasten.Components.Feedback do
     >
       <span :if={@busy} class={["loading loading-spinner loading-sm", @icon_color]}></span>
       <.icon :if={@icon_name && !@busy} name={@icon_name} class={["size-5", @icon_color]} />
-      <div class="min-w-0">
+      <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
         <div :if={@inner_block != []}>{render_slot(@inner_block)}</div>
       </div>
@@ -158,7 +158,7 @@ defmodule Setzkasten.Components.Feedback do
     >
       <.icon :if={@kind == :info} name="info" class="size-5 text-info" />
       <.icon :if={@kind == :error} name="circle-alert" class="size-5 text-error-ink" />
-      <div class="min-w-0">
+      <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
         <p>{msg}</p>
       </div>
@@ -324,10 +324,10 @@ defmodule Setzkasten.Components.Feedback do
     <div class={["flex flex-col items-center gap-3 px-6 py-12 text-center", @class]} {@rest}>
       <.plush :if={@plush} name={@plush} size={:xl} />
       <.icon :if={@icon && !@plush} name={@icon} class="size-12 text-base-content/70" />
-      <.dynamic_tag :if={@title} tag_name={"h#{@level}"} class="text-lg font-semibold">
+      <.dynamic_tag :if={@title} tag_name={"h#{@level}"} class="text-lg font-semibold wrap-anywhere">
         {@title}
       </.dynamic_tag>
-      <p :if={@inner_block != []} class="text-sm text-base-content/70 max-w-prose">
+      <p :if={@inner_block != []} class="text-sm text-base-content/70 max-w-prose wrap-anywhere">
         {render_slot(@inner_block)}
       </p>
       <div :if={@action != []}>{render_slot(@action)}</div>
@@ -340,7 +340,7 @@ defmodule Setzkasten.Components.Feedback do
     <div class={["flex items-start gap-3 py-6", @class]} {@rest}>
       <.plush :if={@plush} name={@plush} size={:lg} />
       <.icon :if={@icon && !@plush} name={@icon} class="size-6 shrink-0 text-base-content/70" />
-      <div class="min-w-0">
+      <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
         <p :if={@inner_block != []} class="text-sm text-base-content/70 max-w-prose">
           {render_slot(@inner_block)}

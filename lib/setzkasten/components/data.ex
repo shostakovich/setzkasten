@@ -293,11 +293,11 @@ defmodule Setzkasten.Components.Data do
           navigate={@navigate}
           patch={@patch}
           href={@href}
-          class="font-medium after:absolute after:inset-0"
+          class="font-medium wrap-anywhere after:absolute after:inset-0"
         >
           {@title}{render_slot(@inner_block)}
         </.link>
-        <p :if={!@link?} class="font-medium">{@title}{render_slot(@inner_block)}</p>
+        <p :if={!@link?} class="font-medium wrap-anywhere">{@title}{render_slot(@inner_block)}</p>
         <p :if={@meta != []} class="text-sm text-base-content/70 truncate">{render_slot(@meta)}</p>
       </div>
       <div
@@ -525,7 +525,7 @@ defmodule Setzkasten.Components.Data do
         class="flex justify-between gap-4 py-2 border-b border-base-content/10"
       >
         <dt class="text-base-content/70">{item.label}</dt>
-        <dd class="text-end tabular-nums font-medium">{render_slot(item)}</dd>
+        <dd class="min-w-0 text-end tabular-nums font-medium wrap-anywhere">{render_slot(item)}</dd>
       </div>
     </dl>
     """
