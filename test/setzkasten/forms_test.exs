@@ -86,6 +86,16 @@ defmodule Setzkasten.FormsTest do
     assert classes(doc, "input[type=checkbox]") == ~w(toggle toggle-primary)
   end
 
+  test "checkbox hidden input follows the form attribute" do
+    assigns = %{}
+    doc = parse(~H|<.input name="r" id="r" type="checkbox" label="R" form="other" />|)
+    assert attr(doc, "input[type=hidden]", "form") == "other"
+    assert attr(doc, "input[type=checkbox]", "form") == "other"
+
+    doc = parse(~H|<.input name="r" id="r" type="checkbox" label="R" />|)
+    assert attr(doc, "input[type=hidden]", "form") == nil
+  end
+
   test "radio group is a fieldset with legend" do
     assigns = %{}
 

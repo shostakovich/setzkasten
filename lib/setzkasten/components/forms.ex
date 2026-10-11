@@ -77,7 +77,13 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <div class="fieldset min-w-0">
       <label class="flex items-center gap-3 text-sm pointer-coarse:min-h-11">
-        <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
+        <input
+          type="hidden"
+          name={@name}
+          value="false"
+          disabled={@rest[:disabled]}
+          form={@rest[:form]}
+        />
         <input
           type="checkbox"
           id={@id}
