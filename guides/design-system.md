@@ -111,7 +111,7 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 
 | Pair | Need | Light | Dark |
 |---|---|---|---|
-| base-content on base-100 / 200 / 300 | 4.5 | 17.69 / 16.57 / 14.95 | 11.24 / 12.58 / 13.81 |
+| base-content on base-100 / 200 / 300 | 4.5 | 17.69 / 16.57 / 14.95 | 11.23 / 9.66 / 8.22 |
 | primary-content on primary | 4.5 | 4.89 | 8.44 |
 | secondary-content on secondary | 4.5 | 8.59 | 9.14 |
 | accent-content on accent | 4.5 | 7.56 | 8.32 |
