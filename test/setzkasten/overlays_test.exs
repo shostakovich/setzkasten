@@ -1,6 +1,12 @@
 defmodule Setzkasten.OverlaysTest do
   use Setzkasten.ComponentCase, async: true
 
+  test "the click helpers stay out of the component modules" do
+    for module <- Setzkasten.component_modules(), fun <- [:click_js, :entry_click] do
+      refute Enum.any?(module.__info__(:functions), &(elem(&1, 0) == fun))
+    end
+  end
+
   test "modal is a native dialog with the colocated hook" do
     assigns = %{}
 

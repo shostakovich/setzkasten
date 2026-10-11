@@ -3,7 +3,7 @@ defmodule Setzkasten.Components.Navigation do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Click, only: [entry_click: 2]
 
   @doc """
   One choice out of a few (time range, view): a `join` of buttons, selected = `btn-primary`.
@@ -340,7 +340,7 @@ defmodule Setzkasten.Components.Navigation do
             class={item[:danger] && "text-error-ink"}
             disabled={item[:disabled]}
             aria-haspopup={item[:confirm] && "dialog"}
-            phx-click={close_menu("##{@id}") |> JS.concat(click(item, @confirm_id))}
+            phx-click={close_menu("##{@id}") |> JS.concat(entry_click(item, @confirm_id))}
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
@@ -356,22 +356,4 @@ defmodule Setzkasten.Components.Navigation do
   # hidden, so focus would otherwise drop to <body>). LiveView runs an element's phx-keydown
   # only on the focused element itself, so the summary and every item carry the Escape binding.
   defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
-
-  defp click(item, confirm_id) do
-    js =
-      case item[:on_click] do
-        %JS{} = js -> js
-        event when is_binary(event) -> JS.push(event)
-        nil -> %JS{}
-      end
-
-    if item[:confirm] do
-      show_confirm(%JS{}, confirm_id, item[:confirm], js,
-        text: item[:confirm_text],
-        label: item[:confirm_label]
-      )
-    else
-      js
-    end
-  end
 end

@@ -182,39 +182,66 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <fieldset class="fieldset min-w-0">
       <.field_label id={@id} label={@label} hide={@hide_label} />
-      <label :if={@boxed} class={["input w-full", @errors != [] && "input-error", @class]}>
-        <.icon :if={@icon} name={@icon} class="size-4 text-base-content/70" />
-        <span :if={@prefix} class="label">{@prefix}</span>
-        <input
-          type={@type}
-          id={@id}
-          name={@name}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={@numeric && "text-end tabular-nums"}
-          aria-invalid={@errors != [] && "true"}
-          aria-describedby={@describedby}
-          {@rest}
-        />
-        <span :if={@suffix} class="label">{@suffix}</span>
-      </label>
+      <.text_field {field_attrs(assigns)} />
+      <.field_help id={@id} help={@help} errors={@errors} />
+    </fieldset>
+    """
+  end
+
+  defp field_attrs(assigns) do
+    Map.take(
+      assigns,
+      ~w(type id name value errors numeric icon prefix suffix boxed class describedby rest)a
+    )
+  end
+
+  attr :type, :string, required: true
+  attr :id, :any, required: true
+  attr :name, :any, required: true
+  attr :value, :any, required: true
+  attr :errors, :list, required: true
+  attr :numeric, :boolean, required: true
+  attr :icon, :string, required: true
+  attr :prefix, :string, required: true
+  attr :suffix, :string, required: true
+  attr :boxed, :any, required: true
+  attr :class, :any, required: true
+  attr :describedby, :string, required: true
+  attr :rest, :map, required: true
+
+  defp text_field(assigns) do
+    ~H"""
+    <label :if={@boxed} class={["input w-full", @errors != [] && "input-error", @class]}>
+      <.icon :if={@icon} name={@icon} class="size-4 text-base-content/70" />
+      <span :if={@prefix} class="label">{@prefix}</span>
       <input
-        :if={!@boxed}
         type={@type}
         id={@id}
         name={@name}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={[
-          "input w-full",
-          @errors != [] && "input-error",
-          @numeric && "text-end tabular-nums",
-          @class
-        ]}
+        class={@numeric && "text-end tabular-nums"}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@describedby}
         {@rest}
       />
-      <.field_help id={@id} help={@help} errors={@errors} />
-    </fieldset>
+      <span :if={@suffix} class="label">{@suffix}</span>
+    </label>
+    <input
+      :if={!@boxed}
+      type={@type}
+      id={@id}
+      name={@name}
+      value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+      class={[
+        "input w-full",
+        @errors != [] && "input-error",
+        @numeric && "text-end tabular-nums",
+        @class
+      ]}
+      aria-invalid={@errors != [] && "true"}
+      aria-describedby={@describedby}
+      {@rest}
+    />
     """
   end
 

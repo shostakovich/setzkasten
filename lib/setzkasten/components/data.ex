@@ -6,7 +6,7 @@ defmodule Setzkasten.Components.Data do
   alias Phoenix.LiveView.JS
   alias Setzkasten.Format
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Click, only: [entry_click: 2]
 
   @show_from %{
     nil => nil,
@@ -122,21 +122,34 @@ defmodule Setzkasten.Components.Data do
     assigns = assign(assigns, :rows, rows)
 
     ~H"""
-    <tr
+    <.table_row
       :for={row <- @rows}
       id={@row_id && @row_id.(row)}
-      class={@row_link && "relative row-hover"}
-    >
+      item={@row_item.(row)}
+      col={@col}
+      row_link={@row_link}
+    />
+    """
+  end
+
+  attr :id, :any, required: true
+  attr :item, :any, required: true
+  attr :col, :list, required: true
+  attr :row_link, :any, required: true
+
+  defp table_row(assigns) do
+    ~H"""
+    <tr id={@id} class={@row_link && "relative row-hover"}>
       <td :for={{col, i} <- Enum.with_index(@col)} class={col_class(col)}>
         <.link
           :if={i == 0 && @row_link}
-          navigate={@row_link.(@row_item.(row))}
+          navigate={@row_link.(@item)}
           class="font-medium after:absolute after:inset-0"
         >
-          {render_slot(col, @row_item.(row))}
+          {render_slot(col, @item)}
         </.link>
         <%= if i > 0 || !@row_link do %>
-          {render_slot(col, @row_item.(row))}
+          {render_slot(col, @item)}
         <% end %>
       </td>
     </tr>
@@ -389,7 +402,7 @@ defmodule Setzkasten.Components.Data do
             aria-label={action_label(action, @title)}
             aria-haspopup={action[:confirm] && "dialog"}
             disabled={action[:disabled]}
-            phx-click={action_click(action, @confirm_id)}
+            phx-click={entry_click(action, @confirm_id)}
           >
             <.icon name={action[:icon] || "chevron-right"} />
           </button>
@@ -446,7 +459,7 @@ defmodule Setzkasten.Components.Data do
               disabled={action[:disabled]}
               aria-haspopup={action[:confirm] && "dialog"}
               phx-click={
-                close_menu({:closest, "details"}) |> JS.concat(action_click(action, @confirm_id))
+                close_menu({:closest, "details"}) |> JS.concat(entry_click(action, @confirm_id))
               }
               phx-keydown={close_menu({:closest, "details"})}
               phx-key="Escape"
@@ -467,24 +480,6 @@ defmodule Setzkasten.Components.Data do
 
   defp action_label(action, nil), do: action.label
   defp action_label(action, title), do: "#{action.label}: #{title}"
-
-  defp action_click(action, confirm_id) do
-    js =
-      case action[:on_click] do
-        %JS{} = js -> js
-        event when is_binary(event) -> JS.push(event)
-        nil -> %JS{}
-      end
-
-    if action[:confirm] do
-      show_confirm(%JS{}, confirm_id, action[:confirm], js,
-        text: action[:confirm_text],
-        label: action[:confirm_label]
-      )
-    else
-      js
-    end
-  end
 
   @doc """
   Money in de-DE (`Setzkasten.Format.money/2`) inside `<data value>`, `tabular-nums`, no wrap.
