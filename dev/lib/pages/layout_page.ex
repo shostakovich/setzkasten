@@ -49,27 +49,35 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       <:intro>
         Gliedert eine Seite: Satzschreibung, text-base 600, optional Anzahl und Aktionen.
       </:intro>
-      <.demo title="Zwei Abschnitte">
-        <div>
-          <.section_heading count={2} level={3}>
-            Depots
-            <:actions><.button size={:sm} icon="plus">Depot</.button></:actions>
-          </.section_heading>
-          <.list>
-            <.list_row title="Kinderdepot" navigate="/layout">
-              <:trailing><.amount value={799_483} /></:trailing>
-            </.list_row>
-            <.list_row title="Langfristig" navigate="/layout">
-              <:trailing><.amount value={4_241_291} /></:trailing>
-            </.list_row>
-          </.list>
-          <.section_heading level={3}>Konten</.section_heading>
-          <.list>
-            <.list_row title="Tagesgeld" navigate="/layout">
-              <:trailing><.amount value={1_287_140} /></:trailing>
-            </.list_row>
-          </.list>
+      <.demo title="Zwei Abschnitte, je in einem section-Element">
+        <div class="flex flex-col gap-8">
+          <section aria-labelledby="demo-depots">
+            <.section_heading id="demo-depots" count={2} level={3}>
+              Depots
+              <:actions><.button size={:sm} icon="plus">Depot</.button></:actions>
+            </.section_heading>
+            <.list>
+              <.list_row title="Kinderdepot" navigate="/layout">
+                <:trailing><.amount value={799_483} /></:trailing>
+              </.list_row>
+              <.list_row title="Langfristig" navigate="/layout">
+                <:trailing><.amount value={4_241_291} /></:trailing>
+              </.list_row>
+            </.list>
+          </section>
+          <section aria-labelledby="demo-accounts">
+            <.section_heading id="demo-accounts" level={3}>Konten</.section_heading>
+            <.list>
+              <.list_row title="Tagesgeld" navigate="/layout">
+                <:trailing><.amount value={1_287_140} /></:trailing>
+              </.list_row>
+            </.list>
+          </section>
         </div>
+        <:note>
+          Eine Überschrift als erstes Kind hat keinen Abstand nach oben, auch wenn sie ihren
+          section öffnet; die Abschnitte stapelt das Elternelement mit gap-8.
+        </:note>
       </.demo>
     </.showcase>
 

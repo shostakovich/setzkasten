@@ -125,6 +125,14 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
           Sobald jemand etwas auslegt, steht hier, wer wem was schuldet.
         </.empty_state>
       </.demo>
+      <.demo title="Plüsch ohne Bild: fällt auf icon zurück, ohne icon keine Figur">
+        <.empty_state plush="no-such-plush" icon="tag" title="Noch keine Kategorien">
+          Kategorien entstehen, sobald du eine Ausgabe einordnest.
+        </.empty_state>
+        <.empty_state plush="no-such-plush" title="Noch keine Notizen">
+          Notizen zu einer Ausgabe erscheinen hier.
+        </.empty_state>
+      </.demo>
       <.demo title="Seite (layout={:page})">
         <.empty_state plush="receipt" layout={:page} title="Noch keine Ausgaben" level={3}>
           Trag die erste gemeinsame Ausgabe ein. Die App rechnet dann aus, wer wem wie viel
@@ -167,6 +175,8 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       <:action><.button variant={:primary} icon="plus">Depot anlegen</.button></:action>
     </.empty_state>
     <.empty_state plush="receipt" layout={:page} title="Noch keine Ausgaben">…</.empty_state>
+    <%!-- no image for the plush: the icon stands in --%>
+    <.empty_state plush={category.plush} icon="tag" title="Noch keine Kategorien">…</.empty_state>
     """
   end
 end

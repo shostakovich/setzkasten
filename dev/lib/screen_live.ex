@@ -3,7 +3,7 @@ defmodule Setzkasten.Dev.ScreenLive do
   use Phoenix.LiveView
   use Setzkasten
   alias Phoenix.LiveView.JS
-  alias Setzkasten.Dev.{Dashboard, Data}
+  alias Setzkasten.Dev.{Dashboard, Data, Holdings}
 
   @screens [
     {"posts", "Beiträge (CMS)",
@@ -13,10 +13,18 @@ defmodule Setzkasten.Dev.ScreenLive do
     {"settings", "Einstellungen (Ausgaben)",
      "Formular in schmaler Spalte, Mitglieder, Farbschema, Aktionsleiste, Dock."},
     {"holdings", "Bestand (Depot)",
-     "Seitenleiste, Kennzahlen, responsive Zahlentabelle mit Gruppen und Summe."},
+     "Seitenleiste mit Depots und Konten, Depot-Menü, Zahlentabelle mit Gruppen, Aufteilung, Kosten."},
     {"dashboard", "Startseite (Hausautomation)",
      "Live-Kacheln, Raumluft, Energiefluss, Steckdosen und Diagramme, Plüsch-Dock."}
   ]
+
+  # Allocation tab, its URL parameter and label; the first is the default.
+  @allocation_tabs [
+    regions: {nil, "Regionen"},
+    sectors: {"sektoren", "Sektoren"},
+    classes: {"anlage", "Anlageklassen"}
+  ]
+  @allocation_params Map.new(@allocation_tabs, fn {tab, {param, _}} -> {param, tab} end)
 
   def screens, do: Enum.map(@screens, fn {slug, title, _} -> {slug, title} end)
   def screens(:full), do: @screens
@@ -24,7 +32,12 @@ defmodule Setzkasten.Dev.ScreenLive do
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
-     assign(socket, filter: "all", depot: "all", posts: Data.posts(), groups: Data.holdings())}
+     assign(socket,
+       filter: "all",
+       posts: Data.posts(),
+       holdings: Data.holdings(),
+       allocation: Data.allocation()
+     )}
   end
 
   @impl true
@@ -37,7 +50,9 @@ defmodule Setzkasten.Dev.ScreenLive do
        screen: screen,
        page_title: title,
        filter: params["f"] || "all",
-       depot: params["d"] || "all"
+       depot: Holdings.depot(socket.assigns.holdings, params["d"]),
+       marked: params["k"],
+       allocation_tab: Map.get(@allocation_params, params["a"], :regions)
      )}
   end
 
@@ -48,6 +63,9 @@ defmodule Setzkasten.Dev.ScreenLive do
      |> update(:posts, fn posts -> Enum.reject(posts, &(&1.id == id)) end)
      |> put_flash(:info, "Post gelöscht.")}
   end
+
+  def handle_event("book", _params, socket),
+    do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Buchung erfassen“.")}
 
   def handle_event("save", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Einstellungen gespeichert.")}
@@ -70,7 +88,14 @@ defmodule Setzkasten.Dev.ScreenLive do
         <.icon name="book-open" class="size-5 text-primary" />Blattwerk
       </:brand>
       <:nav key={:sites} label="Websites" icon="globe" navigate="/screens/posts" />
-      <:nav key={:media} label="Medien" icon="image" navigate="/screens/posts" />
+      <:nav
+        key={:media}
+        label="Medien"
+        icon="image"
+        count={3}
+        count_label="neu"
+        navigate="/screens/posts"
+      />
       <:nav key={:settings} label="Konto" icon="settings" navigate="/screens/settings" />
       <:account>
         <.dropdown id="account" label="Konto" align={:end} variant={:ghost} chevron={false}>
@@ -315,17 +340,15 @@ defmodule Setzkasten.Dev.ScreenLive do
             <:meta>{meta}</:meta>
           </.list_row>
         </.list>
-        <div class="join max-sm:join-vertical w-full pt-3">
-          <label for="new-member" class="sr-only">Neues Mitglied</label>
-          <input
-            id="new-member"
-            name="member[name]"
-            type="text"
-            class="input join-item w-full"
-            placeholder="Name, z. B. Alex"
-          />
+        <.input
+          name="member[name]"
+          id="new-member"
+          label="Neues Mitglied"
+          placeholder="Name, z. B. Alex"
+          inline
+        >
           <.button variant={:primary} icon="plus" class="join-item">Hinzufügen</.button>
-        </div>
+        </.input>
 
         <.section_heading>Darstellung</.section_heading>
         <.theme_toggle id="settings-theme" />
@@ -373,37 +396,66 @@ defmodule Setzkasten.Dev.ScreenLive do
 
   def render(%{screen: "holdings"} = assigns) do
     ~H"""
-    <.app_shell layout={:sidebar} current={:holdings} width={:wide}>
+    <.app_shell layout={:sidebar} current={holdings_nav_key(assigns)} width={:wide}>
       <:brand><.icon name="chart-line" class="size-5 text-sidebar-accent" />Depotblick</:brand>
-      <:nav key={:overview} label="Übersicht" icon="chart-line" navigate="/screens/holdings" />
-      <:nav key={:holdings} label="Bestand" icon="list" navigate="/screens/holdings" />
+      <:nav key={:overview} label="Übersicht" icon="house" navigate="/screens/holdings" />
+      <:nav key={:holdings} label="Bestand" icon="layers" navigate="/screens/holdings" />
+      <:nav key={:dividends} label="Dividenden" icon="coins" navigate="/screens/holdings" />
       <:nav
-        key={:kinder}
-        label="Kinderdepot"
-        icon="wallet"
-        amount={799_483}
-        section="Depots"
+        key={:bookings}
+        label="Buchungen"
+        icon="list"
+        count={2}
+        count_label="im Eingang"
         navigate="/screens/holdings"
       />
+      <:nav key={:performance} label="Performance" icon="trending-up" navigate="/screens/holdings" />
       <:nav
-        key={:lang}
-        label="Langfristig"
-        icon="wallet"
-        amount={4_241_291}
+        :for={depot <- @holdings.depots}
+        key={{:depot, depot.id}}
+        label={depot.name}
+        icon="briefcase"
+        amount={Holdings.securities_value(depot)}
         section="Depots"
-        navigate="/screens/holdings"
+        rail={false}
+        navigate={holdings_path(d: depot.id)}
       />
       <:nav
-        key={:tagesgeld}
-        label="Tagesgeld"
-        icon="landmark"
-        amount={1_287_140}
+        :for={account <- Holdings.accounts(@holdings)}
+        key={{:account, account.id}}
+        label={account.name}
+        icon="wallet"
+        amount={account.value}
         section="Konten"
-        navigate="/screens/holdings"
-        dock={false}
+        rail={false}
+        navigate={holdings_path(d: account.depot, k: account.id)}
       />
       <:nav key={:settings} label="Einstellungen" icon="settings" navigate="/screens/holdings" />
+      <:nav_footer :let={place}>
+        <div class="px-5 py-3">
+          <.button
+            id={"side-book-#{place}"}
+            variant={:neutral}
+            icon="plus"
+            class="w-full"
+            phx-click={book(place)}
+          >
+            Buchung
+          </.button>
+        </div>
+      </:nav_footer>
       <:account :let={place}>
+        <.button
+          :if={place == :bar}
+          id="bar-book"
+          variant={:neutral}
+          size={:sm}
+          icon="plus"
+          class="max-md:hidden"
+          phx-click="book"
+        >
+          Buchung
+        </.button>
         <.dropdown
           id={"account-#{place}"}
           label="Konto"
@@ -415,49 +467,47 @@ defmodule Setzkasten.Dev.ScreenLive do
           trigger_class={if place == :sidebar, do: "w-full justify-start", else: "btn-square"}
         >
           <:trigger>
-            <.avatar initials="D" size={:sm} />
+            <.avatar initials="D" size={:sm} shape={:round} />
             <span :if={place == :sidebar} class="truncate">dana@example.com</span>
           </:trigger>
-          <:item navigate="/screens/holdings" icon="settings">Einstellungen</:item>
+          <:header :if={place != :sidebar}>dana@example.com</:header>
+          <:item navigate="/screens/holdings" icon="key-round">Passkeys</:item>
           <:item navigate="/" icon="log-out">Abmelden</:item>
         </.dropdown>
       </:account>
+      <:fab><.fab id="fab-book" label="Buchung" phx-click="book" /></:fab>
       <.header>
         Bestand
-        <:subtitle>2 Depots · 11 Wertpapiere · 2 Konten · Stand 09.10.2026, 18:00</:subtitle>
+        <:subtitle>{Holdings.subtitle(@holdings, @depot)}</:subtitle>
         <:actions>
-          <.segmented
-            id="depot"
-            mode={:patch}
-            size={:sm}
-            label="Depot"
-            value={@depot}
-            options={[
-              {"Gesamt", "all", "/screens/holdings"},
-              {"Kinderdepot", "kinder", "/screens/holdings?d=kinder"},
-              {"Langfristig", "lang", "/screens/holdings?d=lang"}
-            ]}
-          />
+          <.dropdown id="portfolio-menu" label="Depot" align={:end} trigger_class="btn-sm">
+            <:trigger>
+              <.icon name="briefcase" />{if @depot, do: @depot.name, else: "Gesamt"}
+            </:trigger>
+            <:item patch={holdings_path(a: @allocation_tab)} active={!@depot}>Gesamt</:item>
+            <:item
+              :for={{depot, index} <- Enum.with_index(@holdings.depots)}
+              patch={holdings_path(d: depot.id, a: @allocation_tab)}
+              active={@depot && @depot.id == depot.id}
+              divider={index == 0}
+            >
+              {depot.name}
+            </:item>
+          </.dropdown>
         </:actions>
       </.header>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" size={:sm} />
-        <.stat
-          label="Gewinn"
-          value="+10.353"
-          unit="€"
-          tone={:success}
-          desc="+39,1 % auf Einstand"
-          size={:sm}
-        />
-        <.stat label="Kosten pro Jahr" value="76" unit="€" desc="TER gewichtet 0,20 %" size={:sm} />
-        <.stat label="Kurse" value="18:00" desc="täglich vom Kursanbieter" size={:sm} />
-      </div>
-      <.section_heading count={7}>Positionen</.section_heading>
-      <Setzkasten.Dev.Holdings.holdings_table groups={@groups} />
-      <p class="mt-3 text-sm text-base-content/70 max-w-prose">
-        Auszug: 7 von 11 Positionen. Kurse vom täglichen Abruf um 18:00.
+      <Holdings.holdings_table holdings={@holdings} depot={@depot} marked={@marked} />
+      <p class="mt-2 hidden text-sm text-base-content/70 lg:block">
+        Div.-Rendite: brutto, nächste 12 Monate auf den heutigen Wert.
       </p>
+      <div class="mt-8 grid gap-x-10 gap-y-8 2xl:grid-cols-2">
+        <Holdings.allocation
+          allocation={@allocation}
+          tab={@allocation_tab}
+          tabs={allocation_tabs(assigns)}
+        />
+        <Holdings.costs depots={if @depot, do: [@depot], else: @holdings.depots} />
+      </div>
     </.app_shell>
     <.flash_group flash={@flash} />
     """
@@ -620,4 +670,32 @@ defmodule Setzkasten.Dev.ScreenLive do
     <.flash_group flash={@flash} />
     """
   end
+
+  # The sidebar row of what is open: the account the page was opened for, the depot or „Bestand“.
+  defp holdings_nav_key(%{marked: account}) when is_binary(account), do: {:account, account}
+  defp holdings_nav_key(%{depot: %{id: depot}}), do: {:depot, depot}
+  defp holdings_nav_key(_assigns), do: :holdings
+
+  # The holdings with `params` (`d` depot, `k` marked account, `a` allocation tab); nil and the
+  # default tab are left out.
+  defp holdings_path(params) do
+    query =
+      params
+      |> Keyword.update(:a, nil, &(@allocation_tabs |> Keyword.fetch!(&1) |> elem(0)))
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+
+    if query == [], do: "/screens/holdings", else: "/screens/holdings?" <> URI.encode_query(query)
+  end
+
+  # A tab keeps the depot and the marked account.
+  defp allocation_tabs(assigns) do
+    for {tab, {_param, label}} <- @allocation_tabs do
+      path = holdings_path(d: assigns.depot && assigns.depot.id, k: assigns.marked, a: tab)
+      %{label: label, path: path, active: tab == assigns.allocation_tab}
+    end
+  end
+
+  # The expanded sidebar is a native dialog, so it closes first.
+  defp book(:dialog), do: "app-shell-sidebar" |> hide_modal() |> JS.push("book")
+  defp book(_place), do: JS.push("book")
 end

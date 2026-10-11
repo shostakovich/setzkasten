@@ -35,6 +35,61 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           ]}
         />
       </.demo>
+      <.demo title="Kurze Labels mit long_label (Screenreader: „1 Monat“, „6 Monate“ …)">
+        <.segmented
+          id="range-long"
+          mode={:patch}
+          size={:sm}
+          label="Zeitraum"
+          value={@range}
+          options={[
+            %{label: "1 M", long_label: "1 Monat", value: "1m", path: "/navigation?r=1m"},
+            %{label: "6 M", long_label: "6 Monate", value: "6m", path: "/navigation?r=6m"},
+            %{label: "1 J", long_label: "1 Jahr", value: "1y", path: "/navigation?r=1y"},
+            %{label: "5 J", long_label: "5 Jahre", value: "5y", path: "/navigation?r=5y"},
+            {"Max", "max", "/navigation?r=max"}
+          ]}
+        />
+      </.demo>
+      <.demo title="block (volle Breite, gleich breite Optionen; fünf passen auf 360px)">
+        <.segmented
+          id="range-block"
+          mode={:patch}
+          size={:sm}
+          label="Zeitraum"
+          value={@range}
+          block
+          options={[
+            {"1M", "1m", "/navigation?r=1m"},
+            {"6M", "6m", "/navigation?r=6m"},
+            {"1J", "1y", "/navigation?r=1y"},
+            {"5J", "5y", "/navigation?r=5y"},
+            {"Max", "max", "/navigation?r=max"}
+          ]}
+        />
+      </.demo>
+      <.demo title="block={:phone} im Seitenkopf (unter sm eigene Zeile unter dem Titel)">
+        <.header level={2}>
+          Performance
+          <:actions>
+            <.button size={:sm} icon="chevron-down">Gesamt</.button>
+            <.segmented
+              id="range-phone"
+              mode={:patch}
+              size={:sm}
+              label="Zeitraum"
+              value={@range}
+              block={:phone}
+              options={[
+                {"1 M", "1m", "/navigation?r=1m"},
+                {"YTD", "ytd", "/navigation?r=ytd"},
+                {"1 J", "1y", "/navigation?r=1y"},
+                {"Max", "max", "/navigation?r=max"}
+              ]}
+            />
+          </:actions>
+        </.header>
+      </.demo>
       <.demo title="mode={:button}, size={:md}">
         <.segmented
           id="view"
@@ -143,9 +198,14 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
     ~S"""
     <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm}
       options={[{"1M", "1m", ~p"/?r=1m"}, {"1J", "1y", ~p"/?r=1y"}, {"Max", "max", ~p"/?r=max"}]} />
+    <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm}
+      options={[%{label: "1 M", long_label: "1 Monat", value: "1m", path: ~p"/?r=1m"}, …]} />
     <.segmented mode={:button} value={@view} label="Ansicht" phx-click="view"
       options={[%{label: "Liste", value: "list", icon: "list"}, {"Anteile", "shares"}]} />
     <.segmented mode={:radio} field={@form[:split]} label="Aufteilung" options={…} />
+    <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block options={…} />
+    <%!-- in the header's actions: full width under the title on phones only --%>
+    <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block={:phone} options={…} />
     """
   end
 

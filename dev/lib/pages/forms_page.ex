@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Formulare"
-  def summary, do: "input, action_bar, Formular mit Fehlern"
+  def summary, do: "input, field_error, field_help, action_bar, Formular mit Fehlern, Inline"
 
   @initial %{
     "title" => "",
@@ -109,6 +109,14 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
         <.input name="s[err]" id="s-err" label="Fehler" value="" errors={["darf nicht leer sein"]} />
         <.input name="s[dis]" id="s-dis" label="Deaktiviert" value="Referenzkonto · EUR" disabled />
         <.input
+          name="s[warn]"
+          id="s-warn"
+          label="Hinweis als Warnung (help_tone={:warning})"
+          value="DE02 1203 0000 0000 2020 51"
+          help="Dieses Konto ist noch nicht bestätigt."
+          help_tone={:warning}
+        />
+        <.input
           name="s[sel]"
           id="s-sel"
           type="select"
@@ -151,6 +159,48 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
             {"Genaue Beträge", "exact"}
           ]}
         />
+      </.demo>
+    </.showcase>
+
+    <.showcase
+      id="field-error"
+      name="<.field_error>, <.field_help>"
+      title="Fehler und Hinweis für eigene Felder"
+      code={code(2)}
+    >
+      <:intro>
+        Fehler- und Hinweiszeilen wie bei <code>&lt;.input&gt;</code>
+        für Felder, die keins sind (Datei-Upload, eigene Auswahl). <code>field_describedby/3</code>
+        verknüpft sie mit dem Feld.
+      </:intro>
+      <.demo title="Datei-Upload mit Fehler und Hinweis" class="max-w-md">
+        <fieldset class="fieldset">
+          <label for="u-photo" class="fieldset-legend">Beleg</label>
+          <input
+            type="file"
+            id="u-photo"
+            class="file-input file-input-error w-full"
+            aria-invalid="true"
+            aria-describedby={field_describedby("u-photo", ["zu groß"], true)}
+          />
+          <.field_error id="u-photo" errors={["zu groß"]} />
+          <.field_help id="u-photo">PDF, JPEG oder PNG, höchstens 5 MB</.field_help>
+        </fieldset>
+      </.demo>
+      <.demo title="Warnung, tone={:warning}" class="max-w-md">
+        <fieldset class="fieldset">
+          <label for="u-scan" class="fieldset-legend">Kontoauszug</label>
+          <input
+            type="file"
+            id="u-scan"
+            class="file-input w-full"
+            aria-describedby={field_describedby("u-scan", [], true)}
+          />
+          <.field_help id="u-scan" tone={:warning} aria-live="polite">
+            Scan ist unscharf, Beträge bitte prüfen.
+          </.field_help>
+        </fieldset>
+        <:note>Icon und Text in Grundfarbe: Gelb ist als Schrift zu schwach.</:note>
       </.demo>
     </.showcase>
 
@@ -243,22 +293,50 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
           <.button type="submit" variant={:primary} phx-disable-with="Speichert …">Speichern</.button>
         </.action_bar>
       </.form>
-
-      <div class="max-w-3xl space-y-3">
-        <.section_heading>Kategorien</.section_heading>
-        <form class="join max-sm:join-vertical w-full" phx-submit="noop">
-          <label for="f-newcat" class="sr-only">Neue Kategorie</label>
-          <input
-            id="f-newcat"
-            name="category[name]"
-            type="text"
-            class="input join-item w-full"
-            placeholder="Neue Kategorie, z. B. Haustier"
-          />
-          <.button type="submit" variant={:primary} icon="plus" class="join-item">Hinzufügen</.button>
-        </form>
-      </div>
     </section>
+
+    <.showcase
+      id="inline-form"
+      name="<.input inline>"
+      title="Inline-Formular (Feld und Button)"
+      code={code(3)}
+    >
+      <:intro>
+        Ein Feld mit seinem Button in einem <code>join</code>, auf dem Handy gestapelt. Das Label
+        ist nur für Screenreader da (die Überschrift darüber sagt, worum es geht); Fehler und
+        Hinweis stehen unter dem Join.
+      </:intro>
+      <.demo title="Kategorie hinzufügen" class="max-w-3xl space-y-3">
+        <.section_heading>Kategorien</.section_heading>
+        <form phx-submit="noop">
+          <.input
+            name="category[name]"
+            id="f-newcat"
+            label="Neue Kategorie"
+            placeholder="Neue Kategorie, z. B. Haustier"
+            inline
+          >
+            <.button type="submit" variant={:primary} icon="plus" class="join-item">
+              Hinzufügen
+            </.button>
+          </.input>
+        </form>
+      </.demo>
+      <.demo title="Mit Fehler und Hinweis" class="max-w-3xl">
+        <.input
+          name="invite[email]"
+          id="f-invite"
+          type="email"
+          label="E-Mail-Adresse"
+          value="jonas@"
+          errors={["ist keine gültige Adresse"]}
+          help="Die Einladung gilt sieben Tage."
+          inline
+        >
+          <.button variant={:primary} class="join-item">Einladen</.button>
+        </.input>
+      </.demo>
+    </.showcase>
     """
   end
 
@@ -274,6 +352,31 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     <.input field={@form[:recurring]} type="checkbox" label="Jeden Monat wiederholen" />
     <.input field={@form[:split]} type="radio_group" label="Aufteilung"
             options={[{"Gleichmäßig", "equal"}, {"Nach Anteilen", "shares"}]} />
+    <.input field={@form[:iban]} label="IBAN" help="Noch nicht bestätigt" help_tone={:warning} />
+    """
+  end
+
+  defp code(3) do
+    ~S"""
+    <.form for={@form} phx-submit="add">
+      <.input field={@form[:name]} label="Neue Kategorie" placeholder="z. B. Haustier" inline>
+        <.button type="submit" variant={:primary} icon="plus" class="join-item">Hinzufügen</.button>
+      </.input>
+    </.form>
+    """
+  end
+
+  defp code(2) do
+    ~S"""
+    <fieldset class="fieldset">
+      <label for={@uploads.receipt.ref} class="fieldset-legend">Beleg</label>
+      <.live_file_input upload={@uploads.receipt}
+        aria-describedby={field_describedby(@uploads.receipt.ref, @receipt_errors, true)} />
+      <.field_error id={@uploads.receipt.ref} errors={@receipt_errors} />
+      <.field_help id={@uploads.receipt.ref}>PDF, JPEG oder PNG, höchstens 5 MB</.field_help>
+    </fieldset>
+    <.field_error field={@form[:receipt]} />
+    <.field_help id={@uploads.receipt.ref} tone={:warning}>Scan ist unscharf</.field_help>
     """
   end
 

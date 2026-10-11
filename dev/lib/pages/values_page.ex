@@ -26,7 +26,13 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           <:item label="signed tone, positiv"><.amount value={35_020} signed tone /></:item>
           <:item label="tone, null"><.amount value={0} tone /></:item>
           <:item label="andere Währung"><.amount value={4200} currency="USD" /></:item>
+          <:item label="currency_display={:code}">
+            <.amount value={110} currency="USD" currency_display={:code} />
+          </:item>
           <:item label="size={:lg}"><.amount value={6_327_914} size={:lg} /></:item>
+          <:item label="decimals={0} (ganze Euro, KPIs)">
+            <.amount value={6_327_914} decimals={0} />
+          </:item>
         </.description_list>
       </.demo>
     </.showcase>
@@ -45,6 +51,14 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       <.demo title=":md" class="grid gap-4 sm:grid-cols-2">
         <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
         <.stat label="Dein Saldo" value="−42,17" unit="€" tone={:error} desc="du schuldest Dana" />
+      </.demo>
+      <.demo title="Beschreibung mit Markup, :note" class="grid gap-4 sm:grid-cols-2">
+        <.stat label="Depotwert" value="63.279" unit="€">
+          <:note><.amount value={50_000} signed tone /> heute</:note>
+        </.stat>
+        <.stat label="Letzte Buchung" value="−312,40" unit="€">
+          <:note>07.10.2026<.meta_sep /><span class="font-semibold">Stadtwerke</span></:note>
+        </.stat>
       </.demo>
       <.demo title="Kachelraster, size={:sm}, veraltet" class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <.stat label="PV jetzt" value="1.234" unit="W" desc="Akku 82 %" size={:sm} />
@@ -77,6 +91,15 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           <:item label="Ertragsverwendung">thesaurierend</:item>
         </.description_list>
       </.demo>
+      <.demo title="Rechnung mit strong und total" class="max-w-md">
+        <.description_list>
+          <:item label="Anfangswert" strong><.amount value={1_000_000} /></:item>
+          <:item label="Einzahlungen"><.amount value={50_000} signed /></:item>
+          <:item label="Dividenden"><.amount value={12_400} signed /></:item>
+          <:item label="Kursgewinne"><.amount value={18_800} signed /></:item>
+          <:item label="Endwert" total><.amount value={1_081_200} /></:item>
+        </.description_list>
+      </.demo>
     </.showcase>
 
     <.showcase id="bar" name="<.bar>" title="Balken" code={code(3)}>
@@ -91,6 +114,13 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         <.bar label="Akku" value={82} tone={:success} show_value />
         <.bar label="Budget Essen gehen" value={112} tone={:error} show_value />
         <.bar label="Schwellen­länder" value={6} target={10} show_value>Ziel 10&nbsp;%</.bar>
+      </.demo>
+      <.demo
+        title="tone={:neutral} (Anteil ohne Zustand, steht allein), Ziel mit Nachkommastelle"
+        class="grid gap-5 md:grid-cols-2"
+      >
+        <.bar label="Liquidität" value={12} tone={:neutral} target={12.5}>Ziel 12,5&nbsp;%</.bar>
+        <.bar label="Rohstoffe" value={3} tone={:neutral} show_value />
       </.demo>
     </.showcase>
 
@@ -112,6 +142,15 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         <.avatar icon="user" tone={:base} shape={:round} />
         <span class="flex items-center gap-2 text-sm"><.avatar initials="K" size={:sm} />Kinderdepot</span>
       </.demo>
+      <.demo title="loading (z. B. Bild oder Kurs lädt)" class="flex flex-wrap items-center gap-4">
+        <.avatar initials="KD" size={:sm} loading />
+        <.avatar initials="LF" tone={:success} loading />
+        <.avatar icon="user" tone={:base} shape={:round} size={:lg} loading />
+        <:note>
+          Gleiche Größe und Farbe, <code>aria-busy</code>; bei reduzierter Bewegung drei Punkte
+          statt Spinner.
+        </:note>
+      </.demo>
     </.showcase>
 
     <.showcase
@@ -132,7 +171,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           id="networth"
           title="Vermögen"
           level={3}
-          summary="Vermögen von 52.400 € im Oktober 2025 auf 63.279 € im Oktober 2026, Einzahlungen von 50.000 € auf 52.900 €"
+          summary="Vermögen von 52.400 € im Oktober 2025 auf 63.279 € im Oktober 2026, Einzahlungen von 50.000 € auf 52.900 €, Ziel 60.000 €"
         >
           <:actions>
             <.segmented
@@ -163,6 +202,16 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
                 vector-effect="non-scaling-stroke"
               />
             </g>
+            <line
+              class="stroke-chart-8"
+              x1="0"
+              y1="60"
+              x2="600"
+              y2="60"
+              stroke-width="1.5"
+              stroke-dasharray="6 4"
+              vector-effect="non-scaling-stroke"
+            />
             <polyline
               class="stroke-chart-3"
               fill="none"
@@ -185,7 +234,14 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
             <span>Okt 25</span><span>Jan</span><span>Apr</span><span>Jul</span><span>Okt 26</span>
           </div>
           <:legend>
-            <.legend items={[%{label: "Vermögen", color: 1}, %{label: "Einzahlungen", color: 3}]} />
+            <.legend
+              id="networth-legend"
+              items={[
+                %{label: "Vermögen", color: 1, marker: :line},
+                %{label: "Einzahlungen", color: 3, marker: :line},
+                %{label: "Ziel", color: 8, marker: :dashed}
+              ]}
+            />
           </:legend>
           <:data>
             <.table
@@ -210,6 +266,17 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         </.chart_card>
         <.chart_card id="pv-today" title="PV heute" level={3} summary="PV-Ertrag heute" loading />
       </.demo>
+      <.demo title="<.legend>: marker :dot (Flächen, Balken) · :line · :dashed (Referenzlinie)">
+        <.legend items={[%{label: "Aktien", color: 1}, %{label: "Anleihen", color: 2}]} />
+        <.legend
+          class="mt-2"
+          items={[
+            %{label: "Kurs", color: 1, marker: :line},
+            %{label: "Einstand", color: 8, marker: :dashed},
+            %{label: "Gewinn", color: :success, marker: :line}
+          ]}
+        />
+      </.demo>
     </.showcase>
     """
   end
@@ -218,6 +285,8 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     ~S"""
     <.amount value={-7420} signed tone />
     <.amount value={Decimal.new("63279.14")} size={:lg} />
+    <.amount value={6_327_914} decimals={0} />
+    <.amount value={110} currency="USD" currency_display={:code} />
     """
   end
 
@@ -225,6 +294,9 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     ~S"""
     <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
     <.stat label="PV jetzt" value="1.234" unit="W" size={:sm} stale />
+    <.stat label="Depotwert" value="63.279" unit="€">
+      <:note><.amount value={50_000} signed tone /> heute</:note>
+    </.stat>
     """
   end
 
@@ -234,12 +306,20 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       <:item label="TER">0,22 %</:item>
       <:item label="Fondsgröße">15,8 Mrd. €</:item>
     </.description_list>
+
+    <%!-- a calculation: once an item is marked, the other values are regular --%>
+    <.description_list>
+      <:item label="Anfangswert" strong><.amount value={@start} /></:item>
+      <:item label="Einzahlungen"><.amount value={@deposits} signed /></:item>
+      <:item label="Endwert" total><.amount value={@end} /></:item>
+    </.description_list>
     """
   end
 
   defp code(3) do
     ~S"""
     <.bar label="Aktien" value={72} target={70} show_value>Ziel 70 %</.bar>
+    <.bar label="Liquidität" value={12} tone={:neutral} target={12.5}>Ziel 12,5 %</.bar>
     """
   end
 
@@ -247,6 +327,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     ~S"""
     <.avatar initials="KD" size={:sm} />
     <.avatar icon="user" tone={:base} shape={:round} />
+    <.avatar initials="KD" loading />
     """
   end
 
@@ -257,6 +338,11 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       <:actions><.segmented mode={:patch} size={:sm} … /></:actions>
       <:legend><.legend items={[%{label: "Vermögen", color: 1}, %{label: "Einzahlungen", color: 3}]} /></:legend>
       <:data><.table size={:sm} flush …/></:data>
+    </.chart_card>
+    <%!-- line charts: marker :line, or :dashed for a reference line --%>
+    <.chart_card …>
+      <:legend><.legend id="lines" items={[%{label: "Kurs", color: 1, marker: :line},
+                                          %{label: "Einstand", color: 8, marker: :dashed}]} /></:legend>
     </.chart_card>
     """
   end
