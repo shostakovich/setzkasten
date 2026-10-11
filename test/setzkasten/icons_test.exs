@@ -40,6 +40,23 @@ defmodule Setzkasten.IconsTest do
     end
   end
 
+  @tag :tmp_dir
+  test "an icon path without SVG files fails to compile", %{tmp_dir: tmp_dir} do
+    for dir <- [tmp_dir, Path.join(tmp_dir, "missing")] do
+      message = "no Lucide SVG files in #{dir} (path: #{inspect(dir)})"
+
+      assert_raise ArgumentError, message, fn ->
+        Code.eval_quoted(
+          quote do
+            defmodule Setzkasten.IconsTest.Empty do
+              use Setzkasten.Icons, path: unquote(dir)
+            end
+          end
+        )
+      end
+    end
+  end
+
   test "plush with a dark file renders two images that swap with the theme" do
     assigns = %{}
     doc = parse(~H|<.plush name="cart" size={:lg} />|)
