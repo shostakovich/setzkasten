@@ -37,7 +37,13 @@ defmodule Setzkasten.DataTest do
       """)
 
     assert classes(doc, "div") == ["overflow-x-auto"]
-    assert classes(doc, "table") == ~w(table tabular-nums table-sm table-zebra)
+    # :sm keeps 14px text and the side padding of :md; only the rows get tighter.
+    assert classes(doc, "table") == [
+             "table",
+             "tabular-nums",
+             "[&_:is(th,td)]:py-2",
+             "table-zebra"
+           ]
   end
 
   test "row link stretches over the row" do
@@ -54,6 +60,98 @@ defmodule Setzkasten.DataTest do
     assert classes(doc, "tbody tr") == ~w(relative row-hover)
     assert attr(doc, "tbody tr:first-child td:first-child a", "href") == "/w/1"
     assert count(doc, "td:last-child a") == 0
+  end
+
+  test "a row whose link is nil has no link and no hover" do
+    assigns = %{rows: @rows}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows} row_id={&"row-#{&1.id}"} row_link={&(&1.id == 1 && "/w/1")}>
+        <:col :let={r} label="Name">{r.name}</:col>
+      </.table>
+      """)
+
+    assert classes(doc, "#row-1") == ~w(relative row-hover)
+    assert classes(doc, "#row-2") == []
+    assert count(doc, "#row-2 a") == 0
+    assert text(doc, "#row-2 td") == "Gold"
+    refute LazyHTML.to_html(doc) =~ ~s(href="#")
+  end
+
+  test "row attrs land on the tr and merge their class" do
+    attrs = fn r ->
+      if r.id == 1,
+        do: %{"aria-current": "true", class: "font-semibold", "data-kind": "stock"},
+        else: [hidden: true]
+    end
+
+    assigns = %{rows: @rows, attrs: attrs, groups: [%{id: "a", label: "A", rows: @rows}]}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows} row_id={&"row-#{&1.id}"} row_link={&"/w/#{&1.id}"} row_attrs={@attrs}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert classes(doc, "#row-1") == ~w(relative row-hover font-semibold)
+    assert attr(doc, "#row-1", "aria-current") == "true"
+    assert attr(doc, "#row-1", "data-kind") == "stock"
+    assert attr(doc, "#row-2", "hidden") != nil
+
+    doc =
+      parse(~H"""
+      <.table id="g" groups={@groups} row_attrs={@attrs}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "tbody#g-a tr[aria-current=true]") == 1
+
+    stream = Phoenix.LiveView.LiveStream.new(:items, 0, @rows, [])
+    assigns = %{stream: stream, attrs: attrs}
+
+    doc =
+      parse(~H"""
+      <.table id="s" rows={@stream} row_attrs={@attrs}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert attr(doc, "tr[id^=items-][aria-current]", "data-kind") == "stock"
+  end
+
+  test "row_attrs may return nil, a string class, and never replaces the row id" do
+    attrs = fn
+      %{id: 1} -> %{"class" => "font-semibold", "id" => "other", "data-kind" => "stock"}
+      _ -> nil
+    end
+
+    assigns = %{rows: @rows, attrs: attrs}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows} row_id={&"row-#{&1.id}"} row_attrs={@attrs}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert classes(doc, "#row-1") == ~w(font-semibold)
+    assert attr(doc, "#row-1", "data-kind") == "stock"
+    assert count(doc, "#other") == 0
+    assert count(doc, "#row-2") == 1
+    assert attr(doc, "#row-2", "class") in [nil, ""]
+
+    doc =
+      parse(~H"""
+      <.table id="k" rows={@rows} row_id={&"k-#{&1.id}"} row_attrs={&[id: "x-#{&1.id}"]}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "#k-1") == 1
+    assert count(doc, "#x-1") == 0
   end
 
   test "groups become tbodies with colgroup rows; foot and empty rows" do
@@ -306,6 +404,18 @@ defmodule Setzkasten.DataTest do
     assert "text-lg" in classes(parse(~H|<.amount value={1} size={:lg} />|), "data")
   end
 
+  test "amount with whole currency units keeps the exact machine value" do
+    assigns = %{}
+    doc = parse(~H|<.amount value={-123_456} decimals={0} tone />|)
+    assert text(doc, "data") == "−1.235\u00A0€"
+    assert attr(doc, "data", "value") == "-1234.56"
+    assert "text-error-ink" in classes(doc, "data")
+
+    doc = parse(~H|<.amount value={-40} decimals={0} signed tone />|)
+    assert text(doc, "data") == "0\u00A0€"
+    assert "text-base-content/70" in classes(doc, "data")
+  end
+
   test "stat tile with unit, tone, stale and loading" do
     assigns = %{}
     doc = parse(~H|<.stat label="Saldo" value="−42" unit="€" tone={:error} size={:sm} stale />|)
@@ -318,6 +428,22 @@ defmodule Setzkasten.DataTest do
 
     assert text(doc, ".stat-desc .badge") == "veraltet"
     assert count(parse(~H|<.stat label="x" loading />|), ".skeleton") == 1
+  end
+
+  test "stat note slot takes the place of desc" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.stat label="Depot" value="63.279" desc="ignoriert">
+        <:note><.amount value={50_000} signed tone /> heute</:note>
+      </.stat>
+      """)
+
+    assert text(doc, ".stat-desc") =~ "heute"
+    refute text(doc, ".stat-desc") =~ "ignoriert"
+    assert "text-success-ink" in classes(doc, ".stat-desc data")
+    assert text(parse(~H|<.stat label="x" value="1" desc="Akku" />|), ".stat-desc") == "Akku"
   end
 
   test "description list" do
@@ -338,6 +464,30 @@ defmodule Setzkasten.DataTest do
     assert attr(doc, "rect", "x") == "70%"
     assert text(doc, "span.tabular-nums") == "72 %"
     refute html =~ "style="
+  end
+
+  test "bar draws the target at its exact share" do
+    assigns = %{}
+    assert attr(parse(~H|<.bar label="A" value={10} target={12.5} />|), "rect", "x") == "12.5%"
+
+    assert attr(parse(~H|<.bar label="A" value={1} max={3} target={1} />|), "rect", "x") ==
+             "33.333%"
+
+    assert attr(parse(~H|<.bar label="A" value={1} target={130} />|), "rect", "x") == "100%"
+    assert attr(parse(~H|<.bar label="A" value={1} target={-4} />|), "rect", "x") == "0%"
+  end
+
+  test "neutral bar stands alone in base-content" do
+    assigns = %{}
+    html = rendered_to_string(~H|<.bar label="Anteil" value={40} tone={:neutral} target={50} />|)
+    doc = LazyHTML.from_fragment(html)
+    assert classes(doc, "progress") == ~w(progress w-full setzkasten-progress-neutral)
+    refute html =~ "style="
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.progress\.setzkasten-progress-neutral \{\s*color: color-mix\(in oklab, var\(--color-base-content\) 70%, transparent\);/
   end
 
   test "bar caps the bar at max but shows the real share" do
@@ -387,6 +537,30 @@ defmodule Setzkasten.DataTest do
     assert "bg-error-ink" in classes(doc, "li:last-child span")
   end
 
+  test "legend takes global attrs and line markers in the series' line colour" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.legend
+        id="lg"
+        items={[
+          %{label: "Kurs", color: 1, marker: :line},
+          %{label: "Einstand", color: :neutral, marker: :dashed},
+          %{label: "Punkt", color: 2}
+        ]}
+      />
+      """)
+
+    assert attr(doc, "ul", "id") == "lg"
+    assert "stroke-chart-1" in classes(doc, "li:nth-child(1) svg")
+    assert attr(doc, "li:nth-child(1) line", "stroke-dasharray") == nil
+    assert "stroke-base-content/70" in classes(doc, "li:nth-child(2) svg")
+    assert attr(doc, "li:nth-child(2) line", "stroke-dasharray") == "4 2"
+    assert attr(doc, "li:nth-child(2) svg", "aria-hidden") == "true"
+    assert "rounded-full" in classes(doc, "li:nth-child(3) span")
+  end
+
   test "lists and table bodies are focus fallbacks for removed rows" do
     assigns = %{}
 
@@ -432,5 +606,167 @@ defmodule Setzkasten.DataTest do
   <:item label="Host">x</:item>
 </.description_list>|)
     assert Enum.all?(~w(min-w-0 wrap-anywhere), &(&1 in classes(doc, "dd")))
+  end
+
+  test "a list row without on_click keeps phx-click and phx-target on the li" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.list><.list_row title="Herbst" phx-click="select" phx-target={@myself} /></.list>
+      """)
+
+    assert attr(doc, "li.list-row", "phx-click") == "select"
+    assert attr(doc, "li.list-row", "phx-target") == "3"
+  end
+
+  test "list row with on_click renders the title as a button over the row" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="Herbst" on_click="open" phx-target={@myself}>
+          <:meta>Meta</:meta>
+        </.list_row>
+      </.list>
+      """)
+
+    assert attr(doc, ".list-col-grow button", "type") == "button"
+    assert text(doc, ".list-col-grow button") == "Herbst"
+
+    assert [%{"event" => "open", "target" => 3}] =
+             pushes(attr(doc, ".list-col-grow button", "phx-click"))
+
+    button = classes(doc, ".list-col-grow button")
+    assert Enum.all?(~w(after:absolute after:inset-0 text-start), &(&1 in button))
+    assert "focus-visible:after:outline-primary" in button
+    assert "md:hover:bg-base-200" in classes(doc, "li.list-row")
+    assert attr(doc, "li.list-row", "phx-target") == nil
+    assert count(doc, ".list-col-grow p.font-medium") == 0
+
+    doc = parse(~H|<.list_row title="Herbst" on_click={JS.push("open")} />|)
+    assert [%{"event" => "open"}] = pushes(attr(doc, ".list-col-grow button", "phx-click"))
+  end
+
+  test "list row link rings the whole row on keyboard focus" do
+    assigns = %{}
+    doc = parse(~H|<.list_row title="Herbst" navigate="/p/1" />|)
+    assert "focus-visible:after:outline-primary" in classes(doc, ".list-col-grow a")
+    assert count(doc, ".list-col-grow button") == 0
+  end
+
+  test "list heading takes global attrs" do
+    assigns = %{}
+    doc = parse(~H|<.list_heading id="d-1" aria-live="polite">Heute</.list_heading>|)
+    assert attr(doc, "li", "id") == "d-1"
+    assert attr(doc, "li", "aria-live") == "polite"
+  end
+
+  test "amount can show the ISO code instead of the symbol" do
+    assigns = %{}
+    doc = parse(~H|<.amount value={110} currency="USD" currency_display={:code} />|)
+    assert text(doc, "data") == "1,10 USD"
+    assert text(parse(~H|<.amount value={110} currency="USD" />|), "data") == "1,10 $"
+  end
+
+  test "avatar shows a spinner while loading, keeping size and tone" do
+    assigns = %{}
+    doc = parse(~H|<.avatar initials="KD" tone={:success} size={:lg} loading label="Kim" />|)
+    assert attr(doc, ".avatar", "aria-busy") == "true"
+    assert attr(doc, ".avatar", "role") == "img"
+    assert classes(doc, ".avatar > div") == ~w(bg-success text-success-content w-12 rounded-field)
+    assert classes(doc, ".loading") == ~w(loading loading-spinner motion-reduce:hidden size-6)
+    assert "motion-safe:hidden" in classes(doc, "svg.lucide")
+    assert text(doc, ".avatar") == ""
+
+    doc = parse(~H|<.avatar initials="KD" />|)
+    assert attr(doc, ".avatar", "aria-busy") == nil
+    assert count(doc, ".loading") == 0
+
+    # Hidden from screen readers without a label, so no busy state that nobody hears.
+    doc = parse(~H|<.avatar initials="KD" loading />|)
+    assert attr(doc, ".avatar", "aria-hidden") == "true"
+    assert attr(doc, ".avatar", "aria-busy") == nil
+    assert count(doc, ".loading") == 1
+  end
+
+  test "list row keeps a short trailing value on the title line on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Depot A" navigate="/p/1" trailing_on_phone={:title}>
+        <:leading><.icon name="info" /></:leading>
+        <:meta>2 Wertpapiere</:meta>
+        <:trailing :let={place}>
+          <.amount id={"value-#{place}"} value={949_047} />
+          <span>+1,7 %</span>
+        </:trailing>
+      </.list_row>
+      """)
+
+    title = classes(doc, ".list-col-grow > div:has(> #value-title)")
+    assert Enum.all?(~w(float-end flex-col items-end text-end md:hidden), &(&1 in title))
+    # The float comes before the title, so the meta line takes the width below it.
+    assert attr(doc, ".list-col-grow > :first-child #value-title", "id") == "value-title"
+    column = classes(doc, "li > div:has(> #value-column)")
+    assert "max-md:hidden" in column
+    refute "max-md:row-start-2" in column
+    refute "max-md:gap-y-1" in classes(doc, "li")
+  end
+
+  test "wrapped trailing lines align at the start on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="T">
+        <:trailing>
+          <div class="text-end">1 €<br />2 %</div>
+        </:trailing>
+      </.list_row>
+      """)
+
+    assert "max-md:[&_.text-end]:text-start" in classes(doc, "li > div:has(> .text-end)")
+  end
+
+  test "meta separator never starts a line" do
+    assigns = %{}
+    html = rendered_to_string(~H|<p>2 Wertpapiere<.meta_sep />Konto</p>|)
+    assert html == "<p>2 Wertpapiere\u2060\u00A0· Konto</p>"
+    assert join_meta(["Referenzkonto", nil, "", "EUR"]) == "Referenzkonto\u2060\u00A0· EUR"
+    # The same separator as <.meta_sep />.
+    assert join_meta(["2 Wertpapiere", "Konto"]) == "2 Wertpapiere\u2060\u00A0· Konto"
+    assert join_meta(["Referenzkonto", nil]) == "Referenzkonto"
+  end
+
+  test "description list emphasises strong items and the total" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.description_list>
+        <:item label="Anfangswert" strong>10 €</:item>
+        <:item label="Einzahlungen">5 €</:item>
+        <:item label="Endwert" total>15 €</:item>
+      </.description_list>
+      """)
+
+    [start, line, total] =
+      doc |> find("dl > div") |> LazyHTML.attribute("class") |> Enum.map(&String.split/1)
+
+    assert "font-semibold" in start
+    refute "font-semibold" in line
+    assert Enum.all?(~w(font-semibold border-t border-t-base-content/30), &(&1 in total))
+    # Marked items stand out because the others drop to regular weight.
+    refute doc |> find("dd") |> LazyHTML.attribute("class") |> Enum.any?(&(&1 =~ "font-medium"))
+
+    plain = parse(~H|<.description_list>
+  <:item label="TER">0,22 %</:item>
+</.description_list>|)
+    assert "font-medium" in classes(plain, "dd")
+    # Facts are data: 14px like tables.
+    assert "text-sm" in classes(plain, "dl")
   end
 end

@@ -21,12 +21,23 @@ defmodule Setzkasten.Format do
       iex> Setzkasten.Format.money(4200, currency: "USD")
       "42,00 $"
 
-  Options: `:currency` (default `"EUR"`, unknown codes print as the code), `:signed` (prefix `+`
-  for positive values), `:decimals` (default 2).
+      iex> Setzkasten.Format.money(110, currency: "USD", currency_display: :code)
+      "1,10 USD"
+
+  Options: `:currency` (default `"EUR"`, unknown codes print as the code), `:currency_display`
+  (`:symbol`, the default, or `:code` for the ISO code), `:signed` (prefix `+` for positive
+  values), `:decimals` (default 2).
   """
   def money(value, opts \\ []) do
     currency = Keyword.get(opts, :currency, "EUR")
-    number(value, Keyword.put_new(opts, :minor_units, true)) <> @nbsp <> symbol(currency)
+
+    unit =
+      case Keyword.get(opts, :currency_display, :symbol) do
+        :symbol -> symbol(currency)
+        :code -> currency
+      end
+
+    number(value, Keyword.put_new(opts, :minor_units, true)) <> @nbsp <> unit
   end
 
   @doc """
@@ -68,6 +79,22 @@ defmodule Setzkasten.Format do
     digits = units |> Integer.to_string() |> String.pad_leading(decimals + 1, "0")
     {int, frac} = String.split_at(digits, -decimals)
     if(sign < 0 and units != 0, do: "-", else: "") <> int <> "." <> frac
+  end
+
+  @doc """
+  Sign of a money value as `money/2` shows it with `decimals` places: a value that rounds to
+  zero is 0.
+
+      iex> Setzkasten.Format.shown_sign(-40, 0)
+      0
+      iex> Setzkasten.Format.shown_sign(-40)
+      -1
+  """
+  def shown_sign(value, decimals \\ 2) do
+    case scaled(value, decimals, true) do
+      {_sign, 0} -> 0
+      {sign, _units} -> sign
+    end
   end
 
   @doc "Sign of a value: -1, 0 or 1."

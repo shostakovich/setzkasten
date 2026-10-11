@@ -369,6 +369,16 @@
   }
 }
 
+/* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
+   20 %), 5.33:1 light / 4.03:1 dark against the track on base-100, so it stands alone.
+   daisyUI's progress-neutral uses the neutral fill, 1.3:1 on dark base-100. */
+@layer utilities.setzkasten {
+  .progress.setzkasten-progress-neutral {
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+  }
+}
+
 /* Flat lists (E1) have no box around them: daisyUI insets the row dividers by the box radius,
    which leaves them 8px short of the list's top and bottom rules. They run through. */
 @layer utilities.setzkasten {

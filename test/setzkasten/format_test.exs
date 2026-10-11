@@ -30,4 +30,10 @@ defmodule Setzkasten.FormatTest do
     assert Format.number(38.04, decimals: 1, signed: true) == "+38,0"
     assert Format.number(-0.04, decimals: 1) == "0,0"
   end
+
+  test "money shows the ISO code on request" do
+    assert Format.money(110, currency: "USD", currency_display: :code) == "1,10#{@nbsp}USD"
+    assert Format.money(-500, currency_display: :code) == "#{@minus}5,00#{@nbsp}EUR"
+    assert Format.money(110, currency: "USD", currency_display: :symbol) == "1,10#{@nbsp}$"
+  end
 end
