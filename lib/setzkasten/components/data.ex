@@ -238,7 +238,8 @@ defmodule Setzkasten.Components.Data do
   entry return focus to the `⋮` button). `menu={:always}` uses the `⋮` menu at every width,
   e.g. when the actions are rare or destructive and should not sit on every row. Each `:action` takes
   `label`, `icon`, a target (`navigate`/`patch`/`href`, or `on_click` as event name or
-  `%JS{}`), and optionally `confirm` (+ `confirm_text`, `confirm_label`) for the shared
+  `%JS{}`; `phx-target={@myself}` sends an event name to a live component, a `%JS{}` carries
+  its own target), and optionally `confirm` (+ `confirm_text`, `confirm_label`) for the shared
   confirmation dialog, `danger` (red in the menu), `disabled` and `id` (the icon button; the
   menu entry gets `<id>-menu-item`, the `⋮` button of a row with `id` gets `<row id>-menu-toggle`).
   `title` also names the actions for screen readers (`"Bearbeiten: Herbst"`, menu
@@ -294,6 +295,7 @@ defmodule Setzkasten.Components.Data do
     attr :href, :string
     attr :method, :string
     attr :on_click, :any
+    attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :confirm, :string
     attr :confirm_text, :string
     attr :confirm_label, :string

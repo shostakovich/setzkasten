@@ -40,8 +40,8 @@ defmodule Setzkasten.ActionsTest do
     doc = parse(~H|<.button icon="plus" loading>Speichert</.button>|)
     assert attr(doc, "button", "disabled") != nil
     assert attr(doc, "button", "aria-busy") == "true"
-    assert count(doc, ".loading-spinner") == 1
-    assert count(doc, "svg") == 0
+    assert classes(doc, ".loading") == ~w(loading loading-spinner loading-sm motion-reduce:hidden)
+    assert classes(doc, "svg.lucide") == ~w(lucide size-4 motion-safe:hidden)
   end
 
   test "navigate renders a link styled as button" do
@@ -50,6 +50,23 @@ defmodule Setzkasten.ActionsTest do
     assert attr(doc, "a", "href") == "/depots"
     assert attr(doc, "a", "data-phx-link") == "redirect"
     assert classes(doc, "a") == ["btn", "btn-sm"]
+  end
+
+  test "confirm on a link raises instead of navigating without asking" do
+    assigns = %{}
+
+    for attrs <- [
+          %{href: "/x"},
+          %{navigate: "/x"},
+          %{patch: "/x"},
+          %{href: "/x", method: "delete"}
+        ] do
+      assigns = Map.put(assigns, :attrs, attrs)
+
+      assert_raise ArgumentError, ~r/<.button confirm> cannot ask before a link/, fn ->
+        rendered_to_string(~H|<.button confirm="Löschen?" {@attrs}>x</.button>|)
+      end
+    end
   end
 
   test "confirm moves the click into the shared dialog" do
@@ -66,8 +83,7 @@ defmodule Setzkasten.ActionsTest do
     assert click =~ "setzkasten:show-modal"
     assert click =~ "#confirm-delete-confirm"
     assert click =~ "Löschen?"
-    [_, %{"attr" => [_, action]}] = click |> Jason.decode!() |> Enum.at(0)
-    assert [["push", %{"event" => "delete", "value" => %{"id" => "7"}}]] = Jason.decode!(action)
+    assert [%{"event" => "delete", "value" => %{"id" => "7"}}] = pushes(click)
   end
 
   test "confirm keeps phx-value-* values as strings, like the browser sends them" do
@@ -78,10 +94,34 @@ defmodule Setzkasten.ActionsTest do
         ~H|<.button confirm="Wiederherstellen?" phx-click="restore" phx-value-number={3}>x</.button>|
       )
 
-    [_, %{"attr" => [_, action]}] =
-      doc |> attr("button", "phx-click") |> Jason.decode!() |> Enum.at(0)
+    assert [%{"value" => %{"number" => "3"}}] = pushes(attr(doc, "button", "phx-click"))
+  end
 
-    assert [["push", %{"value" => %{"number" => "3"}}]] = Jason.decode!(action)
+  test "confirm carries phx-target into the parked push" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.button confirm="Löschen?" phx-click="delete" phx-target={@myself} phx-value-id="7">
+        Löschen
+      </.button>
+      """)
+
+    assert [%{"event" => "delete", "target" => 3}] = pushes(attr(doc, "button", "phx-click"))
+    assert attr(doc, "button", "phx-target") == nil
+  end
+
+  test "confirm leaves a %JS{} click and its phx-target alone" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button confirm="Löschen?" phx-click={JS.push("delete")} phx-target="#form">x</.button>
+      """)
+
+    assert [push] = pushes(attr(doc, "button", "phx-click"))
+    refute Map.has_key?(push, "target")
+    assert attr(doc, "button", "phx-target") == "#form"
   end
 
   test "fab is a floating primary circle, phones only" do

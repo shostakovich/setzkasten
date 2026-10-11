@@ -184,6 +184,22 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "#drop", "phx-click") =~ "confirm-delete"
   end
 
+  test "dropdown items push an event name to their phx-target" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="more" label="Mehr">
+        <:trigger>…</:trigger>
+        <:item id="undo" on_click="undo" phx-target={@myself}>Rückgängig</:item>
+        <:item id="drop" on_click="delete" phx-target={@myself} confirm="Löschen?">Löschen</:item>
+      </.dropdown>
+      """)
+
+    assert [%{"event" => "undo", "target" => 3}] = pushes(attr(doc, "#undo", "phx-click"))
+    assert [%{"event" => "delete", "target" => 3}] = pushes(attr(doc, "#drop", "phx-click"))
+  end
+
   test "breadcrumbs: parents as links, the current page as heading, back link on phones" do
     assigns = %{}
 

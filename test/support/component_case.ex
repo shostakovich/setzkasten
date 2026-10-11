@@ -29,5 +29,18 @@ defmodule Setzkasten.ComponentCase do
 
   def text(doc, selector), do: doc |> find(selector) |> LazyHTML.text() |> String.trim()
 
+  @doc "The push ops of a `phx-click`, including one parked on the confirmation dialog."
+  def pushes(nil), do: []
+
+  def pushes(js) do
+    js
+    |> Jason.decode!()
+    |> Enum.flat_map(fn
+      ["push", args] -> [args]
+      ["set_attr", %{"attr" => ["data-confirm-action", action]}] -> pushes(action)
+      _ -> []
+    end)
+  end
+
   def classes(doc, selector), do: doc |> attr(selector, "class") |> to_string() |> String.split()
 end

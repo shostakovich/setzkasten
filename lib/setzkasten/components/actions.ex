@@ -4,6 +4,7 @@ defmodule Setzkasten.Components.Actions do
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
   import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Click, only: [click_js: 3]
 
   @variants %{
     primary: "btn-primary",
@@ -21,10 +22,13 @@ defmodule Setzkasten.Components.Actions do
 
   Variants are fixed: `:primary`, `:neutral` (default; also cancel/secondary), `:ghost`,
   `:danger`, `:danger_outline`, `:link`. `class` is appended to the base classes.
+  `loading` disables the button and shows a spinner, a still ellipsis with reduced motion.
 
   `confirm` asks in the shared `<.confirm_dialog>` before the button's
-  `phx-click` runs: the click (a `%JS{}` or an event name plus `phx-value-*`) moves to the
-  dialog's confirm button.
+  `phx-click` runs: the click moves to the dialog's confirm button. A `%JS{}` click carries
+  its own target (`JS.push("delete", target: @myself)`); only an event name takes the button's
+  `phx-value-*` and `phx-target` along. `confirm` with `href`, `navigate`, `patch` or `method`
+  raises: the link would navigate without asking.
 
       <.button variant={:primary} icon="plus">Neue Ausgabe</.button>
       <.button variant={:ghost} icon="trash-2" icon_only label="Löschen"
@@ -59,6 +63,15 @@ defmodule Setzkasten.Components.Actions do
     raise ArgumentError, "<.button icon_only> needs a label"
   end
 
+  def button(%{confirm: confirm, rest: rest})
+      when is_binary(confirm) and
+             (is_map_key(rest, :href) or is_map_key(rest, :navigate) or
+                is_map_key(rest, :patch) or is_map_key(rest, :method)) do
+    raise ArgumentError,
+          "<.button confirm> cannot ask before a link (href, navigate, patch or method): " <>
+            "it would navigate without asking; confirm a phx-click instead"
+  end
+
   def button(assigns) do
     assigns =
       assigns
@@ -87,7 +100,8 @@ defmodule Setzkasten.Components.Actions do
         aria-label={@icon_only && @label}
         {@rest}
       >
-        <span :if={@loading} class="loading loading-spinner loading-sm"></span>
+        <span :if={@loading} class="loading loading-spinner loading-sm motion-reduce:hidden"></span>
+        <.icon :if={@loading} name="ellipsis" class="motion-safe:hidden" />
         <.icon :if={@icon && !@loading} name={@icon} />{render_slot(@inner_block)}
       </button>
       """
@@ -103,7 +117,11 @@ defmodule Setzkasten.Components.Actions do
       Enum.split_with(rest, fn {key, _} -> String.starts_with?(to_string(key), "phx-value-") end)
 
     {click, rest} = rest |> Map.new() |> Map.pop(:"phx-click")
-    action = confirm_action(click, values)
+    # An event name pushes from the dialog, outside a live component: it needs the target.
+    {target, rest} =
+      if is_binary(click), do: Map.pop(rest, :"phx-target"), else: {nil, rest}
+
+    action = confirm_action(click, values, target)
 
     js =
       show_confirm(%JS{}, assigns.confirm_id, assigns.confirm, action,
@@ -114,20 +132,17 @@ defmodule Setzkasten.Components.Actions do
     assign(assigns, :rest, Map.merge(rest, %{"phx-click": js, "aria-haspopup": "dialog"}))
   end
 
-  @doc false
-  def confirm_action(%JS{} = js, _values), do: js
-
-  def confirm_action(event, values) when is_binary(event) do
+  defp confirm_action(event, values, target) when is_binary(event) do
     # phx-value-* attributes reach the server as strings; keep that for the parked push.
     value =
       Map.new(values, fn {key, v} ->
         {String.replace_prefix(to_string(key), "phx-value-", ""), to_string(v)}
       end)
 
-    JS.push(event, value: value)
+    click_js(event, target, value: value)
   end
 
-  def confirm_action(nil, _values), do: %JS{}
+  defp confirm_action(click, _values, _target), do: click_js(click, nil, [])
 
   @doc """
   The one main action on phones, floating above the dock (`md:hidden`).

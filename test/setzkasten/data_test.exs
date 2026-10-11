@@ -246,6 +246,30 @@ defmodule Setzkasten.DataTest do
     assert attr(doc, "details summary", "id") == "page-1-menu-toggle"
   end
 
+  test "list row actions push an event name to their phx-target" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="Herbst">
+          <:action
+            label="Löschen"
+            icon="trash-2"
+            id="drop"
+            confirm="Löschen?"
+            on_click="delete"
+            phx-target={@myself}
+          />
+        </.list_row>
+      </.list>
+      """)
+
+    for selector <- ["#drop", "#drop-menu-item"] do
+      assert [%{"event" => "delete", "target" => 3}] = pushes(attr(doc, selector, "phx-click"))
+    end
+  end
+
   test "list row action confirm with its own label" do
     assigns = %{}
 

@@ -231,7 +231,9 @@ defmodule Setzkasten.Components.Navigation do
   click, Escape and after choosing an item; Escape and choosing return focus to the trigger.
   Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).
 
-  `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
+  `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (an event name with
+  `phx-target`, e.g. `@myself`, or a `%JS{}` that carries its own target:
+  `JS.push("undo", target: @myself)`),
   `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
   item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
@@ -267,6 +269,7 @@ defmodule Setzkasten.Components.Navigation do
     attr :href, :string
     attr :method, :string
     attr :on_click, :any
+    attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :icon, :string
     attr :active, :boolean
     attr :danger, :boolean

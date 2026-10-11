@@ -35,7 +35,7 @@ defmodule Setzkasten.Components.Feedback do
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
   the end from `sm` and move under the text on phones. `on_close` (event name or `%JS{}`) adds
   a close button (`close_label`) that stays at the end on every screen size. `busy` swaps the
-  icon for a spinner.
+  icon for a spinner, a still ellipsis with reduced motion.
 
       <.alert tone={:warning} title="API-Key fehlt">
         Für Regionen und Sektoren braucht die App einen API-Key des Kursanbieters.
@@ -74,7 +74,11 @@ defmodule Setzkasten.Components.Feedback do
       ]}
       {@rest}
     >
-      <span :if={@busy} class={["loading loading-spinner loading-sm", @icon_color]}></span>
+      <span
+        :if={@busy}
+        class={["loading loading-spinner loading-sm motion-reduce:hidden", @icon_color]}
+      ></span>
+      <.icon :if={@busy} name="ellipsis" class={["size-5 motion-safe:hidden", @icon_color]} />
       <.icon :if={@icon_name && !@busy} name={@icon_name} class={["size-5", @icon_color]} />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
@@ -214,7 +218,8 @@ defmodule Setzkasten.Components.Feedback do
         phx-connected={JS.set_attribute({"hidden", ""}, to: "#client-error")}
         hidden
       >
-        {@reconnecting} <span class="loading loading-spinner loading-xs align-middle"></span>
+        {@reconnecting}
+        <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
       <.flash_alert
         id="server-error"
@@ -225,7 +230,8 @@ defmodule Setzkasten.Components.Feedback do
         phx-connected={JS.set_attribute({"hidden", ""}, to: "#server-error")}
         hidden
       >
-        {@reconnecting} <span class="loading loading-spinner loading-xs align-middle"></span>
+        {@reconnecting}
+        <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
     </div>
     """
