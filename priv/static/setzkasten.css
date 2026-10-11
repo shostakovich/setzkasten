@@ -330,7 +330,7 @@
    error-ink instead (5.39:1 light; in dark error-ink = error, so nothing changes there).
    Error lines under fields and amounts use the utility text-error-ink in markup. */
 @layer utilities.setzkasten {
-  :is(.input, .select, .textarea):is(.input-error, .select-error, .textarea-error) {
+  :is(.input, .select, .textarea, .file-input):is(.input-error, .select-error, .textarea-error, .file-input-error) {
     --input-color: var(--color-error-ink);
   }
   .btn-error.btn-outline:not(.btn-active, :hover, :active:focus, :focus-visible, :disabled, [disabled], .btn-disabled) {
@@ -399,11 +399,15 @@
 
 /* Modals share the popover surface with dropdown menus (bg-popover in markup): in dark one
    step above the page with a hairline, so the box stands out from the dimmed backdrop. The
-   sidebar dialog keeps the sidebar's own surface. */
+   sidebar dialog keeps the sidebar's own surface. The dock lies under the backdrop, so a sticky
+   action bar in a dialog pins to the box's bottom edge, not above the dock. */
 @layer utilities.setzkasten {
   .modal-box:not(.setzkasten-sidebar) {
     background-color: var(--color-popover);
     border: var(--setzkasten-popover-border, none);
+  }
+  .modal-box {
+    --setzkasten-dock-offset: 0px;
   }
 }
 
