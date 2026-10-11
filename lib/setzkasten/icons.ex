@@ -26,6 +26,10 @@ defmodule Setzkasten.Icons do
     dir = Path.expand(path, File.cwd!())
     files = dir |> Path.join("*.svg") |> Path.wildcard() |> Enum.sort()
 
+    if files == [] do
+      raise ArgumentError, "no Lucide SVG files in #{dir} (path: #{inspect(path)})"
+    end
+
     icons =
       for file <- files do
         {Path.basename(file, ".svg"), file |> File.read!() |> Setzkasten.Icons.inner_markup()}
