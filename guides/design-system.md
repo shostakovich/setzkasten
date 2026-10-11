@@ -44,11 +44,13 @@ and too faint as text or thin lines.
   `success`, `warning`, `error` only as a fill with their `-content` text, never as text, icon or thin mark on
   base-100/200 (both themes, since components use the same classes in each).
 - **Hairlines:** `border-base-content/10` (dividers, card edge). Field borders are 50 % base-content; error fields
-  use `error-ink`.
+  (`input-error`, `select-error`, `textarea-error`, `file-input-error`) use `error-ink`.
 - **Dark elevation:** in dark, base-200/300 are lighter than base-100 (daisyUI: darker), so neutral buttons and tiles
   stand out from the page instead of reading as holes. Dropdown menus and modal boxes take the extra token
   `popover` (`bg-popover`): base-100 in light, base-200 in dark, where the modal box also gets a
-  `base-content/10` hairline (`--setzkasten-popover-border`).
+  `base-content/10` hairline (`--setzkasten-popover-border`). On that surface neutral controls (neutral `btn`,
+  unselected `segmented` options, the file input's button) take `--setzkasten-popover-control`: base-200 in light
+  (unchanged), base-300 in dark, the same one-step lift as on the page.
 - **Alert tint:** soft alerts mix `--setzkasten-alert-tint` of their tone into the background: 25 % light, 8 % dark.
   At 8 % the tones look alike on dark grey, so dark draws the border with `--setzkasten-alert-border` 40 %
   (light 10 %, daisyUI's).
@@ -109,7 +111,7 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 
 | Pair | Need | Light | Dark |
 |---|---|---|---|
-| base-content on base-100 / 200 / 300 | 4.5 | 17.69 / 16.57 / 14.95 | 11.24 / 12.58 / 13.81 |
+| base-content on base-100 / 200 / 300 | 4.5 | 17.69 / 16.57 / 14.95 | 11.23 / 9.66 / 8.22 |
 | primary-content on primary | 4.5 | 4.89 | 8.44 |
 | secondary-content on secondary | 4.5 | 8.59 | 9.14 |
 | accent-content on accent | 4.5 | 7.56 | 8.32 |
@@ -124,8 +126,10 @@ cards none; dropdowns, popovers and FAB `shadow-lg`; modals daisyUI's.
 | text-success-ink on base-100 / 200 | 4.5 | 5.13 / 4.81 | 8.16 / 7.02 |
 | text-error-ink on base-100 / 200 | 4.5 | 5.39 / 5.05 | 5.63 / 4.84 |
 | field border on base-100 / 200 | 3 | 3.39 / 3.36 | 4.03 / 3.71 |
+| neutral control fill on its surface: page / popover (label identifies it) | – | 1.07 / 1.07 | 1.16 / 1.18 |
 | error border, `btn-error btn-outline` on base-100 | 3 | 5.39 | 5.63 |
 | primary as mark (focus, checkbox, menu-active, progress) on base-100 / 200 | 3 | 4.89 / 4.58 | 6.53 / 5.62 |
+| neutral bar (base-content 70 %) on its track, base-100 / 200 | 3 | 5.33 / 5.15 | 4.03 / 3.65 |
 | alert-soft text on tint | 4.5 | 14.04–15.97 | 9.52–9.89 |
 | button hover: primary / error content | 4.5 | 5.78 / 5.49 | 6.93 / 6.14 |
 | sidebar content / muted / accent | 4.5 / 4.5 / 3 | 11.10 / 6.96 / 6.34 | 14.78 / 8.85 / 7.96 |
@@ -163,7 +167,8 @@ Tailwind's 4px scale; steps in use `1` `1.5` `2` `3` `4` `6` `8` `12`.
 | Inside a card | `card-body`: padding 24px, gap 8px |
 | Between form fields | `gap-4` |
 | Between cards, grid gutter | `gap-4 md:gap-6` |
-| Above a section heading | `mt-8` |
+| Above a section heading | `mt-8`; none as the first child (page, card, dialog, its own `<section>`) |
+| Between wrapped sections | `gap-8` on the parent (`flex flex-col gap-8`, `space-y-8` or the grid's gap) |
 | Page padding | `px-4 sm:px-6 lg:px-8`, `py-6` |
 
 ### 2.7 Breakpoints and widths
@@ -214,8 +219,11 @@ Visible and accessible default strings are German; each has an attr:
 
 - **`button`** – `variant` `:primary` · `:neutral` (default; cancel/secondary) · `:ghost` · `:danger` ·
   `:danger_outline` · `:link`; `size` `:sm | :md | :lg`; `icon` (Lucide, before the label); `icon_only` (needs
-  `label`, raises without); `loading` (spinner, `aria-busy`, disabled); `href`/`navigate`/`patch` render a link;
-  `confirm` (+ `confirm_text`, `confirm_label`, `confirm_id`) asks in the shared confirmation dialog, see Overlays.
+  `label`, raises without); `loading` (spinner, a still ellipsis with reduced motion; `aria-busy`, disabled);
+  `href`/`navigate`/`patch` render a link; `confirm` (+ `confirm_text`, `confirm_label`, `confirm_id`) asks in the
+  shared confirmation dialog, see Overlays; an event name keeps its `phx-value-*` and `phx-target`, a `%JS{}`
+  carries its own target (`JS.push("delete", target: @myself)`); `confirm` with `href`/`navigate`/`patch`/`method`
+  raises (a link would navigate without asking).
   40px on fine pointers, 44px on coarse. `:danger` is filled `error-ink` with white text in light (as strong as
   primary), the error fill in dark. In the dark sidebar a `:neutral` button takes a quiet translucent fill, for a
   global action that should not compete with the page's primary.
@@ -227,33 +235,48 @@ Visible and accessible default strings are German; each has an attr:
   `hide_label`, `help`, `prefix`/`suffix` (€, %), `icon`, `numeric` (right-aligned, `tabular-nums`,
   `inputmode="decimal"`), `options`/`prompt`/`multiple`. `class` lands on the field box (`max-w-40` for narrow amounts).
   - Markup: `fieldset` > label > field > errors > help.
+  - `help_tone={:warning}`: the help line with `triangle-alert`, text in full base-content (warning is a fill,
+    never text); still linked by `aria-describedby`.
+  - `inline` (text-like types): field and inner block (the button, `class="join-item"`) in one `join`, stacked
+    below `sm`; label sr-only; errors and help below the join. See 4.1.
   - Errors show after `used_input?/1`: `aria-invalid`, border in `error-ink`, lines with `circle-alert` (first
     letter upper case), linked by `aria-describedby`. Ecto messages via `config :setzkasten, translate_error: {Mod, :fun}`.
   - Checkbox and radio rows are labels with 44px height on coarse pointers.
+- **`field_error`, `field_help`** – `input`'s error and help lines for other controls (`live_file_input`, custom
+  pickers), inside a `fieldset.fieldset`: `id` + `errors` (messages or Ecto tuples) or `field`; ids
+  `<id>-error-<n>` / `<id>-help`, `field_describedby(id, errors, help)` for the control's `aria-describedby`.
+  `field_help` takes `tone={:warning}` (as `help_tone`) and global attrs (`aria-live`).
 - **`action_bar`** – form footer: primary at the end, cancel before it, destructive in `:secondary` at the start.
   Below `sm`: full width, stacked, primary on top. `sticky` pins it to the bottom (above the dock); primary and cancel
-  then stay side by side.
+  then stay side by side. In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
+  covers the box's bottom padding: 16px above and below the buttons; sticky, it pins to the box's bottom edge
+  without the dock offset.
 
 ### Feedback
 
 - **`flash`, `flash_group`** – Phoenix's flash API, as a toast at the top (the bottom belongs to dock and action bar).
   `flash_group` also shows the connection-lost messages. `role="alert"` for errors, `status` for info.
 - **`alert`** – `tone` `:info | :success | :warning | :error | :neutral`, `title`, `icon` (`false` hides it),
-  `busy`, `on_close`, `:actions` slot (end of the row from `sm`, under the text on phones). Tinted background,
-  base-content text, icon in `error-ink`/`success-ink` for error/success. `role="alert"` only for `:error`.
+  `busy` (spinner for the icon, a still ellipsis with reduced motion), `on_close`, `:actions` slot (end of the row
+  from `sm`, under the text on phones). Tinted background, base-content text, icon in `error-ink`/`success-ink` for
+  error/success. `role="alert"` only for `:error`.
 - **`badge`** – `tone` `:neutral | :info | :success | :warning | :error | :primary`; `style` `:dot` (default, neutral
   badge with status dot), `:solid` (alarm states only), `:text` (dot and label without the pill, e.g. in a meta
   line) or `:plain` (pill without dot, labels that are no status); `size` `:sm` (default) | `:md`; `icon`
   (icon-only needs `label`). Never wraps; on phones the label may end in an ellipsis.
 - **`empty_state`** – says what goes here and how to get it, with one `:action`. `layout` `:inline` (default, in a
   section, list or card) | `:page` (centred, large plush, heading). `icon` or `plush`, `title`. Data that arrives by
-  itself needs no action.
+  itself needs no action. A `plush` without an image falls back to `icon`; without one, no figure (no generic
+  icon, one icon per meaning).
 
 ### Layout
 
 - **`header`** – page title (`h1`, `text-2xl`), `back`/`back_label`, `:subtitle`, `:badge`, `:actions`. Actions wrap
-  under the title on narrow screens.
-- **`section_heading`** – `text-base` 600, sentence case; `count` as quiet text (70 %, regular weight), `:actions`; `mt-8` above unless first child.
+  under the title on narrow screens; a `block` segmented control there gets a full-width row on phones.
+- **`section_heading`** – `text-base` 600, sentence case; `count` as quiet text (70 %, regular weight), `:actions`.
+  `mt-8 first:mt-0`: 2rem above, none as first child (top of a page, card, dialog). A heading that opens its own
+  `<section aria-labelledby>` is a first child too, so the parent stacks such sections with a gap
+  (`flex flex-col gap-8`, `space-y-8` or the grid's gap).
 - **`card`** – independent objects only (see Flat). `title`, `subtitle`, `level`, `as`, `:leading`, `:actions`,
   `:list` (flush list or table, no body padding), `:footer` (hairline note). `navigate`/`href` makes the whole card
   clickable. `bleed={:phone}` runs it edge to edge below `sm`. No margin; spacing comes from the parent.
@@ -262,46 +285,70 @@ Visible and accessible default strings are German; each has an attr:
 ### Data
 
 - **`table`** – Phoenix's `<.table>` API with streams, plus:
-  - `size` `:md` (45px rows) | `:sm` (≈ 34px, read-only data); `zebra`; `flush` (inside a card or modal).
+  - `size` `:md` (45px rows) | `:sm` (≈ 37px, read-only data: 8px row padding instead of 12px; text stays 14px
+    and the side padding stays as `:md`, so edges line up; not daisyUI's `table-sm`); `zebra`; `flush` (inside a
+    card or modal).
   - `:col` attrs `label`, `align={:end}` (right-aligned, `tabular-nums`, no wrap), `show_from` (`:sm`…`:xl`).
   - `groups` (`%{id, label, rows}`, one `<tbody>` with a `th scope="colgroup"` row each), `:foot` (total row; use
-    `show_from/1` on hidden columns), `:empty` (works with streams), `row_link` (link stretched over the row).
+    `show_from/1` on hidden columns), `:empty` (works with streams), `row_link` (link stretched over the row;
+    `nil` for a row without one: no link, no hover).
+  - `row_attrs` (fn row → `<tr>` attributes such as `aria-current`, `data-*`, `hidden`, or `nil`; `class` is merged, `id` dropped: the table owns row ids).
   - `<.cell_sub hide_from={:lg}>` repeats hidden columns' values under the name.
   - Default: on the page between `border-y` hairlines, edge to edge on phones, horizontal scroll in its wrapper.
 - **`list`, `list_heading`, `list_row`** – collections. Same flat default as tables; `flush` in a card.
+  `list_heading` takes global attrs (`id`).
   - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
-    a second line below `md`, or with `trailing_on_phone={:meta}` to the end of the meta line, then rendered twice
-    with `:let={place}`; `class` e.g. `md:w-40 md:justify-start` for a fixed status column),
-    `navigate`/`patch`/`href` (the title link covers the row; a light fill under the pointer, no chevron).
+    a second line below `md`, its lines aligned at the start; with `trailing_on_phone={:meta}` to the end of the
+    meta line; with `trailing_on_phone={:title}` a short value (amount, optional small second line such as a
+    percentage) stays at the end of the title line, lines right-aligned, and the meta line takes the full width
+    below (bank statement; use it where the trailing is an amount); `:meta` and `:title` render it twice with
+    `:let={place}`; `class` e.g. `md:w-40 md:justify-start` for a fixed status column),
+    `navigate`/`patch`/`href` (the title link covers the row; a light fill under the pointer, no chevron), or
+    `on_click` (event name + `phx-target`, or a `%JS{}` with its own `target:`; the title is a `<button type="button">` covering the row
+    the same way, e.g. to open a dialog). Keyboard focus rings the whole row.
     Dividers run the full width of a flat list. When the trailing line wraps below `md`, the leading media stays
     with the first line.
-  - `:action` entries (`label`, `icon`, target or `on_click`, `confirm`, `danger`, `disabled`): icon buttons from
-    `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions), with
+  - `:action` entries (`label`, `icon`, target or `on_click` (+ `phx-target` for an event name), `confirm`, `danger`,
+    `disabled`): icon buttons from `md`, a `⋮` menu below; `menu={:always}` uses the menu at every width (rare or destructive actions), with
     `inline` actions (e.g. move up/down) still as icon buttons from `md`; `actions_class` (e.g. `md:w-20
     justify-end`) fixes that column's width so trailing columns line up across lists.
     Accessible names include the row title ("Bearbeiten: …").
+- **`meta_sep`, `join_meta/1`** – the " · " of meta lines (header subtitle, stat note, `cell_sub`, list row meta):
+  glued to the part before it, so a "·" never starts a line. `join_meta(parts)` for strings (drops `nil` and `""`,
+  so an optional part leaves no dangling dot); `<.meta_sep />` between markup, written without a space before it.
 - **`amount`** – money in de-DE (thousands dot, decimal comma, U+2212 minus, no-break space) in `<data value>`.
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,
-  positive `success-ink`, zero 70 %); `size={:lg}` for totals.
-- **`stat`** – KPI tile: `label`, `value`, `unit`, `desc`, `tone` (`:success | :error`), `size` `:md` (32px) |
+  positive `success-ink`, zero 70 %, by the shown value); `decimals` (default 2, `0` for whole-currency KPIs;
+  `<data value>` stays exact); `currency_display={:code}` shows the ISO code ("1,10 USD") where currencies mix;
+  `size={:lg}` for totals.
+- **`stat`** – KPI tile: `label`, `value`, `unit`, `desc` (or the `:note` slot for markup, e.g. a toned
+  `amount`; the slot wins), `tone` (`:success | :error`), `size` `:md` (32px) |
   `:sm` (24px, tile grids), `stale` (badge, never faded text), `loading` (skeleton). Grid:
   `grid grid-cols-2 md:grid-cols-4 gap-4`.
-- **`description_list`** – label → value facts; values right-aligned, `tabular-nums`.
+- **`description_list`** – label → value facts in 14px like tables; values right-aligned, `tabular-nums`. A calculation marks `:item`s
+  `strong` (start value) and `total` (result, stronger `base-content/30` hairline above); once one is marked, the
+  other values are regular weight.
 - **`bar`** – native `<progress>` with `label` and value: `value`, `max`, `tone`, `show_value`, `value_label`,
-  `target` (2px marker drawn as SVG, no inline style). Pastel tones need `show_value`.
+  `target` (2px marker at the exact share, drawn as SVG geometry, no inline style). Pastel tones need `show_value`;
+  `:neutral` (base-content 70 %, a share that is no state) stands alone like `:primary`.
 - **`avatar`** – `initials` or `icon`; `tone` (theme role or `:base`); `size` `:sm` 32 · `:md` 40 · `:lg` 48px;
-  `shape` `:square` (default) | `:round`. `aria-hidden` unless `label` is set.
+  `shape` `:square` (default) | `:round`. `aria-hidden` unless `label` is set. `loading`: spinner in the tile (same
+  size and tone), a still ellipsis with reduced motion; `aria-busy` only with `label` (a hidden avatar can't announce it).
 - **`chart_card`, `legend`** – the frame around an app-drawn chart: card, `role="img"` with `summary`, a `hook`
   container with `phx-update="ignore"` and a `<canvas>` (without `hook` the inner block, e.g. static SVG). `height`
   `:sm` 14rem · `:md` 16rem · `:lg` 19rem; slots `:actions`, `:legend`, `:data` (folded "Werte als Tabelle", the
-  keyboard path to exact values); `loading` skeleton. `<.legend>`: `items` with `label` and `color` 1–8 or
-  `:success | :error | :primary | :neutral`. Chart setup stays in the app.
+  keyboard path to exact values); `loading` skeleton. `<.legend>` (global attrs): `items` with `label`, `color` 1–8 or
+  `:success | :error | :primary | :neutral`, and `marker` `:dot` (default, fill + outline) | `:line` | `:dashed`
+  (a 16px stroke in the line colour, ≥ 3:1, for line series and reference lines). Chart setup stays in the app.
 
 ### Navigation
 
 - **`segmented`** – one choice out of a few, a `join` of buttons, selected = `btn-primary`. `mode` `:patch` (links,
   `aria-current`) | `:button` (`phx-click` with `phx-value-value`, `aria-pressed`) | `:radio` (form field). `label`,
-  `size` `:sm | :md`; options as tuples or maps with `icon`.
+  `size` `:sm | :md`; options as tuples or maps with `icon` and `long_label` (`aria-label` for a short label,
+  "1 M" → "1 Monat"; it contains the visible text; no tooltip). `block`: full width, options of equal width,
+  tighter padding below `sm` (five short options fit 360px); `block={:phone}` only below `sm`, e.g. a period in
+  the header's `:actions`, which then gives it a full-width row under the title on phones.
 - **`tabs`** – sibling views of one object; links only, `aria-current="page"` on the active `:tab`. Scrolls
   horizontally on phones. No client-side tab panels.
 - **`breadcrumbs`** – where a detail page sits: `:crumb` (`navigate`/`patch`/`href`; the last is the current
@@ -309,8 +356,8 @@ Visible and accessible default strings are German; each has an attr:
   parent and the current page. Goes into the `:bar` of `app_shell`, followed by the page's status badge (a dot on
   phones; a neutral badge only for screen readers there).
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
-  `method` or `on_click`, `icon`, `active`, `danger`, `divider`, `id`, `disabled`, `confirm` (+ `confirm_text`,
-  `confirm_label`) for the shared confirmation dialog, `class`), `align`, `position` (`:top` opens upwards),
+  `method` or `on_click` (+ `phx-target` for an event name), `icon`, `active`, `danger`, `divider`, `id`, `disabled`, `confirm`
+  (+ `confirm_text`, `confirm_label`) for the shared confirmation dialog, `class`), `align`, `position` (`:top` opens upwards),
   `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
   Closes on outside click, Escape and item choice; Escape and item choice return focus to the trigger; survives
   LiveView patches.
@@ -329,7 +376,8 @@ Visible and accessible default strings are German; each has an attr:
     trigger, focus goes to the next (else previous) row of the closest `[data-focus-fallback]` (set on `<.list>` and
     `<.table>` bodies; add it to other collections), else to that element, else to `<main>`. Same for `modal`.
 - **`disclosure`** – `<details>`; `variant` `:collapse` (default) | `:button` (compact "more options" trigger with
-  `icon`); `open`. Open state survives patches.
+  `icon`); `open`; `count` (a quiet number after the summary, as in `section_heading`, never "(3)"). Open state
+  survives patches.
 
 ### Shell
 
@@ -339,9 +387,16 @@ Visible and accessible default strings are German; each has an attr:
     `:bar`). Ghost and neutral buttons in the sidebar take its colours.
   - `layout={:topbar}` (default): navbar from `md`, dock below. `dock={false}` keeps the menu in the navbar on phones.
   - `width` `:narrow | :default | :wide | :full` (2.7); `current` marks the active `:nav` entry.
-  - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush`, `count`, `amount`, `section`, `dock`
+  - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush` (falls back to `icon` without an image),
+    `count`, `amount`, `section`, `dock`
     (the first five go into the dock; with `layout={:sidebar}` and more, four plus a `more_label` button that opens
-    the sidebar).
+    the sidebar), `rail` (`false`: left out of the icon rail `md`–`xl`, kept everywhere else; object lists such as
+    accounts can stay out of the rail). An entry without `section` after a section leaves it with the section gap
+    (`mt-4`), no title. The rail keeps a gap where the section changes, also across left-out entries.
+  - `count`: a quiet number in the sidebar, a neutral badge in the navbar, a `badge-sm` on the icon in the rail
+    (`sidebar-accent` fill, `primary` is 2.4:1 on the light sidebar) and the dock (`primary`; `neutral` is
+    1.3:1 on dark base-100); rail and dock show no badge at 0. The link's `aria-label` says it in words:
+    "Buchungen, 2 neu" with `count_label="neu"`.
   - Slots `:brand` (required), `:nav_footer`, `:account`, `:bar`, `:bar_actions`, `:fab`. `:bar` (detail pages:
     breadcrumbs and status) replaces the brand in the top bar, sticks to the top and with `:sidebar` also shows from
     `xl`. `:bar_actions` (the page's own actions, e.g. a `⋮` dropdown) follow it. Below `sm` a page with a bar
@@ -361,8 +416,9 @@ Visible and accessible default strings are German; each has an attr:
 - Labels above, help below, errors last; `required` in HTML.
 - On submit with errors: an `<.alert tone={:error}>` at the top with the count, focus on the first invalid field
   (`JS.focus(to: "[aria-invalid=true]")`).
-- Inline form (field + button): `join max-sm:join-vertical`, `input join-item` with sr-only label,
-  `<.button variant={:primary} class="join-item">`.
+- Inline form (field + button): `<.input field={…} label="…" inline>` with
+  `<.button type="submit" variant={:primary} class="join-item">` inside; the label is sr-only, so a heading above
+  says what the field is for.
 - Submit: `<.button variant={:primary} phx-disable-with="Speichert …">` inside `<.action_bar>`.
 - Money: `suffix="€"`, `numeric`.
 

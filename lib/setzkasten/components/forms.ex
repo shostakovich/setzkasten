@@ -16,7 +16,13 @@ defmodule Setzkasten.Components.Forms do
   (an app's Gettext `translate_error/1`); without it `%{count}`-style bindings are filled in.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
-  the value with tabular figures and defaults `inputmode` to `decimal`.
+  the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
+  marks the help line as a warning (`triangle-alert` icon, full base-content text); it stays
+  linked by `aria-describedby`.
+
+  `inline` (text-like types) puts the field and the inner block, the form's button, in one
+  `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
+  the join. The button takes `class="join-item"`.
 
       <.input field={@form[:amount]} label="Betrag" suffix="€" numeric class="max-w-40"
               help="Mit Komma, z. B. 87,42" />
@@ -25,6 +31,9 @@ defmodule Setzkasten.Components.Forms do
       <.input field={@form[:recurring]} type="checkbox" label="Jeden Monat wiederholen" />
       <.input field={@form[:split]} type="radio_group" label="Aufteilung"
               options={[{"Gleichmäßig", "equal"}, {"Nach Anteilen", "shares"}]} />
+      <.input field={@form[:name]} label="Neue Kategorie" placeholder="z. B. Haustier" inline>
+        <.button type="submit" variant={:primary} icon="plus" class="join-item">Hinzufügen</.button>
+      </.input>
   """
   attr :id, :any, default: nil
   attr :name, :any
@@ -36,6 +45,8 @@ defmodule Setzkasten.Components.Forms do
   attr :checked, :boolean, doc: "checked flag for checkbox and toggle"
   attr :hide_label, :boolean, default: false
   attr :help, :string, default: nil
+  attr :help_tone, :atom, default: nil, values: [nil, :warning]
+  attr :inline, :boolean, default: false, doc: "field and inner block (a button) in one join"
   attr :prefix, :string, default: nil
   attr :suffix, :string, default: nil
   attr :icon, :string, default: nil, doc: "Lucide icon at the start of the field (search)"
@@ -48,6 +59,8 @@ defmodule Setzkasten.Components.Forms do
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 pattern placeholder readonly required rows size step inputmode)
+
+  slot :inner_block, doc: "with `inline`: the button after the field, `class=\"join-item\"`"
 
   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
@@ -97,7 +110,8 @@ defmodule Setzkasten.Components.Forms do
         />
         <span class={@hide_label && "sr-only"}>{@label}</span>
       </label>
-      <.field_help id={@id} help={@help} errors={@errors} />
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
     </div>
     """
   end
@@ -123,7 +137,8 @@ defmodule Setzkasten.Components.Forms do
         />
         {label}
       </label>
-      <.field_help id={@id} help={@help} errors={@errors} />
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
     </fieldset>
     """
   end
@@ -146,7 +161,8 @@ defmodule Setzkasten.Components.Forms do
         <option :if={@prompt} value="">{@prompt}</option>
         {Phoenix.HTML.Form.options_for_select(@options, @value)}
       </select>
-      <.field_help id={@id} help={@help} errors={@errors} />
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
     </fieldset>
     """
   end
@@ -165,7 +181,8 @@ defmodule Setzkasten.Components.Forms do
         aria-describedby={@describedby}
         {@rest}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      <.field_help id={@id} help={@help} errors={@errors} />
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
     </fieldset>
     """
   end
@@ -181,60 +198,90 @@ defmodule Setzkasten.Components.Forms do
 
     ~H"""
     <fieldset class="fieldset min-w-0">
-      <.field_label id={@id} label={@label} hide={@hide_label} />
-      <label :if={@boxed} class={["input w-full", @errors != [] && "input-error", @class]}>
-        <.icon :if={@icon} name={@icon} class="size-4 text-base-content/70" />
-        <span :if={@prefix} class="label">{@prefix}</span>
-        <input
-          type={@type}
-          id={@id}
-          name={@name}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={@numeric && "text-end tabular-nums"}
-          aria-invalid={@errors != [] && "true"}
-          aria-describedby={@describedby}
-          {@rest}
-        />
-        <span :if={@suffix} class="label">{@suffix}</span>
-      </label>
-      <input
-        :if={!@boxed}
-        type={@type}
-        id={@id}
-        name={@name}
-        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={[
-          "input w-full",
-          @errors != [] && "input-error",
-          @numeric && "text-end tabular-nums",
-          @class
-        ]}
-        aria-invalid={@errors != [] && "true"}
-        aria-describedby={@describedby}
-        {@rest}
-      />
-      <.field_help id={@id} help={@help} errors={@errors} />
+      <.field_label id={@id} label={@label} hide={@hide_label || @inline} />
+      <div :if={@inline} class="join max-sm:join-vertical w-full">
+        <.text_field {field_attrs(assigns)} join />
+        {render_slot(@inner_block)}
+      </div>
+      <.text_field :if={!@inline} {field_attrs(assigns)} />
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
     </fieldset>
     """
   end
 
-  defp prepare(assigns) do
-    ids =
-      for({_, i} <- Enum.with_index(assigns.errors), do: "#{assigns.id}-error-#{i}") ++
-        [assigns.help && "#{assigns.id}-help"]
+  defp field_attrs(assigns) do
+    Map.take(
+      assigns,
+      ~w(type id name value errors numeric icon prefix suffix boxed class describedby rest)a
+    )
+  end
 
+  attr :type, :string, required: true
+  attr :id, :any, required: true
+  attr :name, :any, required: true
+  attr :value, :any, required: true
+  attr :errors, :list, required: true
+  attr :numeric, :boolean, required: true
+  attr :icon, :string, required: true
+  attr :prefix, :string, required: true
+  attr :suffix, :string, required: true
+  attr :boxed, :any, required: true
+  attr :class, :any, required: true
+  attr :describedby, :string, required: true
+  attr :rest, :map, required: true
+  attr :join, :boolean, default: false
+
+  defp text_field(assigns) do
+    ~H"""
+    <label
+      :if={@boxed}
+      class={["input w-full", @join && "join-item", @errors != [] && "input-error", @class]}
+    >
+      <.icon :if={@icon} name={@icon} class="size-4 text-base-content/70" />
+      <span :if={@prefix} class="label">{@prefix}</span>
+      <input
+        type={@type}
+        id={@id}
+        name={@name}
+        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+        class={@numeric && "text-end tabular-nums"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@describedby}
+        {@rest}
+      />
+      <span :if={@suffix} class="label">{@suffix}</span>
+    </label>
+    <input
+      :if={!@boxed}
+      type={@type}
+      id={@id}
+      name={@name}
+      value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+      class={[
+        "input w-full",
+        @join && "join-item",
+        @errors != [] && "input-error",
+        @numeric && "text-end tabular-nums",
+        @class
+      ]}
+      aria-invalid={@errors != [] && "true"}
+      aria-describedby={@describedby}
+      {@rest}
+    />
+    """
+  end
+
+  defp prepare(assigns) do
     assigns
     |> assign_new(:value, fn -> nil end)
     |> assign_new(:name, fn -> assigns.id end)
     |> assign_new(:options, fn -> [] end)
-    |> assign(:describedby, ids |> Enum.reject(&is_nil/1) |> Enum.join(" ") |> blank_to_nil())
+    |> assign(:describedby, field_describedby(assigns.id, assigns.errors, assigns.help))
   end
 
   defp numeric_rest(%{numeric: true, rest: rest}), do: Map.put_new(rest, :inputmode, "decimal")
   defp numeric_rest(%{rest: rest}), do: rest
-
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
 
   defp control_class("checkbox"), do: "checkbox checkbox-primary"
   defp control_class("toggle"), do: "toggle toggle-primary"
@@ -251,21 +298,88 @@ defmodule Setzkasten.Components.Forms do
     """
   end
 
-  attr :id, :any, required: true
-  attr :help, :string, default: nil
-  attr :errors, :list, default: []
+  @doc """
+  The error lines of a field, as `input` renders them: `circle-alert` icon, `error-ink`, first
+  letter upper case, ids `<id>-error-0`, `<id>-error-1`, … For controls that are no `<.input>`
+  (`live_file_input`, a custom picker); place it after the control inside a `fieldset.fieldset`
+  and link the lines with `aria-describedby={field_describedby(id, errors, help)}`.
 
-  defp field_help(assigns) do
+  `errors` takes messages or Ecto error tuples (translated like `input`'s); `field` takes its
+  id and errors from a form field, shown after `used_input?/1`.
+
+      <fieldset class="fieldset">
+        <label for={@uploads.photo.ref} class="fieldset-legend">Foto</label>
+        <.live_file_input upload={@uploads.photo}
+          aria-describedby={field_describedby(@uploads.photo.ref, @photo_errors, true)} />
+        <.field_error id={@uploads.photo.ref} errors={@photo_errors} />
+        <.field_help id={@uploads.photo.ref}>JPEG oder PNG, höchstens 5 MB</.field_help>
+      </fieldset>
+  """
+  attr :id, :any, default: nil, doc: "the control's id; taken from `field` when given"
+  attr :field, Phoenix.HTML.FormField, doc: "a form field, e.g. `@form[:photo]`"
+  attr :errors, :list, default: [], doc: "messages or `{msg, opts}` tuples"
+
+  def field_error(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id, errors: errors)
+    |> field_error()
+  end
+
+  def field_error(assigns) do
+    assigns = assign(assigns, :messages, Enum.map(assigns.errors, &translate_error/1))
+
     ~H"""
     <p
-      :for={{msg, i} <- Enum.with_index(@errors)}
+      :for={{msg, i} <- Enum.with_index(@messages)}
       id={"#{@id}-error-#{i}"}
       class="flex items-center gap-1.5 text-sm text-error-ink"
     >
       <.icon name="circle-alert" class="size-4 shrink-0" />{upcase_first(msg)}
     </p>
-    <p :if={@help} id={"#{@id}-help"} class="label whitespace-normal">{@help}</p>
     """
+  end
+
+  @doc """
+  The help line of a field, as `input` renders it, with the id `<id>-help`. See `field_error/1`.
+  `tone={:warning}` adds a `triangle-alert` icon and sets the text in full base-content (the
+  warning fill is too faint as text). Global attrs (e.g. `aria-live`) land on the `<p>`.
+
+      <.field_help id="iban" tone={:warning}>Konto ist noch nicht bestätigt</.field_help>
+  """
+  attr :id, :any, required: true, doc: "the control's id"
+  attr :tone, :atom, default: nil, values: [nil, :warning]
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def field_help(assigns) do
+    ~H"""
+    <p
+      id={"#{@id}-help"}
+      class={["label whitespace-normal", @tone == :warning && "text-base-content", @class]}
+      {@rest}
+    >
+      <.icon :if={@tone == :warning} name="triangle-alert" class="size-4 shrink-0" />
+      {render_slot(@inner_block)}
+    </p>
+    """
+  end
+
+  @doc """
+  The `aria-describedby` value for a control with `errors` and, when `help` is truthy, a help
+  line: the ids `field_error/1` and `field_help/1` render, or `nil`.
+  """
+  def field_describedby(id, errors, help) do
+    ids =
+      for({_, i} <- Enum.with_index(errors || []), do: "#{id}-error-#{i}") ++
+        [help && "#{id}-help"]
+
+    case Enum.reject(ids, &(&1 in [nil, false])) do
+      [] -> nil
+      ids -> Enum.join(ids, " ")
+    end
   end
 
   # Error messages start like a sentence ("can't be blank" -> "Can't be blank"), as the labels do.
@@ -293,8 +407,11 @@ defmodule Setzkasten.Components.Forms do
   The footer of a form: primary action at the end, cancel before it, destructive actions in
   `:secondary` at the start. Below `sm` the buttons are full width and stacked with the
   primary action on top; a `sticky` bar keeps primary and cancel side by side in one row and
-  puts `:secondary` on a second row, so it covers less of the screen. `sticky` pins the bar to the bottom of the viewport (above the dock
-  inside `<.app_shell>`).
+  puts `:secondary` on a second row, so it covers less of the screen. `sticky` pins the bar to
+  the bottom of the viewport (above the dock inside `<.app_shell>`). Inside a `<.modal>` the bar
+  takes the dialog's surface (`bg-popover`), covers the box's bottom padding and keeps 16px
+  above and below the buttons; a sticky bar pins to the box's bottom edge (through its padding)
+  without the dock offset.
 
       <.action_bar sticky>
         <:secondary>
@@ -316,11 +433,14 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <div
       class={[
-        "flex gap-2 border-t border-base-content/10 bg-base-100 sm:flex-row sm:items-center",
+        "flex gap-2 border-t border-base-content/10 bg-base-100",
+        "sm:flex-row sm:items-center sm:justify-end",
+        "[.modal-box_&]:bg-popover [.modal-box_&]:-mb-6 [.modal-box_&]:py-4",
         if(@sticky,
           do: [
             "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10 py-3",
-            "max-sm:flex-wrap max-sm:[&>.btn]:flex-1"
+            "max-sm:flex-wrap max-sm:[&>.btn]:flex-1",
+            "[.modal-box_&]:-mx-6 [.modal-box_&]:px-6 [.modal-box_&]:-bottom-6"
           ],
           else: "pt-4 flex-col-reverse max-sm:[&_.btn]:w-full"
         ),

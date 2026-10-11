@@ -46,6 +46,51 @@ defmodule Setzkasten.FormsTest do
     assert count(doc, "[aria-invalid]") == 0
   end
 
+  test "field_error and field_help render like input's, for other controls" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <fieldset class="fieldset">
+        <input type="file" id="photo" />
+        <.field_error id="photo" errors={["zu groß", {"höchstens %{n} Dateien", [n: 3]}]} />
+        <.field_help id="photo">JPEG oder PNG</.field_help>
+      </fieldset>
+      """)
+
+    ids = doc |> find("fieldset > p") |> LazyHTML.attribute("id")
+    assert ids == ["photo-error-0", "photo-error-1", "photo-help"]
+    assert text(doc, "#photo-error-0") == "Zu groß"
+    assert text(doc, "#photo-error-1") == "Höchstens 3 Dateien"
+    assert count(doc, "#photo-error-0 svg.lucide") == 1
+    assert "text-error-ink" in classes(doc, "#photo-error-0")
+    assert classes(doc, "#photo-help") == ~w(label whitespace-normal)
+
+    assert field_describedby("photo", ["a", "b"], true) ==
+             "photo-error-0 photo-error-1 photo-help"
+
+    assert field_describedby("photo", [], nil) == nil
+  end
+
+  test "a file input with file-input-error takes the error-ink border" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/:is\(\.input, \.select, \.textarea, \.file-input\):is\([^)]*\.file-input-error\) \{\s*--input-color: var\(--color-error-ink\);/
+  end
+
+  test "field_error takes id and errors from a used form field" do
+    assigns = %{
+      used: form(%{"photo" => ""}, photo: {"fehlt", []}),
+      unused: to_form(%{}, as: :expense, errors: [photo: {"fehlt", []}])
+    }
+
+    assert text(parse(~H|<.field_error field={@used[:photo]} />|), "#expense_photo-error-0") ==
+             "Fehlt"
+
+    assert count(parse(~H|<.field_error field={@unused[:photo]} />|), "p") == 0
+  end
+
   test "hide_label keeps the label for screen readers" do
     assigns = %{}
     doc = parse(~H|<.input name="q" id="q" label="Suchen" hide_label icon="search" />|)
@@ -156,5 +201,101 @@ defmodule Setzkasten.FormsTest do
     doc = parse(~H|<.action_bar sticky><.button>OK</.button></.action_bar>|)
     assert "sticky" in classes(doc, "div")
     assert "bottom-[var(--setzkasten-dock-offset,0px)]" in classes(doc, "div")
+  end
+
+  test "a warning help line has an icon, full text colour and stays described" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.input name="iban" id="iban" label="IBAN" help="Nicht bestätigt" help_tone={:warning} />|
+      )
+
+    assert attr(doc, "input", "aria-describedby") == "iban-help"
+    assert count(doc, "#iban-help svg.lucide") == 1
+    assert "text-base-content" in classes(doc, "#iban-help")
+    assert text(doc, "#iban-help") == "Nicht bestätigt"
+
+    doc = parse(~H|<.input name="t" id="t" label="Titel" help="Kurz" />|)
+    assert count(doc, "#t-help svg") == 0
+    assert classes(doc, "#t-help") == ~w(label whitespace-normal)
+  end
+
+  test "field_help takes the warning tone and global attrs" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.field_help id="photo" tone={:warning} aria-live="polite" class="mt-1">Groß</.field_help>
+      """)
+
+    assert attr(doc, "#photo-help", "aria-live") == "polite"
+    assert count(doc, "#photo-help svg.lucide") == 1
+    assert classes(doc, "#photo-help") == ~w(label whitespace-normal text-base-content mt-1)
+  end
+
+  test "inline input joins the field and its button, errors below the join" do
+    assigns = %{form: form(%{"name" => ""}, name: {"leer", []})}
+
+    doc =
+      parse(~H"""
+      <.input field={@form[:name]} label="Neue Kategorie" help="Kurz" inline placeholder="z. B. Haus">
+        <.button type="submit" class="join-item">Hinzufügen</.button>
+      </.input>
+      """)
+
+    assert classes(doc, "label[for=expense_name]") == ["sr-only"]
+    assert classes(doc, "fieldset > div") == ~w(join max-sm:join-vertical w-full)
+    assert classes(doc, ".join > input") == ~w(input w-full join-item input-error)
+    assert attr(doc, ".join > input", "placeholder") == "z. B. Haus"
+    assert text(doc, ".join > button") == "Hinzufügen"
+    ids = doc |> find("fieldset > p") |> LazyHTML.attribute("id")
+    assert ids == ["expense_name-error-0", "expense_name-help"]
+    assert attr(doc, "input", "aria-describedby") == "expense_name-error-0 expense_name-help"
+    assert attr(doc, "input", "aria-invalid") == "true"
+  end
+
+  test "inline input with a boxed field" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="q" id="q" label="Suchen" icon="search" inline>
+        <.button class="join-item">Los</.button>
+      </.input>
+      """)
+
+    assert "join-item" in classes(doc, ".join > label.input")
+    assert count(doc, ".join > label.input input#q") == 1
+  end
+
+  test "action bar takes the dialog surface and spans the dialog padding when sticky" do
+    assigns = %{}
+    doc = parse(~H|<.action_bar sticky><.button>OK</.button></.action_bar>|)
+    assert "[.modal-box_&]:bg-popover" in classes(doc, "div")
+    assert "[.modal-box_&]:-mx-6" in classes(doc, "div")
+    # The box padding insets the sticky edge; the bar pins to the box's bottom edge instead.
+    assert "[.modal-box_&]:-bottom-6" in classes(doc, "div")
+    refute "[.modal-box_&]:-bottom-6" in classes(parse(~H|<.action_bar>x</.action_bar>|), "div")
+    assert "[.modal-box_&]:bg-popover" in classes(parse(~H|<.action_bar>x</.action_bar>|), "div")
+
+    # The dock offset does not reach into a dialog.
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.modal-box \{\s*--setzkasten-dock-offset: 0px;/
+  end
+
+  test "action bar puts the primary at the end and balances its padding in a dialog" do
+    assigns = %{}
+    doc = parse(~H|<.action_bar><.button>OK</.button></.action_bar>|)
+    bar = classes(doc, "div")
+    assert "sm:justify-end" in bar
+    assert Enum.all?(~w([.modal-box_&]:-mb-6 [.modal-box_&]:py-4), &(&1 in bar))
+
+    doc = parse(~H|<.action_bar sticky><.button>OK</.button></.action_bar>|)
+
+    assert Enum.all?(
+             ~w(sm:justify-end [.modal-box_&]:-mb-6 [.modal-box_&]:py-4),
+             &(&1 in classes(doc, "div"))
+           )
   end
 end

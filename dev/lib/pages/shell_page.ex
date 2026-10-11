@@ -20,7 +20,15 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
         <code>md</code>
         bis <code>xl</code>
         (ausklappbar als
-        Dialog) mit Kopfzeile, auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Die Vorschauen sind
+        Dialog) mit Kopfzeile, auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Ein
+        <code>count</code>
+        steht in der Seitenleiste als Zahl, in Icon-Leiste und Dock als Badge am Icon;
+        <code>count_label</code>
+        nennt ihn für Screenreader („Buchungen, 2 neu“). Ein Eintrag ohne <code>section</code>
+        nach einer Gruppe (Einstellungen in <code>/screens/holdings</code>) steht mit dem Abstand
+        einer Gruppe abgesetzt, ohne Titel. Ein <code>plush</code>, für den die App kein Bild
+        hat, fällt auf das <code>icon</code>
+        des Eintrags zurück. Die Vorschauen sind
         die echten Screens in festen Breiten.
       </:intro>
       <.demo
@@ -58,7 +66,12 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       <:brand>Depotblick</:brand>
       <:nav key={:overview} label="Übersicht" icon="chart-line" navigate={~p"/"} />
       <:nav key={:holdings} label="Bestand" icon="list" navigate={~p"/bestand"} />
+      <:nav key={:bookings} label="Buchungen" icon="receipt" count={2} count_label="neu" navigate={…} />
       <:nav key={:kinder} label="Kinderdepot" icon="wallet" amount={799_483} section="Depots" navigate={…} />
+      <%!-- rail={false}: object lists such as accounts stay out of the icon rail (md–xl) --%>
+      <:nav key={:giro} label="Girokonto" icon="landmark" amount={248_310} section="Konten" rail={false} navigate={…} />
+      <:nav key={:settings} label="Einstellungen" icon="settings" navigate={…} />
+      <:nav key={:stats} label="Statistik" plush="stats" icon="chart-pie" navigate={…} />
       <:account :let={place}>
         <.dropdown id={"account-#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …/>
       </:account>

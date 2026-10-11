@@ -35,7 +35,7 @@ defmodule Setzkasten.Components.Feedback do
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
   the end from `sm` and move under the text on phones. `on_close` (event name or `%JS{}`) adds
   a close button (`close_label`) that stays at the end on every screen size. `busy` swaps the
-  icon for a spinner.
+  icon for a spinner, a still ellipsis with reduced motion.
 
       <.alert tone={:warning} title="API-Key fehlt">
         Für Regionen und Sektoren braucht die App einen API-Key des Kursanbieters.
@@ -74,7 +74,11 @@ defmodule Setzkasten.Components.Feedback do
       ]}
       {@rest}
     >
-      <span :if={@busy} class={["loading loading-spinner loading-sm", @icon_color]}></span>
+      <span
+        :if={@busy}
+        class={["loading loading-spinner loading-sm motion-reduce:hidden", @icon_color]}
+      ></span>
+      <.icon :if={@busy} name="ellipsis" class={["size-5 motion-safe:hidden", @icon_color]} />
       <.icon :if={@icon_name && !@busy} name={@icon_name} class={["size-5", @icon_color]} />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
@@ -214,7 +218,8 @@ defmodule Setzkasten.Components.Feedback do
         phx-connected={JS.set_attribute({"hidden", ""}, to: "#client-error")}
         hidden
       >
-        {@reconnecting} <span class="loading loading-spinner loading-xs align-middle"></span>
+        {@reconnecting}
+        <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
       <.flash_alert
         id="server-error"
@@ -225,7 +230,8 @@ defmodule Setzkasten.Components.Feedback do
         phx-connected={JS.set_attribute({"hidden", ""}, to: "#server-error")}
         hidden
       >
-        {@reconnecting} <span class="loading loading-spinner loading-xs align-middle"></span>
+        {@reconnecting}
+        <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
     </div>
     """
@@ -317,7 +323,8 @@ defmodule Setzkasten.Components.Feedback do
   plush (`plush_size`, `:xl` 48px or `:xxl` 96px). Data that arrives by itself needs no action.
 
   The inline title is a bold line in the surrounding text size; the page title is a heading
-  (`level`, default 2) in `text-lg`.
+  (`level`, default 2) in `text-lg`. A `plush` without an image (see `Setzkasten.Plush`) falls
+  back to `icon`; without one the state shows no figure (no generic icon: one icon per meaning).
 
       <.empty_state icon="inbox" title="Noch keine Depots">
         Lege ein Depot an oder importiere eine CSV-Datei.
@@ -335,11 +342,17 @@ defmodule Setzkasten.Components.Feedback do
   slot :inner_block
   slot :action
 
-  def empty_state(%{layout: :page} = assigns) do
+  def empty_state(assigns) do
+    assigns
+    |> assign(:plush?, assigns.plush != nil and Setzkasten.Plush.available?(assigns.plush))
+    |> render_empty_state()
+  end
+
+  defp render_empty_state(%{layout: :page} = assigns) do
     ~H"""
     <div class={["flex flex-col items-center gap-3 px-6 py-12 text-center", @class]} {@rest}>
-      <.plush :if={@plush} name={@plush} size={@plush_size} />
-      <.icon :if={@icon && !@plush} name={@icon} class="size-12 text-base-content/70" />
+      <.plush :if={@plush?} name={@plush} size={@plush_size} />
+      <.icon :if={@icon && !@plush?} name={@icon} class="size-12 text-base-content/70" />
       <.dynamic_tag :if={@title} tag_name={"h#{@level}"} class="text-lg font-semibold wrap-anywhere">
         {@title}
       </.dynamic_tag>
@@ -351,11 +364,11 @@ defmodule Setzkasten.Components.Feedback do
     """
   end
 
-  def empty_state(assigns) do
+  defp render_empty_state(assigns) do
     ~H"""
     <div class={["flex items-start gap-3 py-6", @class]} {@rest}>
-      <.plush :if={@plush} name={@plush} size={:lg} />
-      <.icon :if={@icon && !@plush} name={@icon} class="size-6 shrink-0 text-base-content/70" />
+      <.plush :if={@plush?} name={@plush} size={:lg} />
+      <.icon :if={@icon && !@plush?} name={@icon} class="size-6 shrink-0 text-base-content/70" />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
         <p :if={@inner_block != []} class="text-sm text-base-content/70 max-w-prose">

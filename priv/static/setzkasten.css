@@ -76,6 +76,7 @@
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
     --setzkasten-popover-border: none;
+    --setzkasten-popover-control: var(--color-base-200);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -137,6 +138,7 @@
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
       --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+      --setzkasten-popover-control: var(--color-base-300);
     }
   }
 
@@ -199,6 +201,7 @@
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
     --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    --setzkasten-popover-control: var(--color-base-300);
   }
 }
 
@@ -330,7 +333,7 @@
    error-ink instead (5.39:1 light; in dark error-ink = error, so nothing changes there).
    Error lines under fields and amounts use the utility text-error-ink in markup. */
 @layer utilities.setzkasten {
-  :is(.input, .select, .textarea):is(.input-error, .select-error, .textarea-error) {
+  :is(.input, .select, .textarea, .file-input):is(.input-error, .select-error, .textarea-error, .file-input-error) {
     --input-color: var(--color-error-ink);
   }
   .btn-error.btn-outline:not(.btn-active, :hover, :active:focus, :focus-visible, :disabled, [disabled], .btn-disabled) {
@@ -369,6 +372,16 @@
   }
 }
 
+/* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
+   20 %), 5.33:1 light / 4.03:1 dark against the track on base-100, so it stands alone.
+   daisyUI's progress-neutral uses the neutral fill, 1.3:1 on dark base-100. */
+@layer utilities.setzkasten {
+  .progress.setzkasten-progress-neutral {
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+  }
+}
+
 /* Flat lists (E1) have no box around them: daisyUI insets the row dividers by the box radius,
    which leaves them 8px short of the list's top and bottom rules. They run through. */
 @layer utilities.setzkasten {
@@ -399,11 +412,36 @@
 
 /* Modals share the popover surface with dropdown menus (bg-popover in markup): in dark one
    step above the page with a hairline, so the box stands out from the dimmed backdrop. The
-   sidebar dialog keeps the sidebar's own surface. */
+   sidebar dialog keeps the sidebar's own surface. The dock lies under the backdrop, so a sticky
+   action bar in a dialog pins to the box's bottom edge, not above the dock. */
 @layer utilities.setzkasten {
   .modal-box:not(.setzkasten-sidebar) {
     background-color: var(--color-popover);
     border: var(--setzkasten-popover-border, none);
+  }
+  .modal-box {
+    --setzkasten-dock-offset: 0px;
+  }
+}
+
+/* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
+   unselected segmented option and the file input's button are base-200, which is the dark popover
+   surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
+   in dark, the same one-step lift (1.18:1) as base-200 on the dark page (1.16:1); the label
+   carries the contrast (8.2:1). */
+@layer utilities.setzkasten {
+  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
+    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    --btn-bg: var(--setzkasten-popover-control);
+  }
+  @media (hover: hover) {
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
+      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
+      --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+    }
+  }
+  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) .file-input::file-selector-button {
+    --btn-bg: var(--setzkasten-popover-control);
   }
 }
 

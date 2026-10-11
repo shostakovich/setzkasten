@@ -3,7 +3,7 @@ defmodule Setzkasten.Components.Navigation do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Click, only: [entry_click: 2]
 
   @doc """
   One choice out of a few (time range, view): a `join` of buttons, selected = `btn-primary`.
@@ -16,14 +16,25 @@ defmodule Setzkasten.Components.Navigation do
       `rest`) with `phx-value-value`. Options are `{label, value}`.
     * `:radio` – a form field: sr-only radios in `label.btn`, from `field` or `name`.
 
-  Options may also be maps with `:label`, `:value`, `:path` and `:icon`.
+  Options may also be maps with `:label`, `:value`, `:path`, `:icon` and `:long_label`, the
+  accessible name of a short label (`aria-label`, no tooltip): "1 M" reads "1 Monat". Let it
+  contain the visible label, so voice control finds the option by what it shows.
+
+  `block` stretches the group to the full width with options of equal width and tighter
+  padding below `sm`, so five short options fit a 360px phone. `block={:phone}` does so only
+  below `sm` (e.g. a period in the header's `:actions`, which then takes its own row under the
+  title) and keeps the compact group from `sm`.
 
       <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm}
         options={[{"1M", "1m", ~p"/?r=1m"}, {"1J", "1y", ~p"/?r=1y"}]} />
+      <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm}
+        options={[%{label: "1 M", long_label: "1 Monat", value: "1m", path: ~p"/?r=1m"}]} />
       <.segmented mode={:button} value={@view} label="Ansicht" phx-click="view"
         options={[%{label: "Liste", value: "list", icon: "list"}, {"Anteile", "shares"}]} />
       <.segmented mode={:radio} field={@form[:split]} label="Aufteilung"
         options={[{"Gleich", "equal"}, {"Anteile", "shares"}]} />
+      <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block options={…} />
+      <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block={:phone} options={…} />
   """
   attr :id, :string, default: nil
   attr :mode, :atom, default: :patch, values: [:patch, :button, :radio]
@@ -31,6 +42,12 @@ defmodule Setzkasten.Components.Navigation do
   attr :value, :any, default: nil
   attr :label, :string, required: true, doc: "accessible name of the group"
   attr :size, :atom, default: :md, values: [:sm, :md]
+
+  attr :block, :any,
+    default: false,
+    values: [false, true, :phone],
+    doc: "full width, options of equal width; `:phone` only below `sm`"
+
   attr :field, Phoenix.HTML.FormField, default: nil
   attr :name, :string, default: nil
   attr :class, :any, default: nil
@@ -40,11 +57,21 @@ defmodule Setzkasten.Components.Navigation do
     assigns =
       assigns
       |> assign(:options, Enum.map(assigns.options, &normalize_option/1))
-      |> assign(:size_class, assigns.size == :sm && "btn-sm")
+      |> assign(:option_class, [assigns.size == :sm && "btn-sm", block_option(assigns.block)])
+      |> assign(:join_class, ["join", block_join(assigns.block)])
       |> assign_field()
 
     render_segmented(assigns)
   end
+
+  # The marker class lets a container (the header's actions) make room for the full width.
+  defp block_join(true), do: "flex w-full setzkasten-segmented-block"
+  defp block_join(:phone), do: "max-sm:flex max-sm:w-full setzkasten-segmented-block"
+  defp block_join(false), do: nil
+
+  defp block_option(true), do: "min-w-0 flex-1 max-sm:px-2"
+  defp block_option(:phone), do: "max-sm:min-w-0 max-sm:flex-1 max-sm:px-2"
+  defp block_option(false), do: nil
 
   defp assign_field(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     assign(assigns, name: assigns.name || field.name, value: assigns.value || field.value)
@@ -58,12 +85,13 @@ defmodule Setzkasten.Components.Navigation do
 
   defp render_segmented(%{mode: :patch} = assigns) do
     ~H"""
-    <nav id={@id} aria-label={@label} class={["join", @class]} {@rest}>
+    <nav id={@id} aria-label={@label} class={[@join_class, @class]} {@rest}>
       <.link
         :for={option <- @options}
         patch={option.path}
-        class={["join-item btn", @size_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
         aria-current={selected?(option, @value) && "page"}
+        aria-label={option[:long_label]}
       >
         <.icon :if={option[:icon]} name={option[:icon]} />{option.label}
       </.link>
@@ -73,12 +101,13 @@ defmodule Setzkasten.Components.Navigation do
 
   defp render_segmented(%{mode: :button} = assigns) do
     ~H"""
-    <div id={@id} role="group" aria-label={@label} class={["join", @class]}>
+    <div id={@id} role="group" aria-label={@label} class={[@join_class, @class]}>
       <button
         :for={option <- @options}
         type="button"
-        class={["join-item btn", @size_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
         aria-pressed={to_string(selected?(option, @value))}
+        aria-label={option[:long_label]}
         phx-value-value={option.value}
         {@rest}
       >
@@ -90,14 +119,14 @@ defmodule Setzkasten.Components.Navigation do
 
   defp render_segmented(%{mode: :radio} = assigns) do
     ~H"""
-    <fieldset id={@id} class={["join", @class]} {@rest}>
+    <fieldset id={@id} class={[@join_class, @class]} {@rest}>
       <legend class="sr-only">{@label}</legend>
       <label
         :for={option <- @options}
         class={[
           "join-item btn has-checked:btn-primary",
           "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
-          @size_class
+          @option_class
         ]}
       >
         <input
@@ -106,6 +135,7 @@ defmodule Setzkasten.Components.Navigation do
           value={option.value}
           class="sr-only"
           checked={selected?(option, @value)}
+          aria-label={option[:long_label]}
         />
         <.icon :if={option[:icon]} name={option[:icon]} />{option.label}
       </label>
@@ -231,7 +261,9 @@ defmodule Setzkasten.Components.Navigation do
   click, Escape and after choosing an item; Escape and choosing return focus to the trigger.
   Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).
 
-  `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (event or `%JS{}`),
+  `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (an event name with
+  `phx-target`, e.g. `@myself`, or a `%JS{}` that carries its own target:
+  `JS.push("undo", target: @myself)`),
   `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
   item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
@@ -267,6 +299,7 @@ defmodule Setzkasten.Components.Navigation do
     attr :href, :string
     attr :method, :string
     attr :on_click, :any
+    attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :icon, :string
     attr :active, :boolean
     attr :danger, :boolean
@@ -340,7 +373,7 @@ defmodule Setzkasten.Components.Navigation do
             class={item[:danger] && "text-error-ink"}
             disabled={item[:disabled]}
             aria-haspopup={item[:confirm] && "dialog"}
-            phx-click={close_menu("##{@id}") |> JS.concat(click(item, @confirm_id))}
+            phx-click={close_menu("##{@id}") |> JS.concat(entry_click(item, @confirm_id))}
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
@@ -356,22 +389,4 @@ defmodule Setzkasten.Components.Navigation do
   # hidden, so focus would otherwise drop to <body>). LiveView runs an element's phx-keydown
   # only on the focused element itself, so the summary and every item carry the Escape binding.
   defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
-
-  defp click(item, confirm_id) do
-    js =
-      case item[:on_click] do
-        %JS{} = js -> js
-        event when is_binary(event) -> JS.push(event)
-        nil -> %JS{}
-      end
-
-    if item[:confirm] do
-      show_confirm(%JS{}, confirm_id, item[:confirm], js,
-        text: item[:confirm_text],
-        label: item[:confirm_label]
-      )
-    else
-      js
-    end
-  end
 end

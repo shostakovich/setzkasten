@@ -33,7 +33,11 @@ defmodule Setzkasten.FeedbackTest do
     assigns = %{}
     doc = parse(~H|<.alert busy>Lädt</.alert>|)
     assert attr(doc, ".alert", "aria-busy") == "true"
-    assert count(doc, ".loading") == 1
+
+    assert classes(doc, ".loading") ==
+             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-info)
+
+    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-info)
     assert count(parse(~H|<.alert icon={false}>x</.alert>|), "svg") == 0
   end
 
@@ -82,6 +86,7 @@ defmodule Setzkasten.FeedbackTest do
     doc = parse(~H|<.flash_group flash={@flash} />|)
     assert count(doc, "#flash-group .alert") == 3
     assert attr(doc, "#client-error", "hidden") != nil
+    assert "motion-reduce:hidden" in classes(doc, "#client-error .loading")
 
     doc = parse(~H|<.flash_group flash={@flash} close_label="Close" />|)
     assert attr(doc, "#client-error button", "aria-label") == "Close"
@@ -156,6 +161,21 @@ defmodule Setzkasten.FeedbackTest do
       parse(~H|<.empty_state plush="receipt" layout={:page} plush_size={:xxl}>T</.empty_state>|)
 
     assert count(doc, "img.size-24") == 2
+  end
+
+  test "empty state falls back to its icon when the plush has no image" do
+    assigns = %{}
+    doc = parse(~H|<.empty_state plush="missing" icon="inbox" title="Leer" />|)
+    assert count(doc, "img") == 0
+    assert count(doc, "svg.lucide.size-6") == 1
+
+    doc = parse(~H|<.empty_state plush="missing" icon="inbox" layout={:page} title="Leer" />|)
+    assert count(doc, "svg.lucide.size-12") == 1
+
+    doc = parse(~H|<.empty_state plush="missing" title="Leer" />|)
+    assert count(doc, "img, svg") == 0
+
+    assert count(parse(~H|<.empty_state plush="receipt" icon="inbox" />|), "svg") == 0
   end
 
   test "alert, flash and empty state text break long strings" do

@@ -119,4 +119,13 @@ defmodule Setzkasten.LayoutTest do
     card = parse(~H|<.card title="T" subtitle="S">x</.card>|)
     assert "wrap-anywhere" in classes(card, "p.text-sm")
   end
+
+  test "a section heading carries its own gap, none as the first child" do
+    assigns = %{}
+    doc = parse(~H|<.section_heading>Depots</.section_heading>|)
+    assert Enum.all?(~w(mt-8 first:mt-0), &(&1 in classes(doc, "div")))
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    refute css =~ "section-heading"
+  end
 end

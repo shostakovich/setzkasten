@@ -21,6 +21,24 @@ defmodule Setzkasten.ShellTest do
     assert text(doc, "nav.dock a:last-child .dock-label") == "B"
   end
 
+  test "a nav plush without an image falls back to the entry's icon" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" plush="missing" icon="list" navigate="/a" />
+        <:nav key={:b} label="B" plush="cart" icon="list" navigate="/b" /> Inhalt
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a:first-child svg.lucide") == 1
+    assert count(doc, "nav.dock a:first-child img") == 0
+    assert count(doc, "nav.dock a:last-child img.plush") == 2
+    assert count(doc, "nav.dock a:last-child svg") == 0
+  end
+
   test "sidebar dock with more than five entries: four and a more button" do
     assigns = %{}
 
@@ -126,6 +144,72 @@ defmodule Setzkasten.ShellTest do
     assert text(doc, "aside.xl\\:flex a[aria-current=page]") =~ "7.994,83"
   end
 
+  test "an entry without a section after a section stands apart" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:o} label="Übersicht" icon="list" navigate="/o" />
+        <:nav key={:k} label="Kinderdepot" icon="wallet" section="Depots" navigate="/k" />
+        <:nav key={:s} label="Einstellungen" icon="settings" navigate="/s" /> x
+      </.app_shell>
+      """)
+
+    sidebar = "aside.xl\\:flex"
+    assert "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/s'])")
+    refute "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/o'])")
+    refute "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/k'])")
+    assert count(doc, "#{sidebar} li.menu-title") == 1
+  end
+
+  test "a nav count is named in words and shows as a badge in the rail and the dock" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Buchungen" icon="list" count={2} count_label="neu" navigate="/b" />
+        <:nav key={:p} label="Posts" icon="file-text" count={12} navigate="/p" />
+        <:nav key={:s} label="Start" icon="house" navigate="/s" /> x
+      </.app_shell>
+      """)
+
+    for place <- ["aside.xl\\:flex", "aside.md\\:flex", "nav.dock"] do
+      assert attr(doc, "#{place} a[href='/b']", "aria-label") == "Buchungen, 2 neu"
+      assert attr(doc, "#{place} a[href='/p']", "aria-label") == "Posts, 12"
+    end
+
+    # Without a count the link keeps its visible text as name; the rail names it by label.
+    assert attr(doc, "aside.xl\\:flex a[href='/s']", "aria-label") == nil
+    assert attr(doc, "aside.md\\:flex a[href='/s']", "aria-label") == "Start"
+
+    rail = classes(doc, "aside.md\\:flex a[href='/b'] .indicator-item")
+    assert Enum.all?(~w(badge badge-sm bg-sidebar-accent text-sidebar), &(&1 in rail))
+    assert text(doc, "aside.md\\:flex a[href='/b'] .indicator-item") == "2"
+    assert "badge-primary" in classes(doc, "nav.dock a[href='/b'] .indicator-item")
+    assert count(doc, "a[href='/s'] .indicator") == 0
+    # The full sidebar keeps the plain number.
+    assert count(doc, "aside.xl\\:flex .indicator") == 0
+  end
+
+  test "a nav count of 0 shows no badge in the rail and the dock" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Buchungen" icon="list" count={0} count_label="neu" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "a[href='/b'] .indicator") == 0
+    assert count(doc, "nav.dock a[href='/b'] svg.lucide") == 1
+  end
+
   test "topbar brand shrinks before the account instead of wrapping the bar" do
     assigns = %{}
 
@@ -213,5 +297,32 @@ defmodule Setzkasten.ShellTest do
     [first, second] = doc |> find("aside.xl\\:flex li.menu-title") |> LazyHTML.attribute("class")
     refute "mt-4" in String.split(first)
     assert "mt-4" in String.split(second)
+  end
+
+  test "an entry with rail={false} stays out of the icon rail, groups keep their gap" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:o} label="Übersicht" icon="list" navigate="/o" />
+        <:nav key={:b} label="Bestand" icon="list" navigate="/b" />
+        <:nav key={:k} label="Kinderdepot" icon="wallet" section="Depots" navigate="/k" rail={false} />
+        <:nav key={:s} label="Einstellungen" icon="settings" navigate="/s" /> x
+      </.app_shell>
+      """)
+
+    rail = "aside.md\\:flex"
+    assert count(doc, "#{rail} a[href='/k']") == 0
+    assert count(doc, "#{rail} a") == 3
+    # The left-out section still separates the groups around it.
+    assert "mt-3" in classes(doc, "#{rail} a[href='/s']")
+    refute "mt-3" in classes(doc, "#{rail} a[href='/o']")
+    refute "mt-3" in classes(doc, "#{rail} a[href='/b']")
+    # Everywhere else the entry stays.
+    assert count(doc, "aside.xl\\:flex a[href='/k']") == 1
+    assert count(doc, "dialog#app-shell-sidebar a[href='/k']") == 1
+    assert count(doc, "nav.dock a[href='/k']") == 1
   end
 end
