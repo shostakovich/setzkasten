@@ -311,12 +311,15 @@ defmodule Setzkasten.Components.Overlays do
   A `<details>` disclosure. `variant={:collapse}` (default) draws daisyUI's bordered
   `collapse collapse-arrow`; `variant={:button}` renders the summary as a button (with `icon`)
   for compact "more options" triggers. The summary is at least 44px on touch screens.
-  The open state survives LiveView patches.
+  The open state survives LiveView patches. `count` follows the summary as a quiet number, as
+  in `section_heading` (not "Kurse (3)").
 
       <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
+      <.disclosure id="retired" summary="Ausgemustert" count={2}>…</.disclosure>
   """
   attr :id, :string, required: true
   attr :summary, :string, required: true
+  attr :count, :integer, default: nil
   attr :open, :boolean, default: false
   attr :variant, :atom, default: :collapse, values: [:collapse, :button]
   attr :icon, :string, default: nil
@@ -333,7 +336,9 @@ defmodule Setzkasten.Components.Overlays do
       phx-mounted={JS.ignore_attributes(["open"])}
       {@rest}
     >
-      <summary class="btn"><.icon :if={@icon} name={@icon} />{@summary}</summary>
+      <summary class="btn">
+        <.icon :if={@icon} name={@icon} />{@summary}<.summary_count count={@count} />
+      </summary>
       <div class="mt-3 text-sm">{render_slot(@inner_block)}</div>
     </details>
     """
@@ -348,9 +353,21 @@ defmodule Setzkasten.Components.Overlays do
       phx-mounted={JS.ignore_attributes(["open"])}
       {@rest}
     >
-      <summary class="collapse-title font-semibold">{@summary}</summary>
+      <summary class="collapse-title font-semibold">
+        {@summary}<.summary_count count={@count} />
+      </summary>
       <div class="collapse-content text-sm">{render_slot(@inner_block)}</div>
     </details>
+    """
+  end
+
+  attr :count, :integer, required: true
+
+  defp summary_count(%{count: nil} = assigns), do: ~H""
+
+  defp summary_count(assigns) do
+    ~H"""
+    <span class="ms-2 font-normal text-base-content/70 tabular-nums">{@count}</span>
     """
   end
 end

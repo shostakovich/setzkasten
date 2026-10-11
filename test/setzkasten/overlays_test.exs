@@ -94,4 +94,31 @@ defmodule Setzkasten.OverlaysTest do
     assert "wrap-anywhere" in classes(confirm, "h2")
     assert "wrap-anywhere" in classes(confirm, "p")
   end
+
+  test "neutral controls step up one level on the dark popover surface" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "--setzkasten-popover-control: var(--color-base-200);"
+    # Both ways into dark (system and explicit choice).
+    assert length(String.split(css, "--setzkasten-popover-control: var(--color-base-300);")) == 3
+    assert css =~ ~r/\.modal-box:not\(\.setzkasten-sidebar\), \.dropdown-content\)\s+\.btn:not\(/
+
+    assert css =~
+             ".file-input::file-selector-button {\n    --btn-bg: var(--setzkasten-popover-control);"
+  end
+
+  test "a disclosure's count is a quiet number after the summary" do
+    assigns = %{}
+    doc = parse(~H|<.disclosure id="d" summary="Ausgemustert" count={2}>x</.disclosure>|)
+    assert text(doc, "summary span.tabular-nums") == "2"
+    assert "text-base-content/70" in classes(doc, "summary span")
+    refute text(doc, "summary") =~ "("
+
+    doc =
+      parse(~H|<.disclosure id="d" summary="Mehr" variant={:button} count={0}>x</.disclosure>|)
+
+    assert text(doc, "summary span.tabular-nums") == "0"
+
+    assert count(parse(~H|<.disclosure id="d" summary="Mehr">x</.disclosure>|), "summary span") ==
+             0
+  end
 end

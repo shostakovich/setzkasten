@@ -17,11 +17,15 @@ defmodule Setzkasten.Plush do
       config :setzkasten, plush: MyAppWeb.Plush
 
   Returning `nil` for `:dark` renders a single image for both themes. A name without a light
-  source renders nothing (plush names often come from data, e.g. categories). Pages that do not
-  need a module can pass `src` and `dark_src` to `<.plush>` directly.
+  source renders nothing (plush names often come from data, e.g. categories); `<.empty_state>`
+  and `app_shell` nav entries then show their `icon` instead. Pages that do not need a module
+  can pass `src` and `dark_src` to `<.plush>` directly.
   """
 
   @callback src(name :: String.t(), variant :: :light | :dark) :: String.t() | nil
+
+  @doc "Whether the configured module has an image for `name` (a light source)."
+  def available?(name), do: elem(sources(name), 0) != nil
 
   @doc false
   def sources(name) do

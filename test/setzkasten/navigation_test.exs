@@ -56,6 +56,26 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "input[value=shares]", "name") == "e[split]"
   end
 
+  test "segmented options carry a long accessible name, in every mode" do
+    options = [
+      %{label: "1 M", long_label: "1 Monat", value: "1m", path: "/?r=1m"},
+      {"Max", "max", "/?r=max"}
+    ]
+
+    assigns = %{options: options}
+
+    doc = parse(~H|<.segmented label="Zeitraum" value="1m" options={@options} />|)
+    assert attr(doc, "a[href='/?r=1m']", "aria-label") == "1 Monat"
+    assert attr(doc, "a[href='/?r=1m']", "title") == nil
+    assert attr(doc, "a[href='/?r=max']", "aria-label") == nil
+
+    doc = parse(~H|<.segmented mode={:button} label="Zeitraum" options={@options} />|)
+    assert attr(doc, "button[phx-value-value='1m']", "aria-label") == "1 Monat"
+
+    doc = parse(~H|<.segmented mode={:radio} name="r" label="Zeitraum" options={@options} />|)
+    assert attr(doc, "input[value='1m']", "aria-label") == "1 Monat"
+  end
+
   test "tabs mark the active tab with aria-current only" do
     assigns = %{}
 
@@ -234,5 +254,53 @@ defmodule Setzkasten.NavigationTest do
 </.breadcrumbs>|)
     assert text(doc, "span[aria-current=page]") == "Neu"
     refute "max-sm:sr-only" in classes(doc, "li")
+  end
+
+  test "segmented block stretches options to equal widths, in every mode" do
+    options = [{"1M", "1m", "/?r=1m"}, {"1J", "1y", "/?r=1y"}]
+    assigns = %{options: options}
+
+    doc = parse(~H|<.segmented label="Zeitraum" options={@options} size={:sm} block />|)
+    assert classes(doc, "nav") == ~w(join flex w-full setzkasten-segmented-block)
+
+    assert classes(doc, "a[href='/?r=1m']") ==
+             ~w(join-item btn btn-sm min-w-0 flex-1 max-sm:px-2)
+
+    doc = parse(~H|<.segmented mode={:button} label="Zeitraum" options={@options} block />|)
+    assert classes(doc, "[role=group]") == ~w(join flex w-full setzkasten-segmented-block)
+    assert "flex-1" in classes(doc, "button")
+
+    doc =
+      parse(~H|<.segmented mode={:radio} name="r" label="Zeitraum" options={@options} block />|)
+
+    assert classes(doc, "fieldset") == ~w(join flex w-full setzkasten-segmented-block)
+    assert "flex-1" in classes(doc, "label")
+
+    doc = parse(~H|<.segmented label="Zeitraum" options={@options} />|)
+    assert classes(doc, "nav") == ["join"]
+  end
+
+  test "segmented block on phones only, with room in the header's actions" do
+    options = [{"1M", "1m", "/?r=1m"}, {"1J", "1y", "/?r=1y"}]
+    assigns = %{options: options}
+
+    doc =
+      parse(~H"""
+      <.header>
+        Übersicht
+        <:actions><.segmented label="Zeitraum" options={@options} block={:phone} /></:actions>
+      </.header>
+      """)
+
+    assert classes(doc, "nav") ==
+             ~w(join max-sm:flex max-sm:w-full setzkasten-segmented-block)
+
+    assert Enum.all?(~w(max-sm:min-w-0 max-sm:flex-1), &(&1 in classes(doc, "a[href='/?r=1m']")))
+    refute "flex-1" in classes(doc, "a[href='/?r=1m']")
+
+    assert "max-sm:has-[>.setzkasten-segmented-block]:w-full" in classes(
+             doc,
+             "header > div:last-child"
+           )
   end
 end

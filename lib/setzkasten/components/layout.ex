@@ -20,11 +20,12 @@ defmodule Setzkasten.Components.Layout do
   The page header: optional back link, title (`text-2xl`), badge, subtitle and actions.
   The title block grows from a 10rem basis, so a short title keeps its action on the same row
   on phones and long ones push the actions below; it is at least as tall as a button, so the
-  title sits at the same height with or without actions.
+  title sits at the same height with or without actions. A `block` segmented control in
+  `:actions` takes the full width under the title on phones.
 
       <.header back={~p"/bestand"} back_label="Bestand">
         Vanguard FTSE All-World
-        <:subtitle>IE00BK5BQT80 · Langfristig</:subtitle>
+        <:subtitle>{join_meta(["IE00BK5BQT80", "Langfristig"])}</:subtitle>
         <:badge><.badge tone={:success}>aktuell</.badge></:badge>
         <:actions><.button variant={:primary} icon="plus">Buchung</.button></:actions>
       </.header>
@@ -58,14 +59,22 @@ defmodule Setzkasten.Components.Layout do
           {render_slot(@subtitle)}
         </p>
       </div>
-      <div :if={@actions != []} class="flex flex-wrap gap-2">{render_slot(@actions)}</div>
+      <div
+        :if={@actions != []}
+        class="flex flex-wrap gap-2 max-sm:has-[>.setzkasten-segmented-block]:w-full"
+      >
+        {render_slot(@actions)}
+      </div>
     </header>
     """
   end
 
   @doc """
   A section heading (sentence case, `text-base` 600) with an optional count (quiet text)
-  and actions. `mt-8` above it, none when it is the first child.
+  and actions. `mt-8` above it, none when it is the first child (`first:mt-0`): at the top of a
+  page, card or dialog, and as the first child of its own `<section aria-labelledby>`. Sections
+  wrapped like that are stacked by their parent with a gap (`flex flex-col gap-8`, `space-y-8`
+  or the grid's gap).
 
       <.section_heading count={2}>Depots
         <:actions><.button size={:sm} icon="plus">Depot</.button></:actions>

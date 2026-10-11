@@ -163,6 +163,21 @@ defmodule Setzkasten.FeedbackTest do
     assert count(doc, "img.size-24") == 2
   end
 
+  test "empty state falls back to its icon when the plush has no image" do
+    assigns = %{}
+    doc = parse(~H|<.empty_state plush="missing" icon="inbox" title="Leer" />|)
+    assert count(doc, "img") == 0
+    assert count(doc, "svg.lucide.size-6") == 1
+
+    doc = parse(~H|<.empty_state plush="missing" icon="inbox" layout={:page} title="Leer" />|)
+    assert count(doc, "svg.lucide.size-12") == 1
+
+    doc = parse(~H|<.empty_state plush="missing" title="Leer" />|)
+    assert count(doc, "img, svg") == 0
+
+    assert count(parse(~H|<.empty_state plush="receipt" icon="inbox" />|), "svg") == 0
+  end
+
   test "alert, flash and empty state text break long strings" do
     assigns = %{}
     alert = parse(~H|<.alert title="T">x</.alert>|)

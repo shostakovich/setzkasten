@@ -76,6 +76,7 @@
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
     --setzkasten-popover-border: none;
+    --setzkasten-popover-control: var(--color-base-200);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -137,6 +138,7 @@
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
       --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+      --setzkasten-popover-control: var(--color-base-300);
     }
   }
 
@@ -199,6 +201,7 @@
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
     --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    --setzkasten-popover-control: var(--color-base-300);
   }
 }
 
@@ -418,6 +421,27 @@
   }
   .modal-box {
     --setzkasten-dock-offset: 0px;
+  }
+}
+
+/* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
+   unselected segmented option and the file input's button are base-200, which is the dark popover
+   surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
+   in dark, the same one-step lift (1.18:1) as base-200 on the dark page (1.16:1); the label
+   carries the contrast (8.2:1). */
+@layer utilities.setzkasten {
+  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
+    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    --btn-bg: var(--setzkasten-popover-control);
+  }
+  @media (hover: hover) {
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
+      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
+      --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+    }
+  }
+  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) .file-input::file-selector-button {
+    --btn-bg: var(--setzkasten-popover-control);
   }
 }
 
