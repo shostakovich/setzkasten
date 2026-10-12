@@ -49,6 +49,11 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, "#flash-info", "role") == "status"
     assert attr(doc, "button", "aria-label") == "Schließen"
     assert attr(doc, "button", "phx-click") =~ "lv:clear-flash"
+    # Leaves in the exit time on the motion tokens, without movement under reduced motion.
+    click = attr(doc, "button", "phx-click")
+    assert click =~ "duration-(--setzkasten-duration-exit)"
+    assert click =~ "motion-safe:-translate-y-2"
+    assert click =~ ~s("time":150)
   end
 
   test "alert with a close button keeps it at the end on phones" do

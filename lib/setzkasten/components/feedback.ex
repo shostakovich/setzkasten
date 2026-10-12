@@ -192,10 +192,10 @@ defmodule Setzkasten.Components.Feedback do
   defp hide_flash(js, selector) do
     JS.hide(js,
       to: selector,
-      time: 200,
+      time: 150,
       transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0",
-         "opacity-0 -translate-y-2"}
+        {"transition ease-(--setzkasten-ease-in) duration-(--setzkasten-duration-exit)",
+         "opacity-100 translate-y-0", "opacity-0 motion-safe:-translate-y-2"}
     )
   end
 

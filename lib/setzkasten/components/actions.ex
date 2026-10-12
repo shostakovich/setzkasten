@@ -158,7 +158,7 @@ defmodule Setzkasten.Components.Actions do
   def fab(assigns) do
     assigns =
       assign(assigns, :classes, [
-        "btn btn-primary btn-lg btn-circle shadow-lg fixed z-40 md:hidden",
+        "setzkasten-fab btn btn-primary btn-lg btn-circle shadow-lg fixed z-40 md:hidden",
         "end-[calc(1rem+env(safe-area-inset-right))]",
         "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]",
         assigns.class

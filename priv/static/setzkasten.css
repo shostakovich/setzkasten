@@ -710,6 +710,221 @@
   }
 }
 
+/* Motion (guides/design-system.md 2.9); replaces daisyUI's timings, which ignore reduced motion for dialogs. */
+@layer base {
+  :root {
+    --setzkasten-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --setzkasten-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --setzkasten-duration-press: 100ms;
+    --setzkasten-duration-exit: 150ms;
+    --setzkasten-duration: 200ms;
+    --setzkasten-duration-overlay: 250ms;
+  }
+}
+
+@keyframes setzkasten-enter {
+  from {
+    opacity: 0;
+    translate: var(--setzkasten-enter-from, 0 0);
+    scale: var(--setzkasten-enter-scale, 1);
+  }
+}
+
+@layer utilities.setzkasten {
+  /* overlay keeps a closing dialog in the top layer, so the page (FAB, dock) stays under its exit. */
+  .modal {
+    transition:
+      background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      visibility var(--setzkasten-duration-exit) allow-discrete,
+      overlay var(--setzkasten-duration-exit) allow-discrete;
+  }
+  .modal:is([open], .modal-open, :target) {
+    transition:
+      background-color var(--setzkasten-duration) var(--setzkasten-ease-out),
+      visibility 0s allow-discrete,
+      overlay 0s allow-discrete;
+  }
+  .modal-box {
+    --setzkasten-enter-from: 0 0.5rem;
+    --setzkasten-enter-scale: 0.97;
+    --setzkasten-enter-opacity: 0;
+    translate: var(--setzkasten-enter-from);
+    scale: var(--setzkasten-enter-scale);
+    opacity: var(--setzkasten-enter-opacity);
+    transition:
+      translate var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .modal-bottom .modal-box {
+    --setzkasten-enter-from: 0 100%;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  .modal-start .modal-box {
+    --setzkasten-enter-from: -100% 0;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  .modal-end .modal-box {
+    --setzkasten-enter-from: 100% 0;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  @media (width >= 40rem) {
+    .sm\:modal-middle .modal-box {
+      --setzkasten-enter-from: 0 0.5rem;
+      --setzkasten-enter-scale: 0.97;
+      --setzkasten-enter-opacity: 0;
+    }
+  }
+  .modal:is([open], .modal-open, :target) .modal-box {
+    translate: 0 0;
+    scale: 1;
+    opacity: 1;
+    transition-duration: var(--setzkasten-duration-overlay);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .modal:is([open], .modal-open, :target) .modal-box {
+      translate: var(--setzkasten-enter-from);
+      scale: var(--setzkasten-enter-scale);
+      opacity: var(--setzkasten-enter-opacity);
+    }
+  }
+
+  .btn.setzkasten-fab {
+    transition-property: color, background-color, border-color, box-shadow, scale, opacity, visibility;
+    transition-behavior: allow-discrete;
+  }
+  :root:has(.modal[open]) .setzkasten-fab {
+    opacity: 0;
+    scale: 0.8;
+    visibility: hidden;
+    transition-timing-function: var(--setzkasten-ease-in);
+  }
+
+  .btn {
+    transition-property: color, background-color, border-color, box-shadow, scale;
+    transition-duration: var(--setzkasten-duration-exit);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
+    scale: 0.97;
+    transition-duration: var(--setzkasten-duration-press);
+  }
+
+  /* <details> hides its content at once; allow-discrete keeps it rendered for the fade-out. */
+  .dropdown:is(details) > .dropdown-content {
+    --setzkasten-enter-from: 0 -0.25rem;
+    --setzkasten-enter-scale: 0.96;
+    transform-origin: top left;
+    animation: none;
+    transition:
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .dropdown-end:is(details) > .dropdown-content {
+    transform-origin: top right;
+  }
+  .dropdown-top:is(details) > .dropdown-content {
+    --setzkasten-enter-from: 0 0.25rem;
+    transform-origin: bottom left;
+  }
+  .dropdown-top.dropdown-end:is(details) > .dropdown-content {
+    transform-origin: bottom right;
+  }
+  .dropdown:is(details):not([open]) > .dropdown-content {
+    opacity: 0;
+    scale: var(--setzkasten-enter-scale);
+    pointer-events: none;
+  }
+  .dropdown:is(details)[open] > .dropdown-content {
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .dropdown:is(details)::details-content {
+    transition: content-visibility var(--setzkasten-duration-exit) allow-discrete;
+  }
+
+  /* daisyUI drops the open arrow under reduced motion; the rotation is state, so it stays. */
+  .collapse:is(details)::details-content {
+    transition: none;
+  }
+  .collapse:is(details) > .collapse-content {
+    --setzkasten-enter-from: 0 -0.25rem;
+  }
+  .collapse:is(details)[open] > .collapse-content {
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .collapse-arrow > .collapse-title::after {
+    transition: transform var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .collapse[open].collapse-arrow > .collapse-title::after {
+    transform: translateY(-50%) rotate(225deg);
+  }
+
+  .toast > * {
+    --setzkasten-enter-from: 0 0.5rem;
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .toast-top > * {
+    --setzkasten-enter-from: 0 -0.5rem;
+  }
+
+  .tabs-border > .tab::before {
+    scale: 0.5 1;
+    transition:
+      background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .tabs-border > .tab:is(.tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"], :checked, label:has(:checked))::before {
+    scale: 1;
+    transition-duration: var(--setzkasten-duration);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+
+  .checkbox::before {
+    transition:
+      clip-path var(--setzkasten-duration) var(--setzkasten-ease-out),
+      opacity var(--setzkasten-duration-press) linear;
+    transition-delay: 0s;
+  }
+  .toggle {
+    transition:
+      color var(--setzkasten-duration),
+      grid-template-columns var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal .modal-box,
+    .dropdown:is(details) > .dropdown-content,
+    .collapse:is(details) > .collapse-content,
+    .toast > *,
+    .toast-top > * {
+      --setzkasten-enter-from: 0 0;
+      --setzkasten-enter-scale: 1;
+      --setzkasten-enter-opacity: 0;
+    }
+    :root:has(.modal[open]) .setzkasten-fab,
+    .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
+      scale: none;
+      translate: none;
+    }
+    .tabs-border > .tab::before {
+      scale: none;
+    }
+    .collapse-arrow > .collapse-title::after {
+      transition: none;
+    }
+    .checkbox::before {
+      transition: opacity var(--setzkasten-duration-press) linear;
+    }
+    .toggle {
+      transition: color var(--setzkasten-duration);
+    }
+  }
+}
+
 /* LiveView wrapper divs take no part in layout. */
 [data-phx-session],
 [data-phx-teleported-src] {
