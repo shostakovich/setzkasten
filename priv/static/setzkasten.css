@@ -318,6 +318,9 @@
   }
 }
 
+/* app_shell's collapsed sidebar; the attribute sits on <html> so <.theme_script> sets it before paint. */
+@custom-variant sidebar-collapsed (:root[data-sidebar="collapsed"] &);
+
 /* LiveView loading variants. */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
@@ -658,6 +661,11 @@
   }
   .setzkasten-sidebar .btn:focus-visible {
     outline-color: var(--color-sidebar-accent);
+  }
+  /* daisyUI fills a focused ghost button with base-200, which hides the sidebar's light icon. */
+  .setzkasten-sidebar .btn-ghost {
+    --btn-color: color-mix(in oklab, var(--color-sidebar-content) 10%, transparent);
+    --btn-fg: var(--color-sidebar-content);
   }
   /* The light theme's selection fill is as dark as the sidebar. */
   .setzkasten-sidebar .btn {

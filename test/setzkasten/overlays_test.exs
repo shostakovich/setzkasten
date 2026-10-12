@@ -40,6 +40,10 @@ defmodule Setzkasten.OverlaysTest do
     assert "modal-end" in classes(doc, "dialog")
     assert attr(doc, "dialog", "data-show") == "true"
     assert attr(doc, ".modal-box form button", "aria-label") == "Schließen"
+
+    doc = parse(~H|<.modal id="p" placement={:start} close_button={false}>Body</.modal>|)
+    assert count(doc, ".modal-box form") == 0
+    assert count(doc, ".modal-box > div:first-child:not(:has(*))") == 0
   end
 
   test "show and hide modal dispatch to the dialog" do

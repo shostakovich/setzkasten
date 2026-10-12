@@ -81,14 +81,14 @@ defmodule Setzkasten.ShellTest do
              "foot-sidebar"
            ]
 
-    # The account sits in the top bar below xl and at the foot of the full sidebar from xl.
+    # The account sits in the top bar below lg and at the foot of the full sidebar from lg.
     assert Enum.sort(doc |> find(".acc") |> LazyHTML.attribute("id")) == [
              "acc-bar",
              "acc-sidebar"
            ]
 
-    assert count(doc, "aside.xl\\:flex #acc-sidebar") == 1
-    assert "xl:hidden" in classes(doc, "header:has(#acc-bar)")
+    assert count(doc, "aside.lg\\:flex #acc-sidebar") == 1
+    assert "lg:hidden" in classes(doc, "header:has(#acc-bar)")
   end
 
   test "dock can be dropped; then the menu stays on phones" do
@@ -152,7 +152,7 @@ defmodule Setzkasten.ShellTest do
       </.app_shell>
       """)
 
-    assert count(doc, "aside.xl\\:flex") == 1
+    assert count(doc, "aside.lg\\:flex") == 1
     assert attr(doc, "aside.md\\:flex a[aria-current=page]", "data-tip") == "Kinderdepot"
     # Sticky makes a stacking context: without a z-index the rail's tooltips end up below
     # positioned page content such as form fields.
@@ -161,8 +161,61 @@ defmodule Setzkasten.ShellTest do
     assert attr(doc, "dialog#app-shell-sidebar", "phx-hook") ==
              "Setzkasten.Components.Overlays.Modal"
 
-    assert text(doc, "aside.xl\\:flex li.menu-title") == "Depots"
-    assert text(doc, "aside.xl\\:flex a[aria-current=page]") =~ "7.994,83"
+    assert text(doc, "aside.lg\\:flex li.menu-title") == "Depots"
+    assert text(doc, "aside.lg\\:flex a[aria-current=page]") =~ "7.994,83"
+  end
+
+  test "sidebar: 16rem from lg, collapsible to the rail, overlay below lg without a ✕" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} collapse_label="Collapse" expand_label="Expand">
+        <:brand>App</:brand>
+        <:account :let={place}><span id={"acc-#{place}"}>A</span></:account>
+        <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    for aside <- ["#app-shell-sidebar-full", "#app-shell-rail"] do
+      assert attr(doc, aside, "phx-hook") == "Setzkasten.Components.Shell.Sidebar"
+    end
+
+    full = classes(doc, "aside#app-shell-sidebar-full")
+    assert Enum.all?(~w(hidden lg:flex lg:sidebar-collapsed:hidden w-64), &(&1 in full))
+    rail = classes(doc, "aside.md\\:flex")
+    assert Enum.all?(~w(lg:hidden lg:sidebar-collapsed:flex), &(&1 in rail))
+    assert Enum.all?(~w(lg:hidden lg:sidebar-collapsed:block), &(&1 in classes(doc, "header")))
+    assert "w-64" in classes(doc, "dialog#app-shell-sidebar .modal-box")
+
+    collapse = "aside#app-shell-sidebar-full [data-sidebar-toggle=collapse]"
+    assert count(doc, "#{collapse}:has(path[d='m16 15-3-3 3-3'])") == 1
+    assert attr(doc, collapse, "aria-label") == "Collapse"
+    assert attr(doc, collapse, "aria-expanded") == "true"
+    assert attr(doc, collapse, "aria-controls") == "app-shell-sidebar-full"
+
+    assert count(
+             doc,
+             "aside#app-shell-sidebar-full div:has(> #acc-sidebar) + [data-sidebar-toggle=collapse]"
+           ) == 1
+
+    # One expand button at the rail's foot; the hook expands in place from lg, opens the dialog below.
+    assert count(doc, "aside.md\\:flex button") == 1
+    expand = "aside.md\\:flex [data-sidebar-toggle=expand]"
+    assert attr(doc, expand, "aria-label") == "Expand"
+    assert attr(doc, expand, "aria-expanded") == "false"
+    assert attr(doc, expand, "aria-controls") == "app-shell-sidebar-full"
+    assert attr(doc, expand, "data-sidebar-dialog") == "app-shell-sidebar"
+    assert attr(doc, expand, "phx-mounted") =~ "aria-haspopup"
+    assert "mt-auto" in classes(doc, expand)
+    refute Enum.any?(~w(lg:hidden max-lg:hidden), &(&1 in classes(doc, expand)))
+    assert count(doc, "aside.md\\:flex path[d='m14 9 3 3-3 3']") == 1
+
+    assert count(doc, "dialog#app-shell-sidebar path[d='M18 6 6 18']") == 0
+    assert count(doc, "dialog#app-shell-sidebar [data-sidebar-toggle]") == 0
+    close = "dialog#app-shell-sidebar form[method=dialog]:not(.modal-backdrop) button"
+    assert attr(doc, close, "aria-label") == "Collapse"
+    assert count(doc, "#{close} path[d='m16 15-3-3 3-3']") == 1
   end
 
   test "an entry without a section after a section stands apart" do
@@ -178,7 +231,7 @@ defmodule Setzkasten.ShellTest do
       </.app_shell>
       """)
 
-    sidebar = "aside.xl\\:flex"
+    sidebar = "aside.lg\\:flex"
     assert "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/s'])")
     refute "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/o'])")
     refute "mt-4" in classes(doc, "#{sidebar} li:has(> a[href='/k'])")
@@ -198,13 +251,13 @@ defmodule Setzkasten.ShellTest do
       </.app_shell>
       """)
 
-    for place <- ["aside.xl\\:flex", "aside.md\\:flex", "nav.dock"] do
+    for place <- ["aside.lg\\:flex", "aside.md\\:flex", "nav.dock"] do
       assert attr(doc, "#{place} a[href='/b']", "aria-label") == "Buchungen, 2 neu"
       assert attr(doc, "#{place} a[href='/p']", "aria-label") == "Posts, 12"
     end
 
     # Without a count the link keeps its visible text as name; the rail names it by label.
-    assert attr(doc, "aside.xl\\:flex a[href='/s']", "aria-label") == nil
+    assert attr(doc, "aside.lg\\:flex a[href='/s']", "aria-label") == nil
     assert attr(doc, "aside.md\\:flex a[href='/s']", "aria-label") == "Start"
 
     rail = classes(doc, "aside.md\\:flex a[href='/b'] .indicator-item")
@@ -213,7 +266,7 @@ defmodule Setzkasten.ShellTest do
     assert "badge-primary" in classes(doc, "nav.dock a[href='/b'] .indicator-item")
     assert count(doc, "a[href='/s'] .indicator") == 0
     # The full sidebar keeps the plain number.
-    assert count(doc, "aside.xl\\:flex .indicator") == 0
+    assert count(doc, "aside.lg\\:flex .indicator") == 0
   end
 
   test "a nav count of 0 shows no badge in the rail and the dock" do
@@ -248,7 +301,7 @@ defmodule Setzkasten.ShellTest do
     assert "shrink-0" in classes(doc, ".navbar > div.ms-auto")
   end
 
-  test "a page bar takes the brand's place, sticks and stays from xl without the account" do
+  test "a page bar takes the brand's place, sticks and stays from lg without the account" do
     assigns = %{}
 
     doc =
@@ -263,10 +316,10 @@ defmodule Setzkasten.ShellTest do
 
     header = classes(doc, "header:has(.page-bar)")
     assert "sticky" in header
-    refute "xl:hidden" in header
+    refute "lg:hidden" in header
     assert count(doc, "header .brand") == 0
     assert count(doc, "aside .brand") == 1
-    assert "xl:hidden" in classes(doc, "header div:has(> #acc-bar)")
+    assert "lg:hidden" in classes(doc, "header div:has(> #acc-bar)")
     # Detail pages go back through the bar, without the dock.
     assert count(doc, "nav.dock") == 0
   end
@@ -315,7 +368,7 @@ defmodule Setzkasten.ShellTest do
       </.app_shell>
       """)
 
-    [first, second] = doc |> find("aside.xl\\:flex li.menu-title") |> LazyHTML.attribute("class")
+    [first, second] = doc |> find("aside.lg\\:flex li.menu-title") |> LazyHTML.attribute("class")
     refute "mt-4" in String.split(first)
     assert "mt-4" in String.split(second)
   end
@@ -342,7 +395,7 @@ defmodule Setzkasten.ShellTest do
     refute "mt-3" in classes(doc, "#{rail} a[href='/o']")
     refute "mt-3" in classes(doc, "#{rail} a[href='/b']")
     # Everywhere else the entry stays.
-    assert count(doc, "aside.xl\\:flex a[href='/k']") == 1
+    assert count(doc, "aside.lg\\:flex a[href='/k']") == 1
     assert count(doc, "dialog#app-shell-sidebar a[href='/k']") == 1
     assert count(doc, "nav.dock a[href='/k']") == 1
   end

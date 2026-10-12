@@ -330,9 +330,9 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  Applies a stored `<.theme_toggle store={:local}>` choice before first paint, and points the
-  browser's `theme-color` at an explicit choice (a `data-theme` set by the store or the
-  server). Put it in the root layout's `<head>` after `<.theme_meta />`; pass the CSP nonce if
+  Applies a stored `<.theme_toggle store={:local}>` choice and a collapsed `app_shell` sidebar
+  (`data-sidebar="collapsed"` on `<html>`) before first paint, and points the browser's
+  `theme-color` at an explicit choice (a `data-theme` set by the store or the server). Put it in the root layout's `<head>` after `<.theme_meta />`; pass the CSP nonce if
   the app sends one.
 
       <.theme_script nonce={assigns[:csp_nonce]} />
@@ -342,7 +342,7 @@ defmodule Setzkasten.Components.Layout do
   def theme_script(assigns) do
     ~H"""
     <script nonce={@nonce}>
-      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t) } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })()
+      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t); if (localStorage.getItem("setzkasten:sidebar") === "collapsed") r.setAttribute("data-sidebar", "collapsed") } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })()
     </script>
     """
   end

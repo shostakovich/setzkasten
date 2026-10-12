@@ -65,7 +65,8 @@ defmodule Setzkasten.Components.Overlays do
 
   @doc """
   A native `<dialog>`: a bottom sheet on phones and centred from `sm` (`placement={:center}`),
-  or a side panel (`placement={:end}` or `{:start}`, with a close button). Escape, the backdrop and `<form method="dialog">`
+  or a side panel (`placement={:end}` or `{:start}`, with a ✕ close button unless
+  `close_button={false}`, for content that brings its own). Escape, the backdrop and `<form method="dialog">`
   close it; focus moves in and back natively; `on_cancel` runs after every close.
 
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
@@ -85,12 +86,15 @@ defmodule Setzkasten.Components.Overlays do
   attr :on_cancel, JS, default: nil
   attr :placement, :atom, default: :center, values: [:center, :start, :end]
   attr :close_label, :string, default: "Schließen"
+  attr :close_button, :boolean, default: true
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
   slot :actions
 
   def modal(assigns) do
+    assigns = assign(assigns, :close?, assigns.close_button and assigns.placement != :center)
+
     ~H"""
     <dialog
       id={@id}
@@ -107,11 +111,11 @@ defmodule Setzkasten.Components.Overlays do
         @placement in [:start, :end] && "h-full max-h-none rounded-none",
         @class
       ]}>
-        <div :if={@title || @placement != :center} class="flex items-start justify-between gap-2">
+        <div :if={@title || @close?} class="flex items-start justify-between gap-2">
           <h2 :if={@title} id={"#{@id}-title"} class="min-w-0 text-lg font-semibold wrap-anywhere">
             {@title}
           </h2>
-          <form :if={@placement != :center} method="dialog" class="ms-auto">
+          <form :if={@close?} method="dialog" class="ms-auto">
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
             </button>

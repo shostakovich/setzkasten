@@ -103,6 +103,13 @@ defmodule Setzkasten.LayoutTest do
     assert attr(doc, "meta[media*=dark]", "content") == "#202328"
   end
 
+  test "the early script applies a collapsed sidebar before paint" do
+    assigns = %{}
+    script = rendered_to_string(~H|<.theme_script />|)
+    assert script =~ ~s[localStorage.getItem("setzkasten:sidebar") === "collapsed"]
+    assert script =~ ~s[r.setAttribute("data-sidebar", "collapsed")]
+  end
+
   test "an explicit theme choice wins over the media theme-color metas" do
     assigns = %{}
     script = rendered_to_string(~H|<.theme_script />|)
