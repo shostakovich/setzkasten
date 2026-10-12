@@ -103,6 +103,25 @@ defmodule Setzkasten.LayoutTest do
     assert attr(doc, "meta[media*=dark]", "content") == "#202328"
   end
 
+  test "an explicit theme choice wins over the media theme-color metas" do
+    assigns = %{}
+    script = rendered_to_string(~H|<.theme_script />|)
+    assert script =~ ~s(m.id = "setzkasten-theme-color")
+    assert script =~ ~s(meta[name="theme-color"][media*=")
+
+    hook =
+      Path.wildcard(
+        Path.join(
+          Mix.Project.build_path(),
+          "phoenix-colocated/setzkasten/Setzkasten.Components.Layout/*.js"
+        )
+      )
+      |> Enum.map_join(&File.read!/1)
+
+    assert hook =~ "setzkasten-theme-color"
+    assert hook =~ "syncMeta()"
+  end
+
   test "header and card text break long unbroken strings" do
     assigns = %{}
 

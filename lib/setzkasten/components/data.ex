@@ -164,9 +164,13 @@ defmodule Setzkasten.Components.Data do
       )
 
     ~H"""
-    <tr id={@id} class={[@path && "relative row-hover", @class]} {@attrs}>
+    <tr
+      id={@id}
+      class={[@path && "relative row-hover has-[td:first-child>a:active]:bg-base-200", @class]}
+      {@attrs}
+    >
       <td :for={{col, i} <- Enum.with_index(@col)} class={col_class(col)}>
-        <.link :if={i == 0 && @path} navigate={@path} class="font-medium after:absolute after:inset-0">
+        <.link :if={i == 0 && @path} navigate={@path} class={["font-medium", stretched()]}>
           {render_slot(col, @item)}
         </.link>
         <%= if i > 0 || !@path do %>
@@ -405,7 +409,8 @@ defmodule Setzkasten.Components.Data do
       id={@id}
       class={[
         "list-row items-center",
-        (@link? || @title_click) && "md:hover:bg-base-200",
+        (@link? || @title_click) &&
+          "md:hover:bg-base-200 has-[.list-col-grow>:is(a,button):active]:bg-base-200",
         @wrap? && "max-md:gap-y-1",
         @class
       ]}
@@ -572,7 +577,8 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
-  # The title link or button covers the row; keyboard focus rings the row, not the title.
+  # The row link (table) or the title link or button (list) covers the row; keyboard focus
+  # rings the row, not the text.
   # outline-solid: the ::after inherits --tw-outline-style: none from outline-none.
   defp stretched do
     [

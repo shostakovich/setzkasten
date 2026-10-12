@@ -102,7 +102,28 @@ defmodule Setzkasten.ShellTest do
       """)
 
     assert count(doc, "nav.dock") == 0
-    refute "hidden" in classes(doc, "header nav")
+    nav = classes(doc, "header nav")
+    refute "hidden" in nav
+    # Edge to edge on phones: out into the navbar's gutter, as wide as the bar.
+    assert Enum.all?(~w(setzkasten-scroller snap-x max-sm:-mx-4 max-sm:px-4), &(&1 in nav))
+    assert attr(doc, "header nav", "phx-hook") == "Setzkasten.Components.Navigation.ScrollActive"
+    assert classes(doc, "header nav li") == ["snap-start"]
+  end
+
+  test "the shell keeps to the safe areas of viewport-fit=cover" do
+    assigns = %{}
+    doc = parse(~H|<.app_shell><:brand>App</:brand>x</.app_shell>|)
+
+    assert Enum.all?(
+             ["pl-[env(safe-area-inset-left)]", "pr-[env(safe-area-inset-right)]"],
+             &(&1 in classes(doc, "#app-shell"))
+           )
+
+    assert "pt-[env(safe-area-inset-top)]" in classes(doc, "header")
+
+    doc = parse(~H|<.app_shell layout={:sidebar}><:brand>App</:brand>x</.app_shell>|)
+    assert "max-md:pl-[env(safe-area-inset-left)]" in classes(doc, "#app-shell")
+    assert "ps-[env(safe-area-inset-left)]" in classes(doc, "aside.md\\:flex")
   end
 
   test "topbar without nav entries renders no menu" do

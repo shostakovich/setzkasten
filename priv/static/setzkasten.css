@@ -353,8 +353,8 @@
     outline: 2px solid var(--color-primary);
     outline-offset: -2px;
   }
-  /* Menu titles (dropdown headers): daisyUI draws them in base-content 40 % (2.5:1 light,
-     3.1:1 dark); 70 % as for all secondary text. */
+  /* Menu titles (dropdown headers): daisyUI draws them in base-content 40 %, below 4.5:1; 70 % as
+     for all secondary text. */
   .menu .menu-title {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
   }
@@ -363,17 +363,26 @@
   .dock .dock-label {
     font-size: 0.75rem;
   }
+  .dock > :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
 
   /* 44px targets on touch screens without changing the desktop sizes (40px md controls). */
   @media (pointer: coarse) {
     .btn,
     .input,
     .select,
+    .file-input,
     .tab,
     .menu :where(li > a, li > button, li > summary),
     .collapse > summary,
     details > summary {
       min-height: 2.75rem;
+    }
+    /* daisyUI aligns menu items to the top of their grid. */
+    .menu :where(li > a, li > button, li > summary) {
+      align-content: center;
     }
     .btn-square,
     .btn-circle {
@@ -382,8 +391,55 @@
   }
 }
 
+/* Horizontal scrollers (tabs, the top-bar menu): a thin scrollbar with a mouse, none on touch
+   screens, and the end edge fades while more content follows. The fade runs on a scroll
+   timeline, which is inactive when everything fits; without scroll-driven animations there is
+   no fade. */
+@property --setzkasten-scroll-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes setzkasten-scroll-fade {
+  0%,
+  80% {
+    --setzkasten-scroll-fade: 2.5rem;
+  }
+  100% {
+    --setzkasten-scroll-fade: 0px;
+  }
+}
+@layer utilities.setzkasten {
+  .setzkasten-scroller {
+    scrollbar-width: thin;
+    mask-image: linear-gradient(to left, transparent, #000 var(--setzkasten-scroll-fade));
+  }
+  @supports (animation-timeline: scroll()) {
+    .setzkasten-scroller {
+      animation: setzkasten-scroll-fade linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+  @media (pointer: coarse) {
+    .setzkasten-scroller {
+      scrollbar-width: none;
+    }
+    .setzkasten-scroller::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+/* A fieldset whose label is for screen readers only (hide_label, inline) keeps no block
+   padding, so its field lines up with buttons beside it. */
+@layer utilities.setzkasten {
+  .fieldset:has(> :is(label, legend).sr-only:first-child) {
+    padding-block: 0;
+  }
+}
+
 /* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
-   70 % as for all secondary text: 6.56 / 6.37:1 light, 6.39 / 5.66:1 dark (base-100 / base-200). */
+   70 % as for all secondary text. */
 @layer utilities.setzkasten {
   .tab:not(:checked, label:has(:checked), :hover, .tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"]) {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -494,6 +550,8 @@
     line-height: 1.25rem;
     font-weight: 500;
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .fieldset-legend {
     font-size: 0.875rem;
@@ -508,8 +566,8 @@
 }
 
 /* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
-   20 %), 5.33:1 light / 4.03:1 dark against the track on base-100, so it stands alone.
-   daisyUI's progress-neutral uses the neutral fill, 1.3:1 on dark base-100. */
+   20 %), above 3:1 against the track, so it stands alone. daisyUI's progress-neutral uses the
+   neutral fill, which nearly vanishes on dark base-100. */
 @layer utilities.setzkasten {
   .progress.setzkasten-progress-neutral {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -557,13 +615,15 @@
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
+  .modal-box:focus-visible {
+    outline: none;
+  }
 }
 
 /* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
    unselected segmented option and the file input's button are base-200, which is the dark popover
    surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
-   in dark, the same one-step lift (1.18:1) as base-200 on the dark page (1.16:1); the label
-   carries the contrast (8.2:1). */
+   in dark, the same one-step lift as base-200 on the dark page; the label carries the contrast. */
 @layer utilities.setzkasten {
   :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
     .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
@@ -611,6 +671,12 @@
   .join > legend:first-child + .join-item {
     --join-ss: var(--radius-field);
     --join-es: var(--radius-field);
+  }
+}
+/* daisyUI's join-item overlap sits in the utilities layer itself, which outranks its sublayers. */
+@layer utilities {
+  .join > legend:first-child + .join-item {
+    margin-inline-start: 0;
   }
 }
 

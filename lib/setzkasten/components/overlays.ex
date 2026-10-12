@@ -164,6 +164,9 @@ defmodule Setzkasten.Components.Overlays do
           if (this.el.open) return
           this.trigger = document.activeElement
           this.el.showModal()
+          // Chrome focuses a scrolling box itself instead of its first field.
+          const box = this.el.querySelector(".modal-box")
+          if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
         },
         // The browser returns focus to the trigger. A trigger in a menu that closed meanwhile is
         // hidden, so focus goes to the menu's summary. If the trigger later disappears (the

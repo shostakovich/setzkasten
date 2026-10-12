@@ -129,6 +129,9 @@ defmodule Setzkasten.ActionsTest do
     doc = parse(~H|<.fab navigate="/neu" label="Ausgabe" />|)
     c = classes(doc, "a")
     assert Enum.all?(~w(btn-primary btn-circle fixed md:hidden), &(&1 in c))
+    # 16px above the dock, or above the bottom safe edge without one.
+    assert "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]" in c
+    assert "end-[calc(1rem+env(safe-area-inset-right))]" in c
     assert attr(doc, "a", "aria-label") == "Ausgabe"
   end
 end

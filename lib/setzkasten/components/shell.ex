@@ -131,8 +131,11 @@ defmodule Setzkasten.Components.Shell do
     <div
       id={@id}
       class={[
-        "min-h-dvh",
-        @layout == :sidebar && "md:flex",
+        "min-h-dvh pr-[env(safe-area-inset-right)]",
+        if(@layout == :sidebar,
+          do: "md:flex max-md:pl-[env(safe-area-inset-left)]",
+          else: "pl-[env(safe-area-inset-left)]"
+        ),
         @dock_items != [] &&
           "max-md:[--setzkasten-dock-offset:calc(4rem+env(safe-area-inset-bottom))]",
         @class
@@ -146,7 +149,7 @@ defmodule Setzkasten.Components.Shell do
         ]}>
           {sidebar(assign(assigns, :place, :sidebar))}
         </aside>
-        <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh">
+        <aside class="hidden md:flex xl:hidden w-[calc(4.25rem+env(safe-area-inset-left))] ps-[env(safe-area-inset-left)] shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh">
           <.link
             :for={{item, gap?} <- @rail_items}
             navigate={item[:navigate]}
@@ -190,7 +193,7 @@ defmodule Setzkasten.Components.Shell do
         <header
           :if={@layout == :sidebar}
           class={[
-            "bg-base-100 border-b border-base-content/10",
+            "bg-base-100 border-b border-base-content/10 pt-[env(safe-area-inset-top)]",
             if(@bar == [], do: "xl:hidden", else: "sticky top-0 z-20")
           ]}
         >
@@ -211,7 +214,10 @@ defmodule Setzkasten.Components.Shell do
         </header>
         <header
           :if={@layout == :topbar}
-          class={["bg-base-100 border-b border-base-content/10", @bar != [] && "sticky top-0 z-20"]}
+          class={[
+            "bg-base-100 border-b border-base-content/10 pt-[env(safe-area-inset-top)]",
+            @bar != [] && "sticky top-0 z-20"
+          ]}
         >
           <div class={[
             "navbar mx-auto gap-4 px-4 sm:px-6 lg:px-8",
@@ -232,14 +238,23 @@ defmodule Setzkasten.Components.Shell do
             </div>
             <nav
               :if={@nav != []}
+              id={"#{@id}-nav"}
               aria-label={@nav_label}
+              phx-hook="Setzkasten.Components.Navigation.ScrollActive"
               class={[
-                "min-w-0 overflow-x-auto",
-                if(@dock_items == [], do: "max-md:order-last max-md:w-full", else: "hidden md:block")
+                "setzkasten-scroller min-w-0 overflow-x-auto snap-x md:scroll-px-2",
+                if(@dock_items == [],
+                  do: [
+                    "max-md:order-last max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:px-4",
+                    "max-sm:scroll-px-6 sm:max-md:-mx-6 sm:max-md:w-[calc(100%+3rem)]",
+                    "sm:max-md:px-6 sm:max-md:scroll-px-8"
+                  ],
+                  else: "hidden md:block"
+                )
               ]}
             >
               <ul class="menu menu-horizontal flex-nowrap gap-1">
-                <li :for={item <- @nav}>
+                <li :for={item <- @nav} class="snap-start">
                   <.link
                     navigate={item[:navigate]}
                     href={item[:href]}

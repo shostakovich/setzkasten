@@ -145,7 +145,8 @@ defmodule Setzkasten.Components.Actions do
   defp confirm_action(click, _values, _target), do: click_js(click, nil, [])
 
   @doc """
-  The one main action on phones, floating above the dock (`md:hidden`).
+  The one main action on phones (`md:hidden`): 16px above the dock inside `<.app_shell>`
+  (`--setzkasten-dock-offset`), 16px above the bottom safe edge without one.
 
       <.fab navigate={~p"/ausgaben/neu"} icon="plus" label="Ausgabe" />
   """
@@ -157,8 +158,9 @@ defmodule Setzkasten.Components.Actions do
   def fab(assigns) do
     assigns =
       assign(assigns, :classes, [
-        "btn btn-primary btn-lg btn-circle shadow-lg fixed end-4 z-40 md:hidden",
-        "bottom-[calc(4rem+env(safe-area-inset-bottom)+1rem)]",
+        "btn btn-primary btn-lg btn-circle shadow-lg fixed z-40 md:hidden",
+        "end-[calc(1rem+env(safe-area-inset-right))]",
+        "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]",
         assigns.class
       ])
 

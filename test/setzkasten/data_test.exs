@@ -57,8 +57,18 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "tbody tr") == ~w(relative row-hover)
+    assert classes(doc, "tbody tr") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200)
+
     assert attr(doc, "tbody tr:first-child td:first-child a", "href") == "/w/1"
+    link = classes(doc, "tbody tr:first-child td:first-child a")
+
+    assert Enum.all?(
+             ~w(after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2
+                focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary),
+             &(&1 in link)
+           )
+
     assert count(doc, "td:last-child a") == 0
   end
 
@@ -72,7 +82,9 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "#row-1") == ~w(relative row-hover)
+    assert classes(doc, "#row-1") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200)
+
     assert classes(doc, "#row-2") == []
     assert count(doc, "#row-2 a") == 0
     assert text(doc, "#row-2 td") == "Gold"
@@ -95,7 +107,9 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "#row-1") == ~w(relative row-hover font-semibold)
+    assert classes(doc, "#row-1") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200 font-semibold)
+
     assert attr(doc, "#row-1", "aria-current") == "true"
     assert attr(doc, "#row-1", "data-kind") == "stock"
     assert attr(doc, "#row-2", "hidden") != nil
@@ -227,6 +241,7 @@ defmodule Setzkasten.DataTest do
     # No chevron: the hover fill and the title say the row opens.
     assert count(doc, "li > svg.lucide") == 0
     assert "md:hover:bg-base-200" in classes(doc, "li.list-row")
+    assert "has-[.list-col-grow>:is(a,button):active]:bg-base-200" in classes(doc, "li.list-row")
     # An open menu lies above the menus of the rows below it.
     assert "open:z-20" in classes(doc, "details")
   end

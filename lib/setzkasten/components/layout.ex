@@ -259,6 +259,20 @@ defmodule Setzkasten.Components.Layout do
         if (v === "light" || v === "dark") root.setAttribute("data-theme", "zipfel-" + v)
         else root.removeAttribute("data-theme")
       }
+      // An explicit choice puts a meta without media first; the first matching one wins.
+      const syncMeta = () => {
+        const v = current()
+        let meta = document.getElementById("setzkasten-theme-color")
+        const source = document.querySelector('meta[name="theme-color"][media*="' + v + '"]')
+        if (v === "system" || !source) return meta && meta.remove()
+        if (!meta) {
+          meta = document.createElement("meta")
+          meta.id = "setzkasten-theme-color"
+          meta.name = "theme-color"
+          source.parentNode.insertBefore(meta, document.querySelector('meta[name="theme-color"]'))
+        }
+        meta.content = source.content
+      }
       export default {
         mounted() {
           this.el.addEventListener("change", (e) => {
@@ -271,9 +285,10 @@ defmodule Setzkasten.Components.Layout do
           })
           this.onStorage = (e) => { if (e.key === KEY) apply(e.newValue || "system") }
           window.addEventListener("storage", this.onStorage)
-          this.observer = new MutationObserver(() => this.sync())
+          this.observer = new MutationObserver(() => { this.sync(); syncMeta() })
           this.observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] })
           if (this.el.dataset.store === "local") this.sync()
+          syncMeta()
         },
         destroyed() {
           window.removeEventListener("storage", this.onStorage)
@@ -315,8 +330,10 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  Applies a stored `<.theme_toggle store={:local}>` choice before first paint. Put it in the
-  root layout's `<head>`; pass the CSP nonce if the app sends one.
+  Applies a stored `<.theme_toggle store={:local}>` choice before first paint, and points the
+  browser's `theme-color` at an explicit choice (a `data-theme` set by the store or the
+  server). Put it in the root layout's `<head>` after `<.theme_meta />`; pass the CSP nonce if
+  the app sends one.
 
       <.theme_script nonce={assigns[:csp_nonce]} />
   """
@@ -325,13 +342,14 @@ defmodule Setzkasten.Components.Layout do
   def theme_script(assigns) do
     ~H"""
     <script nonce={@nonce}>
-      (() => { try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", "zipfel-" + t) } catch (_) {} })()
+      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t) } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })()
     </script>
     """
   end
 
   @doc """
-  The two `theme-color` meta tags, in the page surface colour base-100.
+  The two `theme-color` meta tags, in the page surface colour base-100, chosen by
+  `prefers-color-scheme`. `<.theme_script>` and `<.theme_toggle>` make an explicit choice win.
   """
   def theme_meta(assigns) do
     ~H"""

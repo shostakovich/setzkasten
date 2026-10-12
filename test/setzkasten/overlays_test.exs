@@ -26,6 +26,14 @@ defmodule Setzkasten.OverlaysTest do
     assert count(doc, ".modal-action .btn") == 1
   end
 
+  test "a scrolling dialog focuses its first field, not the box" do
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.modal-box:focus-visible \{\s*outline: none;/
+  end
+
   test "side panel placement and server-driven show" do
     assigns = %{}
     doc = parse(~H|<.modal id="p" placement={:end} show>Body</.modal>|)

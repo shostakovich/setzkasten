@@ -88,6 +88,15 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, "#client-error", "hidden") != nil
     assert "motion-reduce:hidden" in classes(doc, "#client-error .loading")
 
+    group = classes(doc, "#flash-group")
+
+    assert Enum.all?(
+             ["top-[calc(env(safe-area-inset-top)+4.5rem)]", "max-sm:inset-x-4", "max-sm:w-auto"],
+             &(&1 in group)
+           )
+
+    assert Enum.all?(~w(shadow-lg w-full sm:w-96), &(&1 in classes(doc, "#flash-error")))
+
     doc = parse(~H|<.flash_group flash={@flash} close_label="Close" />|)
     assert attr(doc, "#client-error button", "aria-label") == "Close"
   end

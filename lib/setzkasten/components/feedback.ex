@@ -116,7 +116,9 @@ defmodule Setzkasten.Components.Feedback do
   defp close_click(event) when is_binary(event), do: JS.push(event)
 
   @doc """
-  Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom).
+  Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom),
+  below the top bar and the safe area; full width within the 16px gutter on phones, 384px at
+  the end from `sm`. Toasts float over content, so they carry a shadow (as dropdown menus).
   Same API as Phoenix's generated `<.flash>`. Dismiss is a real button.
 
       <.flash kind={:info} flash={@flash} />
@@ -131,7 +133,7 @@ defmodule Setzkasten.Components.Feedback do
 
   def flash(assigns) do
     ~H"""
-    <div class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14">
+    <div class={toast_class()}>
       {flash_alert(assigns)}
     </div>
     """
@@ -154,7 +156,7 @@ defmodule Setzkasten.Components.Feedback do
       id={@id}
       role={if @kind == :error, do: "alert", else: "status"}
       class={[
-        "alert alert-soft text-base-content w-80 sm:w-96 max-w-full",
+        "alert alert-soft text-base-content shadow-lg w-full sm:w-96",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}
@@ -176,6 +178,15 @@ defmodule Setzkasten.Components.Feedback do
       </button>
     </div>
     """
+  end
+
+  # 4.5rem clears a sticky page bar (61px).
+  defp toast_class do
+    [
+      "toast toast-top toast-center sm:toast-end z-50 top-[calc(env(safe-area-inset-top)+4.5rem)]",
+      "max-sm:inset-x-4 max-sm:w-auto max-sm:[--toast-x:0]",
+      "sm:end-[calc(1rem+env(safe-area-inset-right))]"
+    ]
   end
 
   defp hide_flash(js, selector) do
@@ -205,7 +216,7 @@ defmodule Setzkasten.Components.Feedback do
     <div
       id={@id}
       aria-live="polite"
-      class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14"
+      class={toast_class()}
     >
       <.flash_alert kind={:info} flash={@flash} close_label={@close_label} />
       <.flash_alert kind={:error} flash={@flash} close_label={@close_label} />
