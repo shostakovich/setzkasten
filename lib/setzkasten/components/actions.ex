@@ -1,6 +1,7 @@
 defmodule Setzkasten.Components.Actions do
   @moduledoc "Buttons and the floating action button."
   use Phoenix.Component
+  alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
   import Setzkasten.Components.Overlays, only: [show_confirm: 5]
@@ -30,10 +31,16 @@ defmodule Setzkasten.Components.Actions do
   `phx-value-*` and `phx-target` along. `confirm` with `href`, `navigate`, `patch` or `method`
   raises: the link would navigate without asking.
 
+  `saved` (needs an `id`) confirms a save in place: after `push_saved(socket, id)` the button shows
+  a check and `saved_label` for 1.5 s, then its label again, at the same width, announced in a
+  polite live region. A `phx-disable-with` text becomes the pending label in the same stack.
+
       <.button variant={:primary} icon="plus">Neue Ausgabe</.button>
       <.button variant={:ghost} icon="trash-2" icon_only label="Löschen"
                confirm="Ausgabe löschen?" phx-click="delete" phx-value-id={@expense.id} />
       <.button navigate={~p"/depots"} size={:sm}>Alle Depots</.button>
+      <.button type="submit" variant={:primary} id="settings-save" saved
+               phx-disable-with="Speichert …">Speichern</.button>
   """
   attr :variant, :atom, default: :neutral, values: Map.keys(@variants)
   attr :size, :atom, default: :md, values: Map.keys(@sizes)
@@ -49,6 +56,8 @@ defmodule Setzkasten.Components.Actions do
     doc: "confirm button label for actions other than a plain delete"
 
   attr :confirm_id, :string, default: "confirm-delete"
+  attr :saved, :boolean, default: false, doc: "confirms `push_saved/2` in place; needs `id`"
+  attr :saved_label, :string, default: "Gespeichert"
   attr :type, :string, default: "button"
   attr :disabled, :boolean, default: false
   attr :class, :any, default: nil
@@ -61,6 +70,15 @@ defmodule Setzkasten.Components.Actions do
 
   def button(%{icon_only: true, label: nil}) do
     raise ArgumentError, "<.button icon_only> needs a label"
+  end
+
+  def button(%{saved: true, rest: rest}) when not is_map_key(rest, :id) do
+    raise ArgumentError, "<.button saved> needs an id: push_saved/2 addresses the button by it"
+  end
+
+  def button(%{saved: true, rest: rest})
+      when is_map_key(rest, :href) or is_map_key(rest, :navigate) or is_map_key(rest, :patch) do
+    raise ArgumentError, "<.button saved> must be a button, not a link"
   end
 
   def button(%{confirm: confirm, rest: rest})
@@ -84,29 +102,114 @@ defmodule Setzkasten.Components.Actions do
       ])
       |> move_click_to_confirm()
 
-    if link?(assigns.rest) do
-      ~H"""
-      <.link class={@classes} aria-label={@icon_only && @label} {@rest}>
-        <.icon :if={@icon} name={@icon} />{render_slot(@inner_block)}
-      </.link>
-      """
-    else
-      ~H"""
-      <button
-        type={@type}
-        class={@classes}
-        disabled={@disabled || @loading}
-        aria-busy={@loading && "true"}
-        aria-label={@icon_only && @label}
-        {@rest}
-      >
-        <span :if={@loading} class="loading loading-spinner loading-sm motion-reduce:hidden"></span>
-        <.icon :if={@loading} name="ellipsis" class="motion-safe:hidden" />
-        <.icon :if={@icon && !@loading} name={@icon} />{render_slot(@inner_block)}
-      </button>
-      """
+    cond do
+      link?(assigns.rest) ->
+        ~H"""
+        <.link class={@classes} aria-label={@icon_only && @label} {@rest}>
+          <.icon :if={@icon} name={@icon} />{render_slot(@inner_block)}
+        </.link>
+        """
+
+      assigns.saved ->
+        saved_button(assigns)
+
+      true ->
+        plain_button(assigns)
     end
   end
+
+  defp plain_button(assigns) do
+    ~H"""
+    <button
+      type={@type}
+      class={@classes}
+      disabled={@disabled || @loading}
+      aria-busy={@loading && "true"}
+      aria-label={@icon_only && @label}
+      {@rest}
+    >
+      {button_content(assigns)}
+    </button>
+    """
+  end
+
+  defp button_content(assigns) do
+    ~H"""
+    <span :if={@loading} class="loading loading-spinner loading-sm motion-reduce:hidden"></span>
+    <.icon :if={@loading} name="ellipsis" class="motion-safe:hidden" />
+    <.icon :if={@icon && !@loading} name={@icon} />{render_slot(@inner_block)}
+    """
+  end
+
+  # LiveView swaps a phx-disable-with text in via textContent, which would flatten the stack.
+  defp saved_button(assigns) do
+    {pending, rest} = Map.pop(assigns.rest, :"phx-disable-with")
+    assigns = assign(assigns, pending: pending, rest: rest)
+
+    ~H"""
+    <button
+      type={@type}
+      class={["setzkasten-saved" | @classes]}
+      disabled={@disabled || @loading}
+      aria-busy={@loading && "true"}
+      aria-label={@icon_only && @label}
+      phx-hook=".Saved"
+      data-saved-label={@saved_label}
+      {@rest}
+    >
+      <span class="setzkasten-saved-stack">
+        <span class="setzkasten-saved-idle">{button_content(assigns)}</span>
+        <span :if={@pending} class="setzkasten-saved-pending">{@pending}</span>
+        <span class="setzkasten-saved-done"><.icon name="check" />{@saved_label}</span>
+      </span>
+    </button>
+    <script :type={ColocatedHook} name=".Saved">
+      const live = () => {
+        let region = document.getElementById("setzkasten-live-region")
+        if (!region) {
+          region = document.createElement("div")
+          region.id = "setzkasten-live-region"
+          region.className = "sr-only"
+          region.setAttribute("role", "status")
+          document.body.appendChild(region)
+        }
+        return region
+      }
+      export default {
+        mounted() {
+          live()
+          this.handleEvent("setzkasten:saved", ({ id }) => { if (id === this.el.id) this.saved() })
+        },
+        saved() {
+          const region = live()
+          region.textContent = ""
+          clearTimeout(this.timer)
+          clearTimeout(this.say)
+          this.js().setAttribute(this.el, "data-saved", "")
+          // A fresh text node after a tick, so a second save is announced again.
+          this.say = setTimeout(() => { region.textContent = this.el.dataset.savedLabel }, 50)
+          this.timer = setTimeout(() => {
+            this.js().removeAttribute(this.el, "data-saved")
+            region.textContent = ""
+          }, 1500)
+        },
+        destroyed() {
+          clearTimeout(this.timer)
+          clearTimeout(this.say)
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
+  Confirms a save on the `<.button saved>` with this `id`; use it instead of a success flash
+  when the form stays on the page.
+
+      {:noreply, push_saved(socket, "settings-save")}
+  """
+  def push_saved(socket, id),
+    do: Phoenix.LiveView.push_event(socket, "setzkasten:saved", %{id: id})
 
   defp link?(rest), do: Enum.any?([:href, :navigate, :patch], &Map.has_key?(rest, &1))
 

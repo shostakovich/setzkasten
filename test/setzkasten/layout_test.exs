@@ -86,6 +86,25 @@ defmodule Setzkasten.LayoutTest do
     assert attr(doc, "input[value=dark]", "checked") != nil
     assert "has-checked:setzkasten-selected" in classes(doc, "label")
     assert text(doc, "legend") == "Farbschema"
+    assert Enum.all?(~w(btn btn-square), &(&1 in classes(doc, "label")))
+    refute "btn-sm" in classes(doc, "label")
+    assert attr(doc, "label:has(input[value=system])", "title") == "System"
+    assert text(doc, "label:has(input[value=dark]) span.sr-only") == "Dunkel"
+
+    segments = rendered_to_string(~H|<.theme_toggle />|) |> String.split("<label") |> tl()
+
+    for {segment, icon} <- Enum.zip(segments, ~w(sun-moon sun moon)) do
+      {:safe, body} = Setzkasten.Lucide.svg(icon)
+      assert segment =~ body, icon
+    end
+
+    doc =
+      parse(
+        ~H|<.theme_toggle labels={%{"system" => "Auto", "light" => "Light", "dark" => "Dark"}} />|
+      )
+
+    assert attr(doc, "label:has(input[value=system])", "title") == "Auto"
+    assert text(doc, "label:has(input[value=light]) span.sr-only") == "Light"
   end
 
   test "server-stored theme toggle is a form sending the change" do
@@ -116,17 +135,23 @@ defmodule Setzkasten.LayoutTest do
     assert script =~ ~s(m.id = "setzkasten-theme-color")
     assert script =~ ~s(meta[name="theme-color"][media*=")
 
-    hook =
-      Path.wildcard(
-        Path.join(
-          Mix.Project.build_path(),
-          "phoenix-colocated/setzkasten/Setzkasten.Components.Layout/*.js"
-        )
-      )
-      |> Enum.map_join(&File.read!/1)
-
+    hook = colocated_js("Setzkasten.Components.Layout")
     assert hook =~ "setzkasten-theme-color"
     assert hook =~ "syncMeta()"
+  end
+
+  test "a theme choice reveals as a soft circle through a view transition, skipped with reduced motion" do
+    hook = colocated_js("Setzkasten.Components.Layout")
+    assert hook =~ "document.startViewTransition"
+    assert hook =~ "prefers-reduced-motion: reduce"
+    assert hook =~ ~s(style.setProperty("--setzkasten-reveal-x")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ":root[data-setzkasten-reveal]::view-transition-new(root)"
+    assert css =~ "--setzkasten-duration-reveal: 700ms"
+    assert css =~ "--setzkasten-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1)"
+    assert css =~ "@property --setzkasten-reveal-radius"
+    assert hook =~ ~s[root.removeAttribute("style")]
   end
 
   test "header and card text break long unbroken strings" do

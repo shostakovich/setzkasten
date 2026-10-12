@@ -36,7 +36,7 @@ defmodule Setzkasten.IconsTest do
   test "built-in set covers what the components draw" do
     for name <-
           ~w(chevron-left chevron-right chevron-down x ellipsis-vertical circle-alert
-                   triangle-alert info circle-check trash-2 monitor sun moon panel-left-open panel-left-close) do
+                   triangle-alert info circle-check trash-2 sun-moon sun moon panel-left-open panel-left-close) do
       assert Setzkasten.Lucide.svg(name), name
     end
   end

@@ -786,4 +786,39 @@ defmodule Setzkasten.DataTest do
     # Facts are data: 14px like tables.
     assert "text-sm" in classes(plain, "dl")
   end
+
+  test "a stat with an id carries the change hook on its value; without one, none" do
+    assigns = %{}
+    doc = parse(~H|<.stat id="pv" label="PV" value="1.234" unit="W" />|)
+    assert attr(doc, ".stat", "id") == "pv"
+    assert attr(doc, "#pv-value", "phx-hook") == "Setzkasten.Components.Data.LiveValue"
+    assert text(doc, "#pv-value > span:first-child") == "1.234"
+
+    assert count(parse(~H|<.stat label="PV" value="1" />|), "[phx-hook]") == 0
+
+    assert count(parse(~H|<.stat id="pv" label="PV" value="1" animate={false} />|), "[phx-hook]") ==
+             0
+  end
+
+  test "an animated amount needs an id and carries the change hook" do
+    assigns = %{}
+    doc = parse(~H|<.amount id="b" value={-7420} signed tone animate />|)
+    assert attr(doc, "data", "phx-hook") == "Setzkasten.Components.Data.LiveValue"
+    assert attr(parse(~H|<.amount value={1} />|), "data", "phx-hook") == nil
+
+    assert_raise ArgumentError, ~r/needs an id/, fn ->
+      parse(~H|<.amount value={1} animate />|)
+    end
+  end
+
+  test "the change hook reads the motion tokens and has no glow" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ "--setzkasten-duration-count"
+    refute hook =~ "glow"
+    assert hook =~ "prefers-reduced-motion: reduce"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "--setzkasten-duration-count: 500ms"
+    refute css =~ "glow"
+  end
 end

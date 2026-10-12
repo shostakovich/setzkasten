@@ -3,6 +3,7 @@ defmodule Setzkasten.Components.Data do
   Tables, lists, amounts, stats, fact lists, bars, avatars and the chart frame.
   """
   use Phoenix.Component
+  alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   alias Setzkasten.Format
   import Setzkasten.Components.Icons
@@ -607,6 +608,11 @@ defmodule Setzkasten.Components.Data do
       <.amount value={-7420} signed tone />
       <.amount value={6_327_914} decimals={0} />
       <.amount value={110} currency="USD" currency_display={:code} />
+
+  `animate` (needs an `id`): when a LiveView update changes the value, it counts from the old to
+  the new value. Never on first render. Inside a `<.stat>` value the stat does this already.
+
+      <.amount id="balance" value={@balance} signed tone animate />
   """
   attr :value, :any, required: true, doc: "integer minor units (cents) or Decimal"
   attr :currency, :string, default: "EUR"
@@ -615,13 +621,19 @@ defmodule Setzkasten.Components.Data do
   attr :signed, :boolean, default: false
   attr :tone, :boolean, default: false
   attr :size, :atom, default: :inherit, values: [:inherit, :lg]
+  attr :animate, :boolean, default: false, doc: "count on change; needs `id`"
   attr :class, :any, default: nil
   attr :rest, :global
+
+  def amount(%{animate: true, rest: rest}) when not is_map_key(rest, :id) do
+    raise ArgumentError, "<.amount animate> needs an id: LiveView hooks run on elements with one"
+  end
 
   def amount(assigns) do
     ~H"""
     <data
       value={Format.machine(@value)}
+      phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
         @tone && tone_class(Format.shown_sign(@value, @decimals)),
@@ -650,6 +662,12 @@ defmodule Setzkasten.Components.Data do
   `desc` is a plain line under the value; the `:note` slot takes its place for markup (a
   toned delta, a date with a name) in the same small text.
 
+  With an `id`, a value that a LiveView update changes counts from the old to the new number
+  (500 ms, `tabular-nums`); never on first render or a reconnect that brings the same value.
+  Numbers in the components' German format ("2,14", "−0,88", "12.521,00 €"); the final text is
+  the server's. `animate={false}` for values that change every second. Reduced motion: the new
+  value stands at once.
+
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <.stat label="PV jetzt" value="1.234" unit="W" desc="Akku 82 %" size={:sm} />
         <.stat label="Depot" value="63.279" unit="€">
@@ -657,6 +675,7 @@ defmodule Setzkasten.Components.Data do
         </.stat>
       </div>
   """
+  attr :id, :string, default: nil, doc: "needed for the change animation"
   attr :label, :string, required: true
   attr :value, :any, default: nil
   attr :unit, :string, default: nil
@@ -666,14 +685,18 @@ defmodule Setzkasten.Components.Data do
   attr :stale, :boolean, default: false
   attr :stale_label, :string, default: "veraltet"
   attr :loading, :boolean, default: false
+  attr :animate, :boolean, default: true, doc: "count on change (with `id`)"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
   slot :note, doc: "markup in place of `desc` (the slot wins)"
 
   def stat(assigns) do
+    assigns = assign(assigns, :live, assigns.id && assigns.animate)
+
     ~H"""
     <div
+      id={@id}
       class={["stat bg-base-100 rounded-box border border-base-content/10", @class]}
       aria-busy={@loading && "true"}
       {@rest}
@@ -682,6 +705,8 @@ defmodule Setzkasten.Components.Data do
       <div :if={@loading} class="skeleton h-8 w-24 mt-1"></div>
       <div
         :if={!@loading}
+        id={@live && "#{@id}-value"}
+        phx-hook={@live && "Setzkasten.Components.Data.LiveValue"}
         class={[
           "stat-value tabular-nums",
           @size == :sm && "text-2xl",
@@ -689,7 +714,7 @@ defmodule Setzkasten.Components.Data do
           @tone == :error && "text-error-ink"
         ]}
       >
-        {@value}{render_slot(@inner_block)}
+        <span :if={@value}>{@value}</span>{render_slot(@inner_block)}
         <span :if={@unit} class="text-base font-semibold text-base-content/70">{@unit}</span>
       </div>
       <div
@@ -703,6 +728,94 @@ defmodule Setzkasten.Components.Data do
         {if @note == [], do: @desc}
       </div>
     </div>
+    <script :type={ColocatedHook} name=".LiveValue">
+      const NUMBER = /^(.*?)([+\u2212-]?)(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?(\D*)$/s
+      const parse = (text) => {
+        const m = NUMBER.exec(text)
+        if (!m) return null
+        const [, prefix, sign, int, frac = "", suffix] = m
+        const units = Number(int.replace(/\./g, "") + frac)
+        return {
+          prefix, suffix, d: frac.length,
+          units: sign && sign !== "+" ? -units : units,
+          plus: sign === "+",
+          minus: sign && sign !== "+" ? sign : null,
+          ungrouped: !int.includes(".") && int.length > 3
+        }
+      }
+      // Mirrors Setzkasten.Format: thousands dot, decimal comma, no sign on zero.
+      const format = (units, t) => {
+        const digits = String(Math.abs(units)).padStart(t.d + 1, "0")
+        let int = t.d ? digits.slice(0, -t.d) : digits
+        if (t.grouped) int = int.replace(/\B(?=(\d{3})+$)/g, ".")
+        const sign = units === 0 ? "" : units < 0 ? t.minus : t.plus ? "+" : ""
+        return t.prefix + sign + int + (t.d ? "," + digits.slice(-t.d) : "") + t.suffix
+      }
+      const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches
+      const ms = (css, name, fallback) => {
+        const v = css.getPropertyValue(name).trim()
+        return v.endsWith("ms") ? parseFloat(v) : v.endsWith("s") ? parseFloat(v) * 1000 : fallback
+      }
+      export default {
+        mounted() {
+          this.node = this.find()
+          this.text = this.node && this.node.data
+        },
+        updated() {
+          const node = this.find()
+          if (!node) return (this.node = this.text = null)
+          const from = this.text && parse(this.shown ?? this.text)
+          const to = parse(node.data)
+          const changed = node.data !== this.text
+          this.node = node
+          this.text = node.data
+          if (!changed || !from || !to || from.prefix !== to.prefix || from.suffix !== to.suffix) return
+          const scale = 10 ** (to.d - from.d)
+          const start = Math.round(from.units * scale)
+          if (start === to.units) return
+          if (!reduced()) this.roll(start, to, {
+            ...to,
+            plus: to.plus || from.plus,
+            minus: to.minus || from.minus || "\u2212",
+            grouped: !(to.ungrouped || from.ungrouped)
+          })
+        },
+        destroyed() { this.stop() },
+        find() {
+          const walker = document.createTreeWalker(this.el, NodeFilter.SHOW_TEXT, {
+            acceptNode: (n) =>
+              n.parentElement.closest("[phx-hook]") !== this.el ? NodeFilter.FILTER_REJECT
+                : /\d/.test(n.data) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+          })
+          return walker.nextNode()
+        },
+        roll(start, to, t) {
+          this.stop()
+          const css = getComputedStyle(this.el)
+          const duration = ms(css, "--setzkasten-duration-count", 500)
+          const easing = css.getPropertyValue("--setzkasten-ease-out").trim() || "ease-out"
+          // An empty animation carries the eased progress of the motion token.
+          const anim = this.el.animate([], { duration, easing })
+          this.anim = anim
+          const step = () => {
+            const p = anim.effect.getComputedTiming().progress
+            if (anim !== this.anim) return
+            if (p === null || anim.playState === "finished") return this.stop()
+            this.shown = format(Math.round(start + (to.units - start) * p), t)
+            if (this.node.data !== this.shown) this.node.data = this.shown
+            this.frame = requestAnimationFrame(step)
+          }
+          step()
+        },
+        stop() {
+          cancelAnimationFrame(this.frame)
+          if (this.anim) this.anim.cancel()
+          this.anim = null
+          this.shown = null
+          if (this.node && this.text != null && this.node.data !== this.text) this.node.data = this.text
+        }
+      }
+    </script>
     """
   end
 

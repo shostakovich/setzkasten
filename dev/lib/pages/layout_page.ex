@@ -141,12 +141,11 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       code={code(3)}
     >
       <:intro>
-        System, Hell, Dunkel. „System“ entfernt <code>data-theme</code>; gespeichert lokal oder
-        pro Person auf dem Server. Diese Instanzen sind mit dem Schalter oben verbunden.
+        System, Hell, Dunkel als Symbole (<code>sun-moon</code>, <code>sun</code>, <code>moon</code>); die Namen tragen Screenreader und der Tooltip. „System“ entfernt <code>data-theme</code>; gespeichert lokal oder pro Person auf dem Server. Diese Instanz ist
+        mit dem Schalter oben verbunden.
       </:intro>
-      <.demo title="Standard und kompakt" class="flex flex-wrap items-center gap-4">
+      <.demo title="Ausprobieren" class="flex flex-wrap items-center gap-4">
         <.theme_toggle id="theme-demo" />
-        <.theme_toggle id="theme-demo-compact" compact />
       </.demo>
     </.showcase>
     """

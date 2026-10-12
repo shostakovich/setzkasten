@@ -202,14 +202,19 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  Light/dark/system choice as a segmented control (sr-only radios in `label.btn`, the selected
-  one in the selection fill). "System" removes `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on
-  `<html>` right away.
+  Light/dark/system choice as an icon-only segmented control: square `label.btn` segments
+  (`sun-moon`, `sun`, `moon`) around sr-only radios, the selected one in the selection fill. The
+  `labels` are the radios' accessible names and the segments' `title` tooltips. "System" removes
+  `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on `<html>` right away.
 
   `store={:local}` keeps the choice in `localStorage["setzkasten:theme"]` (pair with
   `<.theme_script>` in the root layout so it applies before paint). `store={:server}` renders
   a form that sends `on_change` with `%{"theme" => "system" | "light" | "dark"}`; the app saves
-  it and renders `data-theme` itself. `compact` shows icons only.
+  it and renders `data-theme` itself.
+
+  Where the browser has View Transitions, the new theme spreads as a soft-edged circle from the
+  chosen icon (700 ms); with reduced motion, or when the shown scheme does not change, it switches
+  at once.
 
       <.theme_toggle />
       <.theme_toggle store={:server} value={@current_user.theme} on_change="set-theme" />
@@ -220,12 +225,11 @@ defmodule Setzkasten.Components.Layout do
   attr :on_change, :string, default: nil
   attr :label, :string, default: "Farbschema"
   attr :labels, :map, default: %{"system" => "System", "light" => "Hell", "dark" => "Dunkel"}
-  attr :compact, :boolean, default: false
   attr :class, :any, default: nil
 
   def theme_toggle(assigns) do
     assigns =
-      assign(assigns, :options, [{"system", "monitor"}, {"light", "sun"}, {"dark", "moon"}])
+      assign(assigns, :options, [{"system", "sun-moon"}, {"light", "sun"}, {"dark", "moon"}])
 
     ~H"""
     <form
@@ -273,6 +277,32 @@ defmodule Setzkasten.Components.Layout do
         }
         meta.content = source.content
       }
+      const scheme = (v) =>
+        v !== "system" ? v : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      let reveals = 0
+      // The origin goes in via CSSOM, which a strict style-src allows (a style attribute it would block).
+      const reveal = (from, v) => {
+        if (
+          !document.startViewTransition ||
+          matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          scheme(v) === scheme(current())
+        ) return apply(v)
+        const r = from.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+        root.style.setProperty("--setzkasten-reveal-x", x + "px")
+        root.style.setProperty("--setzkasten-reveal-y", y + "px")
+        root.style.setProperty("--setzkasten-reveal-r", radius + "px")
+        root.setAttribute("data-setzkasten-reveal", "")
+        const n = ++reveals
+        document.startViewTransition(() => apply(v)).finished.finally(() => {
+          if (n !== reveals) return
+          root.removeAttribute("data-setzkasten-reveal")
+          ;["x", "y", "r"].forEach((k) => root.style.removeProperty("--setzkasten-reveal-" + k))
+          if (!root.getAttribute("style")) root.removeAttribute("style")
+        })
+      }
       export default {
         mounted() {
           this.el.addEventListener("change", (e) => {
@@ -281,7 +311,7 @@ defmodule Setzkasten.Components.Layout do
             if (this.el.dataset.store === "local") {
               try { v === "system" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, v) } catch (_) {}
             }
-            apply(v)
+            reveal(e.target.closest("label") || e.target, v)
           })
           this.onStorage = (e) => { if (e.key === KEY) apply(e.newValue || "system") }
           window.addEventListener("storage", this.onStorage)
@@ -310,11 +340,10 @@ defmodule Setzkasten.Components.Layout do
       <label
         :for={{value, icon} <- @options}
         class={[
-          "join-item btn btn-sm has-checked:setzkasten-selected",
-          "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
-          @compact && "btn-square"
+          "join-item btn btn-square has-checked:setzkasten-selected",
+          "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
         ]}
-        title={@compact && @labels[value]}
+        title={@labels[value]}
       >
         <input
           type="radio"
@@ -323,7 +352,7 @@ defmodule Setzkasten.Components.Layout do
           class="sr-only"
           checked={@value == value}
         />
-        <.icon name={icon} /><span class={@compact && "sr-only"}>{@labels[value]}</span>
+        <.icon name={icon} /><span class="sr-only">{@labels[value]}</span>
       </label>
     </fieldset>
     """
