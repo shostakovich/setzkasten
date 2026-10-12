@@ -27,6 +27,13 @@ defmodule Setzkasten.ComponentCase do
     end
   end
 
+  @doc "The colocated hook sources of a component module, as compiled."
+  def colocated_js(module) do
+    Path.join([Mix.Project.build_path(), "phoenix-colocated/setzkasten", module, "*.js"])
+    |> Path.wildcard()
+    |> Enum.map_join(&File.read!/1)
+  end
+
   def text(doc, selector), do: doc |> find(selector) |> LazyHTML.text() |> String.trim()
 
   @doc "The push ops of a `phx-click`, including one parked on the confirmation dialog."

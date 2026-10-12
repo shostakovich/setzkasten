@@ -15,6 +15,37 @@
 /* Tailwind scans the package's HEEx for class names (path relative to this file). */
 @source "../../lib";
 
+/* Figtree (SIL OFL 1.1, fonts/OFL.txt), served by the app at /setzkasten/fonts. Without it the
+   metric-matched Arial fallback keeps line breaks and heights. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/Figtree-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/Figtree-Italic-Variable.woff2") format("woff2");
+}
+/* Figtree's average letter width at 400 over Arial's, and its 950/250 ascent/descent. */
+@font-face {
+  font-family: "Figtree Fallback";
+  src: local("Arial"), local("ArialMT");
+  size-adjust: 101.18%;
+  ascent-override: 93.9%;
+  descent-override: 24.71%;
+  line-gap-override: 0%;
+}
+
+@theme {
+  --font-sans: "Figtree", "Figtree Fallback", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
 @layer base {
   :where(:root),
   :root:has(input.theme-controller[value="zipfel-light"]:checked),
@@ -46,6 +77,8 @@
     --color-sidebar-content: oklch(98.07% 0.005 247.88);
     --color-sidebar-muted: oklch(83.02% 0.024 250.11);
     --color-sidebar-accent: oklch(79.98% 0.108 245.09);
+    --color-selected: oklch(40.09% 0.030 254.17);
+    --color-selected-content: oklch(98.07% 0.005 247.88);
     --color-popover: var(--color-base-100);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
@@ -64,14 +97,15 @@
     --color-chart-8-fill: var(--color-neutral);
     --color-chart-8: var(--color-neutral);
     --radius-selector: 0.5rem;
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
+    --radius-field: 0.5rem;
+    --radius-box: 0.75rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
     --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 25%;
+    --setzkasten-alert-neutral-tint: 5%;
     --setzkasten-alert-border: 10%;
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
@@ -82,9 +116,9 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       color-scheme: dark;
-      --color-base-100: oklch(30.48% 0.008 264.45);
-      --color-base-200: oklch(34.50% 0.008 264.45);
-      --color-base-300: oklch(38.50% 0.008 264.45);
+      --color-base-100: oklch(25.50% 0.010 262.00);
+      --color-base-200: oklch(29.50% 0.010 262.00);
+      --color-base-300: oklch(33.50% 0.010 262.00);
       --color-base-content: oklch(93.97% 0.006 264.53);
       --color-primary: oklch(76.88% 0.129 242.25);
       --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -92,7 +126,7 @@
       --color-secondary-content: oklch(25.97% 0.051 44.09);
       --color-accent: oklch(78.08% 0.119 294.97);
       --color-accent-content: oklch(23.03% 0.071 294.80);
-      --color-neutral: oklch(22.02% 0.007 248.17);
+      --color-neutral: oklch(16.00% 0.010 262.00);
       --color-neutral-content: oklch(93.97% 0.006 264.53);
       --color-info: oklch(82.11% 0.110 209.37);
       --color-info-content: oklch(24.90% 0.046 221.88);
@@ -104,10 +138,12 @@
       --color-error-content: oklch(21.87% 0.070 21.41);
       --color-success-ink: oklch(81.97% 0.170 150.02);
       --color-error-ink: oklch(74.93% 0.151 21.82);
-      --color-sidebar: oklch(22.60% 0.008 264.39);
+      --color-sidebar: oklch(20.00% 0.010 262.00);
       --color-sidebar-content: oklch(95.07% 0.005 247.88);
       --color-sidebar-muted: oklch(79.07% 0.010 258.34);
       --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+      --color-selected: oklch(88.00% 0.010 262.00);
+      --color-selected-content: oklch(25.50% 0.010 262.00);
       --color-popover: var(--color-base-200);
       --color-chart-1-fill: var(--color-primary);
       --color-chart-1: var(--color-primary);
@@ -126,14 +162,15 @@
       --color-chart-8-fill: oklch(72.00% 0.025 254.17);
       --color-chart-8: oklch(72.00% 0.025 254.17);
       --radius-selector: 0.5rem;
-      --radius-field: 0.25rem;
-      --radius-box: 0.5rem;
+      --radius-field: 0.5rem;
+      --radius-box: 0.75rem;
       --size-selector: 0.25rem;
       --size-field: 0.25rem;
       --border: 1px;
       --depth: 0;
       --noise: 0;
       --setzkasten-alert-tint: 8%;
+      --setzkasten-alert-neutral-tint: 8%;
       --setzkasten-alert-border: 40%;
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
@@ -145,9 +182,9 @@
   :root:has(input.theme-controller[value="zipfel-dark"]:checked),
   [data-theme="zipfel-dark"] {
     color-scheme: dark;
-    --color-base-100: oklch(30.48% 0.008 264.45);
-    --color-base-200: oklch(34.50% 0.008 264.45);
-    --color-base-300: oklch(38.50% 0.008 264.45);
+    --color-base-100: oklch(25.50% 0.010 262.00);
+    --color-base-200: oklch(29.50% 0.010 262.00);
+    --color-base-300: oklch(33.50% 0.010 262.00);
     --color-base-content: oklch(93.97% 0.006 264.53);
     --color-primary: oklch(76.88% 0.129 242.25);
     --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -155,7 +192,7 @@
     --color-secondary-content: oklch(25.97% 0.051 44.09);
     --color-accent: oklch(78.08% 0.119 294.97);
     --color-accent-content: oklch(23.03% 0.071 294.80);
-    --color-neutral: oklch(22.02% 0.007 248.17);
+    --color-neutral: oklch(16.00% 0.010 262.00);
     --color-neutral-content: oklch(93.97% 0.006 264.53);
     --color-info: oklch(82.11% 0.110 209.37);
     --color-info-content: oklch(24.90% 0.046 221.88);
@@ -167,10 +204,12 @@
     --color-error-content: oklch(21.87% 0.070 21.41);
     --color-success-ink: oklch(81.97% 0.170 150.02);
     --color-error-ink: oklch(74.93% 0.151 21.82);
-    --color-sidebar: oklch(22.60% 0.008 264.39);
+    --color-sidebar: oklch(20.00% 0.010 262.00);
     --color-sidebar-content: oklch(95.07% 0.005 247.88);
     --color-sidebar-muted: oklch(79.07% 0.010 258.34);
     --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+    --color-selected: oklch(88.00% 0.010 262.00);
+    --color-selected-content: oklch(25.50% 0.010 262.00);
     --color-popover: var(--color-base-200);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
@@ -189,14 +228,15 @@
     --color-chart-8-fill: oklch(72.00% 0.025 254.17);
     --color-chart-8: oklch(72.00% 0.025 254.17);
     --radius-selector: 0.5rem;
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
+    --radius-field: 0.5rem;
+    --radius-box: 0.75rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
     --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 8%;
+    --setzkasten-alert-neutral-tint: 8%;
     --setzkasten-alert-border: 40%;
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
@@ -205,16 +245,8 @@
   }
 }
 
-/* ------------------------------------------------------------------------------------------
- * Extra tokens that daisyUI has no slot for: text inks, chart series, the dark app sidebar and
- * the popover surface (dropdown menus, modals: base-100 in light, one step up, base-200, in dark).
- * Registered with @theme so Tailwind generates text-success-ink, bg-chart-1-fill, stroke-chart-1,
- * text-sidebar-content, … The values here are only fallbacks: both theme blocks above set every
- * one of them, and daisyUI's theme rules come later in the cascade than @theme's :root.
- * Chart series are the colour roles: chart-N-fill is the role fill (bars, areas, slices),
- * chart-N the line/outline colour that reaches 3:1 on base-100/200.
- * Charts read them at runtime with getComputedStyle.
- * ------------------------------------------------------------------------------------------ */
+/* Extra tokens with no daisyUI slot, registered so Tailwind generates bg-selected, stroke-chart-1, …
+   Fallbacks only: the theme blocks above set every one and win in the cascade. */
 @theme {
   --color-success-ink: oklch(52.13% 0.144 149.89);  /* #007f38 */
   --color-error-ink: oklch(54.94% 0.199 25.12);     /* #cc272e */
@@ -222,6 +254,8 @@
   --color-sidebar-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-sidebar-muted: oklch(83.02% 0.024 250.11); /* #bcc9d7 */
   --color-sidebar-accent: oklch(79.98% 0.108 245.09); /* #80c5ff */
+  --color-selected: oklch(40.09% 0.030 254.17);     /* #3d4958 */
+  --color-selected-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-popover: oklch(100.00% 0 0);              /* #ffffff base-100 */
   --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
   --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
@@ -255,6 +289,38 @@
   }
 }
 
+/* A utility, not a component rule, so has-checked: and other variants work. */
+@utility setzkasten-selected {
+  --btn-color: var(--color-selected);
+  --btn-fg: var(--color-selected-content);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  :root {
+    accent-color: var(--color-primary);
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 25%, var(--color-base-100));
+    color: var(--color-base-content);
+  }
+  :is(input, textarea, [contenteditable]) {
+    caret-color: var(--color-primary);
+  }
+  :is(h1, h2, h3) {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+/* app_shell's collapsed sidebar; the attribute sits on <html> so <.theme_script> sets it before paint. */
+@custom-variant sidebar-collapsed (:root[data-sidebar="collapsed"] &);
+
 /* LiveView loading variants. */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
@@ -277,11 +343,10 @@
 }
 
 @layer utilities.setzkasten {
-  /* Menu: daisyUI marks keyboard focus with a 10 % tint only (≈1.2:1) and the active item with
-     neutral, which is below 3:1 against dark base-100. Selection is primary. */
+  /* daisyUI marks menu focus with a 10 % tint (≈1.2:1) and the active item with neutral (< 3:1 on dark). */
   .menu {
-    --menu-active-bg: var(--color-primary);
-    --menu-active-fg: var(--color-primary-content);
+    --menu-active-bg: var(--color-selected);
+    --menu-active-fg: var(--color-selected-content);
   }
   /* --noise is 0, so the noise layer is invisible; dropping it keeps contrast checkers exact. */
   .menu .menu-active {
@@ -291,8 +356,8 @@
     outline: 2px solid var(--color-primary);
     outline-offset: -2px;
   }
-  /* Menu titles (dropdown headers): daisyUI draws them in base-content 40 % (2.5:1 light,
-     3.1:1 dark); 70 % as for all secondary text. */
+  /* Menu titles (dropdown headers): daisyUI draws them in base-content 40 %, below 4.5:1; 70 % as
+     for all secondary text. */
   .menu .menu-title {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
   }
@@ -301,17 +366,26 @@
   .dock .dock-label {
     font-size: 0.75rem;
   }
+  .dock > :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
 
   /* 44px targets on touch screens without changing the desktop sizes (40px md controls). */
   @media (pointer: coarse) {
     .btn,
     .input,
     .select,
+    .file-input,
     .tab,
     .menu :where(li > a, li > button, li > summary),
     .collapse > summary,
     details > summary {
       min-height: 2.75rem;
+    }
+    /* daisyUI aligns menu items to the top of their grid. */
+    .menu :where(li > a, li > button, li > summary) {
+      align-content: center;
     }
     .btn-square,
     .btn-circle {
@@ -320,8 +394,55 @@
   }
 }
 
+/* Horizontal scrollers (tabs, the top-bar menu): a thin scrollbar with a mouse, none on touch
+   screens, and the end edge fades while more content follows. The fade runs on a scroll
+   timeline, which is inactive when everything fits; without scroll-driven animations there is
+   no fade. */
+@property --setzkasten-scroll-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes setzkasten-scroll-fade {
+  0%,
+  80% {
+    --setzkasten-scroll-fade: 2.5rem;
+  }
+  100% {
+    --setzkasten-scroll-fade: 0px;
+  }
+}
+@layer utilities.setzkasten {
+  .setzkasten-scroller {
+    scrollbar-width: thin;
+    mask-image: linear-gradient(to left, transparent, #000 var(--setzkasten-scroll-fade));
+  }
+  @supports (animation-timeline: scroll()) {
+    .setzkasten-scroller {
+      animation: setzkasten-scroll-fade linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+  @media (pointer: coarse) {
+    .setzkasten-scroller {
+      scrollbar-width: none;
+    }
+    .setzkasten-scroller::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+/* A fieldset whose label is for screen readers only (hide_label, inline) keeps no block
+   padding, so its field lines up with buttons beside it. */
+@layer utilities.setzkasten {
+  .fieldset:has(> :is(label, legend).sr-only:first-child) {
+    padding-block: 0;
+  }
+}
+
 /* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
-   70 % as for all secondary text: 6.56 / 6.37:1 light, 6.39 / 5.66:1 dark (base-100 / base-200). */
+   70 % as for all secondary text. */
 @layer utilities.setzkasten {
   .tab:not(:checked, label:has(:checked), :hover, .tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"]) {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -372,9 +493,84 @@
   }
 }
 
+/* 25 % base-content, the tone alerts' tint, is a heavy grey slab in light. */
+@layer utilities.setzkasten {
+  .alert-soft:not(.alert-info, .alert-success, .alert-warning, .alert-error) {
+    background: color-mix(
+      in oklab,
+      var(--color-base-content) var(--setzkasten-alert-neutral-tint, 8%),
+      var(--color-base-100)
+    );
+  }
+}
+
+/* daisyUI's checked toggle differs from the unchecked one only by knob position and colour. */
+@layer utilities.setzkasten {
+  .toggle:is(:checked, [aria-checked="true"], :has(> input:checked)):not(:disabled) {
+    background-color: var(--input-color);
+    &::before {
+      background-color: var(--setzkasten-toggle-knob, var(--color-base-100));
+    }
+  }
+  .toggle-primary {
+    --setzkasten-toggle-knob: var(--color-primary-content);
+  }
+  .toggle-secondary {
+    --setzkasten-toggle-knob: var(--color-secondary-content);
+  }
+  .toggle-accent {
+    --setzkasten-toggle-knob: var(--color-accent-content);
+  }
+  .toggle-neutral {
+    --setzkasten-toggle-knob: var(--color-neutral-content);
+  }
+  .toggle-info {
+    --setzkasten-toggle-knob: var(--color-info-content);
+  }
+  .toggle-success {
+    --setzkasten-toggle-knob: var(--color-success-content);
+  }
+  .toggle-warning {
+    --setzkasten-toggle-knob: var(--color-warning-content);
+  }
+  .toggle-error {
+    --setzkasten-toggle-knob: var(--color-error-content);
+  }
+}
+
+/* Type scale: guides/design-system.md 2.5 (a card title never outranks its section heading). */
+@layer utilities.setzkasten {
+  .card-title {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  .stat-value {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .stat-title {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .fieldset-legend {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+  }
+  .fieldset > .label {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+}
+
 /* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
-   20 %), 5.33:1 light / 4.03:1 dark against the track on base-100, so it stands alone.
-   daisyUI's progress-neutral uses the neutral fill, 1.3:1 on dark base-100. */
+   20 %), above 3:1 against the track, so it stands alone. daisyUI's progress-neutral uses the
+   neutral fill, which nearly vanishes on dark base-100. */
 @layer utilities.setzkasten {
   .progress.setzkasten-progress-neutral {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -422,21 +618,23 @@
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
+  .modal-box:focus-visible {
+    outline: none;
+  }
 }
 
 /* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
    unselected segmented option and the file input's button are base-200, which is the dark popover
    surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
-   in dark, the same one-step lift (1.18:1) as base-200 on the dark page (1.16:1); the label
-   carries the contrast (8.2:1). */
+   in dark, the same one-step lift as base-200 on the dark page; the label carries the contrast. */
 @layer utilities.setzkasten {
   :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
     --btn-bg: var(--setzkasten-popover-control);
   }
   @media (hover: hover) {
     :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
+      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
       --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
     }
   }
@@ -464,6 +662,30 @@
   .setzkasten-sidebar .btn:focus-visible {
     outline-color: var(--color-sidebar-accent);
   }
+  /* daisyUI fills a focused ghost button with base-200, which hides the sidebar's light icon. */
+  .setzkasten-sidebar .btn-ghost {
+    --btn-color: color-mix(in oklab, var(--color-sidebar-content) 10%, transparent);
+    --btn-fg: var(--color-sidebar-content);
+  }
+  /* The light theme's selection fill is as dark as the sidebar. */
+  .setzkasten-sidebar .btn {
+    --color-selected: var(--color-sidebar-content);
+    --color-selected-content: var(--color-sidebar);
+  }
+}
+
+/* daisyUI misses the first item of a fieldset join, whose first child is the sr-only legend. */
+@layer utilities.setzkasten {
+  .join > legend:first-child + .join-item {
+    --join-ss: var(--radius-field);
+    --join-es: var(--radius-field);
+  }
+}
+/* daisyUI's join-item overlap sits in the utilities layer itself, which outranks its sublayers. */
+@layer utilities {
+  .join > legend:first-child + .join-item {
+    margin-inline-start: 0;
+  }
 }
 
 /* Long unbroken strings (host names, URLs, slugs) wrap instead of widening the page. The
@@ -485,6 +707,306 @@
 @media (pointer: coarse) {
   body:has(:is(input:not([type="checkbox"], [type="radio"]), textarea, [contenteditable]):focus) .dock {
     display: none;
+  }
+}
+
+/* Motion (guides/design-system.md 2.9); replaces daisyUI's timings, which ignore reduced motion for dialogs. */
+@layer base {
+  :root {
+    --setzkasten-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --setzkasten-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --setzkasten-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --setzkasten-duration-press: 100ms;
+    --setzkasten-duration-exit: 150ms;
+    --setzkasten-duration: 200ms;
+    --setzkasten-duration-overlay: 250ms;
+    --setzkasten-duration-reveal: 700ms;
+    --setzkasten-duration-count: 500ms;
+  }
+}
+
+@keyframes setzkasten-enter {
+  from {
+    opacity: 0;
+    translate: var(--setzkasten-enter-from, 0 0);
+    scale: var(--setzkasten-enter-scale, 1);
+  }
+}
+
+@keyframes setzkasten-draw {
+  from {
+    stroke-dashoffset: -23;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@property --setzkasten-reveal-radius {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes setzkasten-reveal {
+  from {
+    --setzkasten-reveal-radius: 0px;
+  }
+  to {
+    --setzkasten-reveal-radius: calc(var(--setzkasten-reveal-r) + var(--setzkasten-reveal-edge));
+  }
+}
+
+@layer utilities.setzkasten {
+  /* overlay keeps a closing dialog in the top layer, so the page (FAB, dock) stays under its exit. */
+  .modal {
+    transition:
+      background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      visibility var(--setzkasten-duration-exit) allow-discrete,
+      overlay var(--setzkasten-duration-exit) allow-discrete;
+  }
+  .modal:is([open], .modal-open, :target) {
+    transition:
+      background-color var(--setzkasten-duration) var(--setzkasten-ease-out),
+      visibility 0s allow-discrete,
+      overlay 0s allow-discrete;
+  }
+  .modal-box {
+    --setzkasten-enter-from: 0 0.5rem;
+    --setzkasten-enter-scale: 0.97;
+    --setzkasten-enter-opacity: 0;
+    translate: var(--setzkasten-enter-from);
+    scale: var(--setzkasten-enter-scale);
+    opacity: var(--setzkasten-enter-opacity);
+    transition:
+      translate var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .modal-bottom .modal-box {
+    --setzkasten-enter-from: 0 100%;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  .modal-start .modal-box {
+    --setzkasten-enter-from: -100% 0;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  .modal-end .modal-box {
+    --setzkasten-enter-from: 100% 0;
+    --setzkasten-enter-scale: 1;
+    --setzkasten-enter-opacity: 1;
+  }
+  @media (width >= 40rem) {
+    .sm\:modal-middle .modal-box {
+      --setzkasten-enter-from: 0 0.5rem;
+      --setzkasten-enter-scale: 0.97;
+      --setzkasten-enter-opacity: 0;
+    }
+  }
+  .modal:is([open], .modal-open, :target) .modal-box {
+    translate: 0 0;
+    scale: 1;
+    opacity: 1;
+    transition-duration: var(--setzkasten-duration-overlay);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .modal:is([open], .modal-open, :target) .modal-box {
+      translate: var(--setzkasten-enter-from);
+      scale: var(--setzkasten-enter-scale);
+      opacity: var(--setzkasten-enter-opacity);
+    }
+  }
+
+  .btn.setzkasten-fab {
+    transition-property: color, background-color, border-color, box-shadow, scale, opacity, visibility;
+    transition-behavior: allow-discrete;
+  }
+  :root:has(.modal[open]) .setzkasten-fab {
+    opacity: 0;
+    scale: 0.8;
+    visibility: hidden;
+    transition-timing-function: var(--setzkasten-ease-in);
+  }
+
+  .btn {
+    transition-property: color, background-color, border-color, box-shadow, scale;
+    transition-duration: var(--setzkasten-duration-exit);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
+    scale: 0.97;
+    transition-duration: var(--setzkasten-duration-press);
+  }
+
+  /* <details> hides its content at once; allow-discrete keeps it rendered for the fade-out. */
+  .dropdown:is(details) > .dropdown-content {
+    --setzkasten-enter-from: 0 -0.25rem;
+    --setzkasten-enter-scale: 0.96;
+    transform-origin: top left;
+    animation: none;
+    transition:
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .dropdown-end:is(details) > .dropdown-content {
+    transform-origin: top right;
+  }
+  .dropdown-top:is(details) > .dropdown-content {
+    --setzkasten-enter-from: 0 0.25rem;
+    transform-origin: bottom left;
+  }
+  .dropdown-top.dropdown-end:is(details) > .dropdown-content {
+    transform-origin: bottom right;
+  }
+  .dropdown:is(details):not([open]) > .dropdown-content {
+    opacity: 0;
+    scale: var(--setzkasten-enter-scale);
+    pointer-events: none;
+  }
+  .dropdown:is(details)[open] > .dropdown-content {
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .dropdown:is(details)::details-content {
+    transition: content-visibility var(--setzkasten-duration-exit) allow-discrete;
+  }
+
+  /* daisyUI drops the open arrow under reduced motion; the rotation is state, so it stays. */
+  .collapse:is(details)::details-content {
+    transition: none;
+  }
+  .collapse:is(details) > .collapse-content {
+    --setzkasten-enter-from: 0 -0.25rem;
+  }
+  .collapse:is(details)[open] > .collapse-content {
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .collapse-arrow > .collapse-title::after {
+    transition: transform var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .collapse[open].collapse-arrow > .collapse-title::after {
+    transform: translateY(-50%) rotate(225deg);
+  }
+
+  .toast > * {
+    --setzkasten-enter-from: 0 0.5rem;
+    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .toast-top > * {
+    --setzkasten-enter-from: 0 -0.5rem;
+  }
+
+  .tabs-border > .tab::before {
+    scale: 0.5 1;
+    transition:
+      background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in);
+  }
+  .tabs-border > .tab:is(.tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"], :checked, label:has(:checked))::before {
+    scale: 1;
+    transition-duration: var(--setzkasten-duration);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+
+  .checkbox::before {
+    transition:
+      clip-path var(--setzkasten-duration) var(--setzkasten-ease-out),
+      opacity var(--setzkasten-duration-press) linear;
+    transition-delay: 0s;
+  }
+  .toggle {
+    transition:
+      color var(--setzkasten-duration),
+      grid-template-columns var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+
+  /* Saved moment: all labels share one grid cell, so the button keeps its widest width. */
+  .setzkasten-saved-stack {
+    display: inline-grid;
+    gap: inherit;
+  }
+  .setzkasten-saved-stack > * {
+    grid-area: 1 / 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: inherit;
+    transition:
+      opacity var(--setzkasten-duration) var(--setzkasten-ease-out),
+      visibility var(--setzkasten-duration);
+  }
+  .setzkasten-saved-stack > :not(.setzkasten-saved-idle),
+  .setzkasten-saved:is(.phx-submit-loading, .phx-click-loading) .setzkasten-saved-idle:has(+ .setzkasten-saved-pending),
+  .setzkasten-saved[data-saved] :is(.setzkasten-saved-idle, .setzkasten-saved-pending) {
+    opacity: 0;
+    visibility: hidden;
+    transition-duration: var(--setzkasten-duration-exit);
+    transition-timing-function: var(--setzkasten-ease-in);
+  }
+  .setzkasten-saved:is(.phx-submit-loading, .phx-click-loading):not([data-saved]) .setzkasten-saved-pending,
+  .setzkasten-saved[data-saved] .setzkasten-saved-done {
+    opacity: 1;
+    visibility: visible;
+  }
+  .setzkasten-saved-done path {
+    stroke-dasharray: 23;
+  }
+  .setzkasten-saved[data-saved] .setzkasten-saved-done path {
+    animation: setzkasten-draw var(--setzkasten-duration-overlay) var(--setzkasten-ease-out) both;
+  }
+
+  /* Theme reveal: the new theme grows as a soft-edged circle from the chosen option (origin set by the theme hook). */
+  :root[data-setzkasten-reveal]::view-transition-old(root),
+  :root[data-setzkasten-reveal]::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  :root[data-setzkasten-reveal]::view-transition-new(root) {
+    --setzkasten-reveal-edge: 24px;
+    mask-image: radial-gradient(
+      circle at var(--setzkasten-reveal-x) var(--setzkasten-reveal-y),
+      #000 calc(var(--setzkasten-reveal-radius) - var(--setzkasten-reveal-edge)),
+      transparent var(--setzkasten-reveal-radius)
+    );
+    animation: setzkasten-reveal var(--setzkasten-duration-reveal) var(--setzkasten-ease-in-out) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .setzkasten-saved[data-saved] .setzkasten-saved-done path {
+      animation: none;
+    }
+    :root[data-setzkasten-reveal]::view-transition-new(root) {
+      animation: none;
+      mask-image: none;
+    }
+    .modal .modal-box,
+    .dropdown:is(details) > .dropdown-content,
+    .collapse:is(details) > .collapse-content,
+    .toast > *,
+    .toast-top > * {
+      --setzkasten-enter-from: 0 0;
+      --setzkasten-enter-scale: 1;
+      --setzkasten-enter-opacity: 0;
+    }
+    :root:has(.modal[open]) .setzkasten-fab,
+    .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
+      scale: none;
+      translate: none;
+    }
+    .tabs-border > .tab::before {
+      scale: none;
+    }
+    .collapse-arrow > .collapse-title::after {
+      transition: none;
+    }
+    .checkbox::before {
+      transition: opacity var(--setzkasten-duration-press) linear;
+    }
+    .toggle {
+      transition: color var(--setzkasten-duration);
+    }
   }
 }
 

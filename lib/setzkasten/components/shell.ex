@@ -1,6 +1,8 @@
 defmodule Setzkasten.Components.Shell do
   @moduledoc "The navigation shell around every page."
   use Phoenix.Component
+  alias Phoenix.LiveView.ColocatedHook
+  alias Phoenix.LiveView.JS
   alias Setzkasten.Format
   import Setzkasten.Components.Icons
   import Setzkasten.Components.Overlays, only: [modal: 1, show_modal: 1]
@@ -10,10 +12,14 @@ defmodule Setzkasten.Components.Shell do
   @doc """
   Page shell with skip link, navigation and `<main id="main">`.
 
-  `layout={:sidebar}` (e.g. a portfolio tracker): a dark sidebar from `xl` (18.5rem) with the
-  account at its foot, an icon rail with tooltips from `md` to `xl` whose expand button opens
-  the full sidebar as a native dialog (scrim, inert page, focus return), and below `xl` a top
-  bar with brand and account, below `md` plus the dock. Ghost buttons in the sidebar take its
+  `layout={:sidebar}` (e.g. a portfolio tracker): a dark sidebar from `lg` (16rem) with the
+  account and a collapse button at its foot, an icon rail with tooltips from `md` to `lg`, and
+  below `lg` a top bar with brand and account, below `md` plus the dock. Collapsed, the sidebar
+  gives way to the rail and the top bar also from `lg`; the choice is kept per device
+  (`localStorage`, applied before paint by `<.theme_script>` as `data-sidebar="collapsed"` on
+  `<html>`). The rail has one expand button at its foot: from `lg` it brings the sidebar back
+  in place, below it opens the sidebar as a native dialog (scrim, inert page, focus return),
+  which its collapse button, Escape or the scrim close. Ghost buttons in the sidebar take its
   colours.
 
   `layout={:topbar}` (e.g. a dashboard or a CMS): a navbar with a horizontal menu from
@@ -26,7 +32,7 @@ defmodule Setzkasten.Components.Shell do
   (+ `count_label`, e.g. "neu": the link is then named "Buchungen, 2 neu"; the rail and the
   dock show a positive count as a badge on the icon), `amount` (minor units, sidebar balances), `section` (sidebar group title, shown before the
   first entry of a section; an entry without one after a section stands apart by the same gap), `dock` (default true; the first five go into the dock) and `rail` (default
-  true; `false` leaves the entry out of the icon rail from `md` to `xl`, e.g. object lists
+  true; `false` leaves the entry out of the icon rail, e.g. object lists
   such as accounts, which stay in the full sidebar, its dialog and the dock). The rail keeps a
   gap between sections, without their titles. With
   `layout={:sidebar}` and more than five dock entries, the dock shows four and a `more_label`
@@ -45,8 +51,8 @@ defmodule Setzkasten.Components.Shell do
   `<:account :let={place}><.dropdown id={"account-\#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …>`.
 
   `:bar` is for detail pages: it takes the brand's place in the top bar (breadcrumbs, then a
-  status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `xl`
-  (without the account, which sits in the sidebar there). `:bar_actions` holds the page's own
+  status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `lg`
+  (without the account while the expanded sidebar holds it). `:bar_actions` holds the page's own
   actions (e.g. a `⋮` dropdown) at the end of the bar. On phones (below `sm`) a badge in the
   bar shows as its dot (the label stays for screen readers; a neutral badge shows no dot), the
   top bar leaves out the `:account` (global actions and the account menu), so the bar actions
@@ -80,6 +86,7 @@ defmodule Setzkasten.Components.Shell do
   attr :nav_label, :string, default: "Hauptnavigation"
   attr :skip_label, :string, default: "Zum Inhalt springen"
   attr :expand_label, :string, default: "Seitenleiste ausklappen"
+  attr :collapse_label, :string, default: "Seitenleiste einklappen"
   attr :more_label, :string, default: "Mehr"
   attr :class, :any, default: nil
   slot :inner_block, required: true
@@ -97,7 +104,7 @@ defmodule Setzkasten.Components.Shell do
     attr :amount, :integer
     attr :section, :string
     attr :dock, :boolean
-    attr :rail, :boolean, doc: "false leaves the entry out of the icon rail (md–xl)"
+    attr :rail, :boolean, doc: "false leaves the entry out of the icon rail"
   end
 
   slot :nav_footer
@@ -131,29 +138,45 @@ defmodule Setzkasten.Components.Shell do
     <div
       id={@id}
       class={[
-        "min-h-dvh",
-        @layout == :sidebar && "md:flex",
+        "min-h-dvh pr-[env(safe-area-inset-right)]",
+        if(@layout == :sidebar,
+          do: "md:flex max-md:pl-[env(safe-area-inset-left)]",
+          else: "pl-[env(safe-area-inset-left)]"
+        ),
         @dock_items != [] &&
           "max-md:[--setzkasten-dock-offset:calc(4rem+env(safe-area-inset-bottom))]",
         @class
       ]}
     >
       <%= if @layout == :sidebar do %>
-        <aside class={[
-          "setzkasten-sidebar hidden xl:flex w-74 shrink-0 flex-col bg-sidebar text-sidebar-content",
-          "sticky top-0 z-30 h-dvh overflow-y-auto",
-          sidebar_ghost()
-        ]}>
+        <aside
+          id={"#{@id}-sidebar-full"}
+          phx-hook=".Sidebar"
+          class={[
+            "setzkasten-sidebar hidden lg:flex lg:sidebar-collapsed:hidden w-64 shrink-0 flex-col",
+            "bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh overflow-y-auto",
+            sidebar_ghost()
+          ]}
+        >
           {sidebar(assign(assigns, :place, :sidebar))}
         </aside>
-        <aside class="hidden md:flex xl:hidden w-17 shrink-0 flex-col items-center gap-1 py-3 bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh">
+        <aside
+          id={"#{@id}-rail"}
+          phx-hook=".Sidebar"
+          class={[
+            "setzkasten-sidebar hidden md:flex lg:hidden lg:sidebar-collapsed:flex",
+            "w-[calc(4.25rem+env(safe-area-inset-left))]",
+            "ps-[env(safe-area-inset-left)] shrink-0 flex-col items-center gap-1 py-3",
+            "bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh"
+          ]}
+        >
           <.link
             :for={{item, gap?} <- @rail_items}
             navigate={item[:navigate]}
             href={item[:href]}
             class={[
-              "btn btn-ghost btn-square text-sidebar-content hover:bg-white/10 border-0 tooltip tooltip-right",
-              "focus-visible:outline-sidebar-accent",
+              rail_button(),
+              "tooltip tooltip-right",
               gap? && "mt-3",
               current?(item, @current) && "bg-white/10"
             ]}
@@ -167,31 +190,79 @@ defmodule Setzkasten.Components.Shell do
           </.link>
           <button
             type="button"
-            class="btn btn-ghost btn-square text-sidebar-content hover:bg-white/10 border-0 mt-auto focus-visible:outline-sidebar-accent"
+            class={[rail_button(), "mt-auto"]}
             aria-label={@expand_label}
-            aria-haspopup="dialog"
-            phx-click={show_modal("#{@id}-sidebar")}
+            aria-expanded="false"
+            aria-controls={"#{@id}-sidebar-full"}
+            data-sidebar-toggle="expand"
+            data-sidebar-dialog={"#{@id}-sidebar"}
+            phx-mounted={JS.ignore_attributes(["aria-controls", "aria-haspopup"])}
           >
-            <.icon name="panel-left" class="size-5" />
+            <.icon name="panel-left-open" class="size-5" />
           </button>
         </aside>
         <.modal
           id={"#{@id}-sidebar"}
           placement={:start}
+          close_button={false}
           class={[
-            "setzkasten-sidebar bg-sidebar text-sidebar-content w-74 max-w-[85vw] p-0",
+            "setzkasten-sidebar bg-sidebar text-sidebar-content w-64 max-w-[85vw] p-0",
             sidebar_ghost()
           ]}
         >
           <div class="flex h-full flex-col">{sidebar(assign(assigns, :place, :dialog))}</div>
         </.modal>
+        <script :type={ColocatedHook} name=".Sidebar">
+          const KEY = "setzkasten:sidebar"
+          const root = document.documentElement
+          const wide = window.matchMedia("(min-width: 64rem)")
+          const apply = (collapsed) => {
+            if (collapsed) root.setAttribute("data-sidebar", "collapsed")
+            else root.removeAttribute("data-sidebar")
+          }
+          export default {
+            mounted() {
+              try { if (localStorage.getItem(KEY) === "collapsed") apply(true) } catch (_) {}
+              this.expand = this.el.querySelector("[data-sidebar-toggle=expand]")
+              this.sync = () => {
+                if (!this.expand) return
+                const dialog = this.expand.dataset.sidebarDialog
+                if (wide.matches) this.expand.removeAttribute("aria-haspopup")
+                else this.expand.setAttribute("aria-haspopup", "dialog")
+                this.expand.setAttribute("aria-controls", wide.matches ? `${dialog}-full` : dialog)
+              }
+              this.sync()
+              wide.addEventListener("change", this.sync)
+              this.el.addEventListener("click", (e) => {
+                const button = e.target.closest("[data-sidebar-toggle]")
+                if (!button) return
+                const collapse = button.dataset.sidebarToggle === "collapse"
+                if (!collapse && !wide.matches) {
+                  const dialog = document.getElementById(button.dataset.sidebarDialog)
+                  if (dialog) dialog.dispatchEvent(new CustomEvent("setzkasten:show-modal"))
+                  return
+                }
+                apply(collapse)
+                try { collapse ? localStorage.setItem(KEY, "collapsed") : localStorage.removeItem(KEY) } catch (_) {}
+                const next = this.el.parentElement.querySelector(`[data-sidebar-toggle="${collapse ? "expand" : "collapse"}"]`)
+                if (next) next.focus()
+              })
+              this.onStorage = (e) => { if (e.key === KEY) apply(e.newValue === "collapsed") }
+              window.addEventListener("storage", this.onStorage)
+            },
+            destroyed() {
+              window.removeEventListener("storage", this.onStorage)
+              wide.removeEventListener("change", this.sync)
+            }
+          }
+        </script>
       <% end %>
       <div class={["min-w-0", @layout == :sidebar && "flex-1"]}>
         <header
           :if={@layout == :sidebar}
           class={[
-            "bg-base-100 border-b border-base-content/10",
-            if(@bar == [], do: "xl:hidden", else: "sticky top-0 z-20")
+            "bg-base-100 border-b border-base-content/10 pt-[env(safe-area-inset-top)]",
+            if(@bar == [], do: "lg:hidden lg:sidebar-collapsed:block", else: "sticky top-0 z-20")
           ]}
         >
           <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8 mx-auto", @width_class]}>
@@ -204,14 +275,20 @@ defmodule Setzkasten.Components.Shell do
             <div :if={@bar != [] and @bar_actions != []} class="flex shrink-0 items-center gap-2">
               {render_slot(@bar_actions)}
             </div>
-            <div class={["flex shrink-0 items-center gap-2", @bar != [] && "max-sm:hidden xl:hidden"]}>
+            <div class={[
+              "flex shrink-0 items-center gap-2",
+              @bar != [] && "max-sm:hidden lg:hidden lg:sidebar-collapsed:flex"
+            ]}>
               {render_slot(@account, :bar)}
             </div>
           </div>
         </header>
         <header
           :if={@layout == :topbar}
-          class={["bg-base-100 border-b border-base-content/10", @bar != [] && "sticky top-0 z-20"]}
+          class={[
+            "bg-base-100 border-b border-base-content/10 pt-[env(safe-area-inset-top)]",
+            @bar != [] && "sticky top-0 z-20"
+          ]}
         >
           <div class={[
             "navbar mx-auto gap-4 px-4 sm:px-6 lg:px-8",
@@ -232,14 +309,23 @@ defmodule Setzkasten.Components.Shell do
             </div>
             <nav
               :if={@nav != []}
+              id={"#{@id}-nav"}
               aria-label={@nav_label}
+              phx-hook="Setzkasten.Components.Navigation.ScrollActive"
               class={[
-                "min-w-0 overflow-x-auto",
-                if(@dock_items == [], do: "max-md:order-last max-md:w-full", else: "hidden md:block")
+                "setzkasten-scroller min-w-0 overflow-x-auto snap-x md:scroll-px-2",
+                if(@dock_items == [],
+                  do: [
+                    "max-md:order-last max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:px-4",
+                    "max-sm:scroll-px-6 sm:max-md:-mx-6 sm:max-md:w-[calc(100%+3rem)]",
+                    "sm:max-md:px-6 sm:max-md:scroll-px-8"
+                  ],
+                  else: "hidden md:block"
+                )
               ]}
             >
               <ul class="menu menu-horizontal flex-nowrap gap-1">
-                <li :for={item <- @nav}>
+                <li :for={item <- @nav} class="snap-start">
                   <.link
                     navigate={item[:navigate]}
                     href={item[:href]}
@@ -343,13 +429,38 @@ defmodule Setzkasten.Components.Shell do
     <div :if={@nav_footer != []} class="border-t border-white/10">
       {render_slot(@nav_footer, @place)}
     </div>
-    <div
-      :if={@account != [] and @place == :sidebar}
-      class="flex items-center gap-2 border-t border-white/10 px-5 py-3 [&_.btn-ghost]:-mx-3 [&_.btn-ghost]:px-3"
-    >
-      {render_slot(@account, :sidebar)}
+    <div class="flex items-center gap-4 border-t border-white/10 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div
+        :if={@account != [] and @place == :sidebar}
+        class="flex min-w-0 flex-1 items-center gap-2 [&_.btn-ghost]:-mx-3 [&_.btn-ghost]:px-3"
+      >
+        {render_slot(@account, :sidebar)}
+      </div>
+      <button
+        :if={@place == :sidebar}
+        type="button"
+        class="btn btn-ghost btn-square ms-auto -me-2.5"
+        aria-label={@collapse_label}
+        aria-expanded="true"
+        aria-controls={"#{@id}-sidebar-full"}
+        data-sidebar-toggle="collapse"
+      >
+        <.icon name="panel-left-close" class="size-5" />
+      </button>
+      <form :if={@place == :dialog} method="dialog" class="ms-auto -me-2.5">
+        <button class="btn btn-ghost btn-square" aria-label={@collapse_label}>
+          <.icon name="panel-left-close" class="size-5" />
+        </button>
+      </form>
     </div>
     """
+  end
+
+  defp rail_button do
+    [
+      "btn btn-ghost btn-square text-sidebar-content hover:bg-white/10 border-0",
+      "focus-visible:outline-sidebar-accent"
+    ]
   end
 
   # daisyUI's ghost button turns base-200 with base-content text on hover; in the dark sidebar

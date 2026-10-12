@@ -8,7 +8,8 @@ defmodule Setzkasten.Dev.Pages.Foundations do
   def summary, do: "Farben, Text-Stufen, Diagrammreihen, Typografie"
 
   @roles [
-    {"bg-primary text-primary-content", "primary", "Hauptaktion, Auswahl"},
+    {"bg-primary text-primary-content", "primary", "Hauptaktion, Links, Fokus"},
+    {"bg-selected text-selected-content", "selected", "Auswahl, aktueller Menüpunkt"},
     {"bg-neutral text-neutral-content", "neutral", "Tooltip"},
     {"bg-secondary text-secondary-content", "secondary", "selten"},
     {"bg-accent text-accent-content", "accent", "reserviert"},

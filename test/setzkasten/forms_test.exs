@@ -196,11 +196,72 @@ defmodule Setzkasten.FormsTest do
     assert doc |> find("button") |> LazyHTML.text() =~ ~r/Löschen.*Abbrechen.*Speichern/s
   end
 
-  test "sticky action bar sits above the dock" do
+  test "sticky action bar sits above the dock and spans the page gutters on phones only" do
     assigns = %{}
     doc = parse(~H|<.action_bar sticky><.button>OK</.button></.action_bar>|)
-    assert "sticky" in classes(doc, "div")
-    assert "bottom-[var(--setzkasten-dock-offset,0px)]" in classes(doc, "div")
+    bar = classes(doc, "div")
+    assert "sticky" in bar
+    assert "bottom-[var(--setzkasten-dock-offset,0px)]" in bar
+    assert Enum.all?(~w(max-sm:-mx-4 max-sm:px-4), &(&1 in bar))
+    refute Enum.any?(bar, &(&1 =~ ~r/^(sm|lg):-mx-/))
+    # 12px on phones, 16px from sm; the home indicator only counts without a dock below.
+    assert Enum.all?(
+             ~w([--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem]),
+             &(&1 in bar)
+           )
+
+    assert Enum.any?(bar, &(&1 =~ "env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset"))
+    refute "max-sm:-mx-4" in classes(parse(~H|<.action_bar>x</.action_bar>|), "div")
+  end
+
+  test "a sticky bar keeps its secondary out of the pinned row on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <form>
+        <.action_bar sticky>
+          <:secondary><.button variant={:danger}>Löschen</.button></:secondary>
+          <.button>Abbrechen</.button>
+        </.action_bar>
+      </form>
+      """)
+
+    assert count(doc, "button") == 3
+
+    assert ~w(max-sm:hidden max-sm:[.modal-box_&]:flex)
+           |> Enum.all?(&(&1 in classes(doc, "form > div > div")))
+
+    after_row = classes(doc, "form > div + div")
+    assert Enum.all?(~w(sm:hidden [.modal-box_&]:hidden), &(&1 in after_row))
+    assert text(doc, "form > div + div") == "Löschen"
+
+    doc =
+      parse(~H"""
+      <form>
+        <.action_bar>
+          <:secondary><.button variant={:danger}>Löschen</.button></:secondary>
+          <.button>Abbrechen</.button>
+        </.action_bar>
+      </form>
+      """)
+
+    assert count(doc, "button") == 2
+    refute "max-sm:hidden" in classes(doc, "form > div > div")
+  end
+
+  test "a fieldset whose label is for screen readers only has no block padding" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.fieldset:has\(> :is\(label, legend\)\.sr-only:first-child\) \{\s*padding-block: 0;/
+
+    assigns = %{}
+
+    doc =
+      parse(~H|<.input name="q" id="q" type="search" label="Suchen" hide_label icon="search" />|)
+
+    assert classes(doc, "fieldset > :first-child") == ["sr-only"]
   end
 
   test "a warning help line has an icon, full text colour and stays described" do

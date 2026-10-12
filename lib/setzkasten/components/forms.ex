@@ -406,12 +406,20 @@ defmodule Setzkasten.Components.Forms do
   @doc """
   The footer of a form: primary action at the end, cancel before it, destructive actions in
   `:secondary` at the start. Below `sm` the buttons are full width and stacked with the
-  primary action on top; a `sticky` bar keeps primary and cancel side by side in one row and
-  puts `:secondary` on a second row, so it covers less of the screen. `sticky` pins the bar to
-  the bottom of the viewport (above the dock inside `<.app_shell>`). Inside a `<.modal>` the bar
-  takes the dialog's surface (`bg-popover`), covers the box's bottom padding and keeps 16px
-  above and below the buttons; a sticky bar pins to the box's bottom edge (through its padding)
-  without the dock offset.
+  primary action on top.
+
+  `sticky` pins the bar to the bottom of the viewport, above the dock inside `<.app_shell>`.
+  On phones it spans `main`'s side gutters so nothing shows through beside it; from `sm` the bar
+  and its hairline align with the content edge, like tables and lists. It keeps 12px above and
+  below the buttons on phones and 16px from `sm`, plus the home indicator
+  (`safe-area-inset-bottom`) when no dock is below it. Below `sm` only cancel and primary
+  stay pinned, side by side; `:secondary` renders a second time in a normal row after the bar,
+  so a delete is not under the thumb all the time (give its buttons no `id`).
+
+  Inside a `<.modal>` the bar takes the dialog's surface (`bg-popover`), covers the box's
+  bottom padding and keeps 16px above and below the buttons; a sticky bar pins to the box's
+  bottom edge (through its padding) without the dock offset and keeps `:secondary` in a second
+  row of the bar.
 
       <.action_bar sticky>
         <:secondary>
@@ -438,7 +446,10 @@ defmodule Setzkasten.Components.Forms do
         "[.modal-box_&]:bg-popover [.modal-box_&]:-mb-6 [.modal-box_&]:py-4",
         if(@sticky,
           do: [
-            "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10 py-3",
+            "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10",
+            "max-sm:-mx-4 max-sm:px-4",
+            "[--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem] pt-(--setzkasten-bar-pad)",
+            "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset,0px)))]",
             "max-sm:flex-wrap max-sm:[&>.btn]:flex-1",
             "[.modal-box_&]:-mx-6 [.modal-box_&]:px-6 [.modal-box_&]:-bottom-6"
           ],
@@ -452,12 +463,19 @@ defmodule Setzkasten.Components.Forms do
         :if={@secondary != []}
         class={[
           "flex flex-col gap-2 sm:me-auto sm:flex-row",
-          @sticky && "max-sm:order-last max-sm:basis-full max-sm:[&_.btn]:w-full"
+          @sticky &&
+            "max-sm:hidden max-sm:[.modal-box_&]:flex max-sm:order-last max-sm:basis-full max-sm:[&_.btn]:w-full"
         ]}
       >
         {render_slot(@secondary)}
       </div>
       {render_slot(@inner_block)}
+    </div>
+    <div
+      :if={@sticky and @secondary != []}
+      class="flex flex-col gap-2 pt-4 sm:hidden [.modal-box_&]:hidden [&_.btn]:w-full"
+    >
+      {render_slot(@secondary)}
     </div>
     """
   end

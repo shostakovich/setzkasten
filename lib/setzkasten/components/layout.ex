@@ -50,7 +50,10 @@ defmodule Setzkasten.Components.Layout do
       </div>
       <div class="min-w-0 grow basis-40 min-h-10 flex flex-col justify-center">
         <div class="flex flex-wrap items-center gap-2">
-          <.dynamic_tag tag_name={"h#{@level}"} class="min-w-0 text-2xl font-semibold wrap-anywhere">
+          <.dynamic_tag
+            tag_name={"h#{@level}"}
+            class="min-w-0 text-2xl font-semibold tracking-[-0.01em] wrap-anywhere"
+          >
             {render_slot(@inner_block)}
           </.dynamic_tag>
           {render_slot(@badge)}
@@ -70,7 +73,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  A section heading (sentence case, `text-base` 600) with an optional count (quiet text)
+  A section heading (sentence case, `text-lg` 600) with an optional count (quiet text)
   and actions. `mt-8` above it, none when it is the first child (`first:mt-0`): at the top of a
   page, card or dialog, and as the first child of its own `<section aria-labelledby>`. Sections
   wrapped like that are stacked by their parent with a gap (`flex flex-col gap-8`, `space-y-8`
@@ -94,7 +97,7 @@ defmodule Setzkasten.Components.Layout do
       <.dynamic_tag
         tag_name={"h#{@level}"}
         id={@id}
-        class="flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere"
+        class="flex min-w-0 items-center gap-2 text-lg font-semibold wrap-anywhere"
       >
         {render_slot(@inner_block)}
         <span :if={@count} class="font-normal text-base-content/70 tabular-nums">{@count}</span>
@@ -199,14 +202,19 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  Light/dark/system choice as a segmented control (sr-only radios in `label.btn`, selected =
-  primary). "System" removes `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on
-  `<html>` right away.
+  Light/dark/system choice as an icon-only segmented control: square `label.btn` segments
+  (`sun-moon`, `sun`, `moon`) around sr-only radios, the selected one in the selection fill. The
+  `labels` are the radios' accessible names and the segments' `title` tooltips. "System" removes
+  `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on `<html>` right away.
 
   `store={:local}` keeps the choice in `localStorage["setzkasten:theme"]` (pair with
   `<.theme_script>` in the root layout so it applies before paint). `store={:server}` renders
   a form that sends `on_change` with `%{"theme" => "system" | "light" | "dark"}`; the app saves
-  it and renders `data-theme` itself. `compact` shows icons only.
+  it and renders `data-theme` itself.
+
+  Where the browser has View Transitions, the new theme spreads as a soft-edged circle from the
+  chosen icon (700 ms); with reduced motion, or when the shown scheme does not change, it switches
+  at once.
 
       <.theme_toggle />
       <.theme_toggle store={:server} value={@current_user.theme} on_change="set-theme" />
@@ -217,12 +225,11 @@ defmodule Setzkasten.Components.Layout do
   attr :on_change, :string, default: nil
   attr :label, :string, default: "Farbschema"
   attr :labels, :map, default: %{"system" => "System", "light" => "Hell", "dark" => "Dunkel"}
-  attr :compact, :boolean, default: false
   attr :class, :any, default: nil
 
   def theme_toggle(assigns) do
     assigns =
-      assign(assigns, :options, [{"system", "monitor"}, {"light", "sun"}, {"dark", "moon"}])
+      assign(assigns, :options, [{"system", "sun-moon"}, {"light", "sun"}, {"dark", "moon"}])
 
     ~H"""
     <form
@@ -256,6 +263,46 @@ defmodule Setzkasten.Components.Layout do
         if (v === "light" || v === "dark") root.setAttribute("data-theme", "zipfel-" + v)
         else root.removeAttribute("data-theme")
       }
+      // An explicit choice puts a meta without media first; the first matching one wins.
+      const syncMeta = () => {
+        const v = current()
+        let meta = document.getElementById("setzkasten-theme-color")
+        const source = document.querySelector('meta[name="theme-color"][media*="' + v + '"]')
+        if (v === "system" || !source) return meta && meta.remove()
+        if (!meta) {
+          meta = document.createElement("meta")
+          meta.id = "setzkasten-theme-color"
+          meta.name = "theme-color"
+          source.parentNode.insertBefore(meta, document.querySelector('meta[name="theme-color"]'))
+        }
+        meta.content = source.content
+      }
+      const scheme = (v) =>
+        v !== "system" ? v : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      let reveals = 0
+      // The origin goes in via CSSOM, which a strict style-src allows (a style attribute it would block).
+      const reveal = (from, v) => {
+        if (
+          !document.startViewTransition ||
+          matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          scheme(v) === scheme(current())
+        ) return apply(v)
+        const r = from.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+        root.style.setProperty("--setzkasten-reveal-x", x + "px")
+        root.style.setProperty("--setzkasten-reveal-y", y + "px")
+        root.style.setProperty("--setzkasten-reveal-r", radius + "px")
+        root.setAttribute("data-setzkasten-reveal", "")
+        const n = ++reveals
+        document.startViewTransition(() => apply(v)).finished.finally(() => {
+          if (n !== reveals) return
+          root.removeAttribute("data-setzkasten-reveal")
+          ;["x", "y", "r"].forEach((k) => root.style.removeProperty("--setzkasten-reveal-" + k))
+          if (!root.getAttribute("style")) root.removeAttribute("style")
+        })
+      }
       export default {
         mounted() {
           this.el.addEventListener("change", (e) => {
@@ -264,13 +311,14 @@ defmodule Setzkasten.Components.Layout do
             if (this.el.dataset.store === "local") {
               try { v === "system" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, v) } catch (_) {}
             }
-            apply(v)
+            reveal(e.target.closest("label") || e.target, v)
           })
           this.onStorage = (e) => { if (e.key === KEY) apply(e.newValue || "system") }
           window.addEventListener("storage", this.onStorage)
-          this.observer = new MutationObserver(() => this.sync())
+          this.observer = new MutationObserver(() => { this.sync(); syncMeta() })
           this.observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] })
           if (this.el.dataset.store === "local") this.sync()
+          syncMeta()
         },
         destroyed() {
           window.removeEventListener("storage", this.onStorage)
@@ -292,11 +340,10 @@ defmodule Setzkasten.Components.Layout do
       <label
         :for={{value, icon} <- @options}
         class={[
-          "join-item btn btn-sm has-checked:btn-primary",
-          "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
-          @compact && "btn-square"
+          "join-item btn btn-square has-checked:setzkasten-selected",
+          "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
         ]}
-        title={@compact && @labels[value]}
+        title={@labels[value]}
       >
         <input
           type="radio"
@@ -305,15 +352,17 @@ defmodule Setzkasten.Components.Layout do
           class="sr-only"
           checked={@value == value}
         />
-        <.icon name={icon} /><span class={@compact && "sr-only"}>{@labels[value]}</span>
+        <.icon name={icon} /><span class="sr-only">{@labels[value]}</span>
       </label>
     </fieldset>
     """
   end
 
   @doc """
-  Applies a stored `<.theme_toggle store={:local}>` choice before first paint. Put it in the
-  root layout's `<head>`; pass the CSP nonce if the app sends one.
+  Applies a stored `<.theme_toggle store={:local}>` choice and a collapsed `app_shell` sidebar
+  (`data-sidebar="collapsed"` on `<html>`) before first paint, and points the browser's
+  `theme-color` at an explicit choice (a `data-theme` set by the store or the server). Put it in the root layout's `<head>` after `<.theme_meta />`; pass the CSP nonce if
+  the app sends one.
 
       <.theme_script nonce={assigns[:csp_nonce]} />
   """
@@ -322,18 +371,19 @@ defmodule Setzkasten.Components.Layout do
   def theme_script(assigns) do
     ~H"""
     <script nonce={@nonce}>
-      (() => { try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", "zipfel-" + t) } catch (_) {} })()
+      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t); if (localStorage.getItem("setzkasten:sidebar") === "collapsed") r.setAttribute("data-sidebar", "collapsed") } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })()
     </script>
     """
   end
 
   @doc """
-  The two `theme-color` meta tags, in the page surface colour base-100.
+  The two `theme-color` meta tags, in the page surface colour base-100, chosen by
+  `prefers-color-scheme`. `<.theme_script>` and `<.theme_toggle>` make an explicit choice win.
   """
   def theme_meta(assigns) do
     ~H"""
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2d2f33" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#202328" />
     """
   end
 end

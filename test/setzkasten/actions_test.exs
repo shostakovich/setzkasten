@@ -129,6 +129,71 @@ defmodule Setzkasten.ActionsTest do
     doc = parse(~H|<.fab navigate="/neu" label="Ausgabe" />|)
     c = classes(doc, "a")
     assert Enum.all?(~w(btn-primary btn-circle fixed md:hidden), &(&1 in c))
+    # setzkasten.css hides it while a dialog is open.
+    assert "setzkasten-fab" in c
+    # 16px above the dock, or above the bottom safe edge without one.
+    assert "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]" in c
+    assert "end-[calc(1rem+env(safe-area-inset-right))]" in c
     assert attr(doc, "a", "aria-label") == "Ausgabe"
+  end
+
+  test "saved stacks idle, pending and saved labels in one grid cell under the hook" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button
+        type="submit"
+        id="save"
+        variant={:primary}
+        icon="check"
+        saved
+        phx-disable-with="Speichert …"
+      >
+        Speichern
+      </.button>
+      """)
+
+    assert attr(doc, "button", "phx-hook") == "Setzkasten.Components.Actions.Saved"
+    assert attr(doc, "button", "data-saved-label") == "Gespeichert"
+    assert attr(doc, "button", "phx-disable-with") == nil
+    assert "setzkasten-saved" in classes(doc, "button")
+    assert text(doc, ".setzkasten-saved-idle") == "Speichern"
+    assert text(doc, ".setzkasten-saved-pending") == "Speichert …"
+    assert text(doc, ".setzkasten-saved-done") == "Gespeichert"
+    assert count(doc, ".setzkasten-saved-stack > *") == 3
+    assert count(doc, ".setzkasten-saved-done svg.lucide") == 1
+  end
+
+  test "saved label is overridable and the pending layer is optional" do
+    assigns = %{}
+    doc = parse(~H|<.button id="s" saved saved_label="Saved">Save</.button>|)
+    assert text(doc, ".setzkasten-saved-done") == "Saved"
+    assert attr(doc, "button", "data-saved-label") == "Saved"
+    assert count(doc, ".setzkasten-saved-pending") == 0
+  end
+
+  test "saved needs an id and a button" do
+    assigns = %{}
+    assert_raise ArgumentError, ~r/needs an id/, fn -> parse(~H|<.button saved>x</.button>|) end
+
+    assert_raise ArgumentError, ~r/not a link/, fn ->
+      parse(~H|<.button id="s" saved navigate="/x">x</.button>|)
+    end
+  end
+
+  test "a button without saved keeps the plain markup" do
+    assigns = %{}
+    doc = parse(~H|<.button phx-disable-with="…">Speichern</.button>|)
+    assert attr(doc, "button", "phx-hook") == nil
+    assert attr(doc, "button", "phx-disable-with") == "…"
+    assert count(doc, ".setzkasten-saved-stack") == 0
+  end
+
+  test "push_saved pushes the saved event for the button id" do
+    socket = %Phoenix.LiveView.Socket{}
+    socket = push_saved(socket, "save")
+
+    assert socket.private.live_temp.push_events == [["setzkasten:saved", %{id: "save"}]]
   end
 end

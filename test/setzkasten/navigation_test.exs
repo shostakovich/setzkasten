@@ -15,7 +15,10 @@ defmodule Setzkasten.NavigationTest do
       """)
 
     assert attr(doc, "nav", "aria-label") == "Zeitraum"
-    assert classes(doc, "a[aria-current=page]") == ~w(join-item btn btn-sm btn-primary)
+
+    assert classes(doc, "a[aria-current=page]") ==
+             ~w(join-item btn btn-sm pointer-coarse:min-w-11 setzkasten-selected)
+
     assert attr(doc, "a[aria-current=page]", "data-phx-link") == "patch"
   end
 
@@ -94,6 +97,71 @@ defmodule Setzkasten.NavigationTest do
 </.tabs>|) =~ "tab-active"
   end
 
+  test "tabs scroll edge to edge on phones, snap, and reveal the active tab" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.tabs label="Bereiche">
+        <:tab navigate="/a">A</:tab>
+        <:tab navigate="/b" active>B</:tab>
+      </.tabs>
+      """)
+
+    nav = classes(doc, "nav")
+
+    assert Enum.all?(
+             ~w(setzkasten-scroller snap-x scroll-px-4 max-sm:-mx-4 max-sm:px-4),
+             &(&1 in nav)
+           )
+
+    assert attr(doc, "nav", "phx-hook") == "Setzkasten.Components.Navigation.ScrollActive"
+    assert attr(doc, "nav", "id") =~ ~r/^tabs-\d+$/
+    assert attr(parse(~H|<.tabs id="t" label="x">
+  <:tab navigate="/a">A</:tab>
+</.tabs>|), "nav", "id") == "t"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "animation-timeline: scroll(self inline)"
+
+    assert css =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-scroller \{\s*scrollbar-width: none/
+  end
+
+  test "small segmented options and breadcrumb links are 44px wide on touch screens" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.segmented mode={:button} label="Z" size={:sm} options={[{"1M", "1m"}]} />|)
+
+    assert "pointer-coarse:min-w-11" in classes(doc, "button")
+
+    refute "pointer-coarse:min-w-11" in classes(
+             parse(~H|<.segmented mode={:button} label="Z" options={[{"1M", "1m"}]} />|),
+             "button"
+           )
+
+    doc =
+      parse(~H"""
+      <.breadcrumbs>
+        <:crumb navigate="/a">A</:crumb>
+        <:crumb navigate="/b">B</:crumb>
+        <:crumb>C</:crumb>
+      </.breadcrumbs>
+      """)
+
+    assert Enum.all?(
+             doc
+             |> find("a")
+             |> Enum.map(
+               &("pointer-coarse:min-w-11" in String.split(
+                   LazyHTML.attribute(&1, "class")
+                   |> hd()
+                 ))
+             )
+           )
+  end
+
   test "a tab takes extra classes" do
     assigns = %{}
 
@@ -105,7 +173,7 @@ defmodule Setzkasten.NavigationTest do
       </.tabs>
       """)
 
-    assert classes(doc, "a[href='/b']") == ~w(tab shrink-0 whitespace-nowrap ms-auto)
+    assert classes(doc, "a[href='/b']") == ~w(tab shrink-0 snap-start whitespace-nowrap ms-auto)
   end
 
   test "dropdown header line and trigger classes" do
@@ -264,7 +332,7 @@ defmodule Setzkasten.NavigationTest do
     assert classes(doc, "nav") == ~w(join flex w-full setzkasten-segmented-block)
 
     assert classes(doc, "a[href='/?r=1m']") ==
-             ~w(join-item btn btn-sm min-w-0 flex-1 max-sm:px-2)
+             ~w(join-item btn btn-sm pointer-coarse:min-w-11 min-w-0 flex-1 max-sm:px-2)
 
     doc = parse(~H|<.segmented mode={:button} label="Zeitraum" options={@options} block />|)
     assert classes(doc, "[role=group]") == ~w(join flex w-full setzkasten-segmented-block)
@@ -302,5 +370,14 @@ defmodule Setzkasten.NavigationTest do
              doc,
              "header > div:last-child"
            )
+  end
+
+  test "touch screens: 44px file inputs, menu labels centred in their box" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    [coarse] = Regex.run(~r/@media \(pointer: coarse\) \{\s*\.btn,.*?\n  \}/s, css)
+    assert coarse =~ ".file-input,"
+
+    assert coarse =~
+             ~r/\.menu :where\(li > a, li > button, li > summary\) \{\s*align-content: center;/
   end
 end

@@ -21,16 +21,16 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @icon_colors %{
-    info: "text-info",
+    info: "text-chart-6",
     success: "text-success-ink",
-    warning: "text-warning",
+    warning: "text-chart-2",
     error: "text-error-ink",
     neutral: nil
   }
 
   @doc """
-  A message inside the page: `alert alert-soft alert-<tone>`, text in
-  base-content, icon in the tone colour (`error-ink`/`success-ink` for error and success).
+  A message inside the page: `alert alert-soft alert-<tone>`, text in base-content, icon in
+  the tone's line colour (`chart-6`, `success-ink`, `chart-2`, `error-ink`; ≥ 3:1 on the tint).
 
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
   the end from `sm` and move under the text on phones. `on_close` (event name or `%JS{}`) adds
@@ -116,7 +116,9 @@ defmodule Setzkasten.Components.Feedback do
   defp close_click(event) when is_binary(event), do: JS.push(event)
 
   @doc """
-  Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom).
+  Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom),
+  below the top bar and the safe area; full width within the 16px gutter on phones, 384px at
+  the end from `sm`. Toasts float over content, so they carry a shadow (as dropdown menus).
   Same API as Phoenix's generated `<.flash>`. Dismiss is a real button.
 
       <.flash kind={:info} flash={@flash} />
@@ -131,7 +133,7 @@ defmodule Setzkasten.Components.Feedback do
 
   def flash(assigns) do
     ~H"""
-    <div class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14">
+    <div class={toast_class()}>
       {flash_alert(assigns)}
     </div>
     """
@@ -154,13 +156,13 @@ defmodule Setzkasten.Components.Feedback do
       id={@id}
       role={if @kind == :error, do: "alert", else: "status"}
       class={[
-        "alert alert-soft text-base-content w-80 sm:w-96 max-w-full",
+        "alert alert-soft text-base-content shadow-lg w-full sm:w-96",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}
       {@rest}
     >
-      <.icon :if={@kind == :info} name="info" class="size-5 text-info" />
+      <.icon :if={@kind == :info} name="info" class="size-5 text-chart-6" />
       <.icon :if={@kind == :error} name="circle-alert" class="size-5 text-error-ink" />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
@@ -178,13 +180,22 @@ defmodule Setzkasten.Components.Feedback do
     """
   end
 
+  # 4.5rem clears a sticky page bar (61px).
+  defp toast_class do
+    [
+      "toast toast-top toast-center sm:toast-end z-50 top-[calc(env(safe-area-inset-top)+4.5rem)]",
+      "max-sm:inset-x-4 max-sm:w-auto max-sm:[--toast-x:0]",
+      "sm:end-[calc(1rem+env(safe-area-inset-right))]"
+    ]
+  end
+
   defp hide_flash(js, selector) do
     JS.hide(js,
       to: selector,
-      time: 200,
+      time: 150,
       transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0",
-         "opacity-0 -translate-y-2"}
+        {"transition ease-(--setzkasten-ease-in) duration-(--setzkasten-duration-exit)",
+         "opacity-100 translate-y-0", "opacity-0 motion-safe:-translate-y-2"}
     )
   end
 
@@ -205,7 +216,7 @@ defmodule Setzkasten.Components.Feedback do
     <div
       id={@id}
       aria-live="polite"
-      class="toast toast-top toast-center sm:toast-end z-50 max-md:top-14"
+      class={toast_class()}
     >
       <.flash_alert kind={:info} flash={@flash} close_label={@close_label} />
       <.flash_alert kind={:error} flash={@flash} close_label={@close_label} />

@@ -16,6 +16,7 @@ defmodule Setzkasten.Dev.CatalogLive do
     {"values", Pages.ValuesPage},
     {"navigation", Pages.NavigationPage},
     {"overlays", Pages.OverlaysPage},
+    {"delights", Pages.DelightsPage},
     {"shell", Pages.ShellPage}
   ]
 
@@ -23,7 +24,8 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, view: "list", deleted: 0, form: Pages.FormsPage.build_form(%{}))}
+    {:ok,
+     assign(socket, view: "list", deleted: 0, level: 0, form: Pages.FormsPage.build_form(%{}))}
   end
 
   @impl true
@@ -59,6 +61,13 @@ defmodule Setzkasten.Dev.CatalogLive do
   def handle_event("save", %{"expense" => params}, socket) do
     {:noreply, assign(socket, form: Pages.FormsPage.build_form(params, :validate))}
   end
+
+  def handle_event("value-up", _params, socket), do: {:noreply, update(socket, :level, &(&1 + 1))}
+
+  def handle_event("value-down", _params, socket),
+    do: {:noreply, update(socket, :level, &(&1 - 1))}
+
+  def handle_event("save-demo", _params, socket), do: {:noreply, push_saved(socket, "demo-save")}
 
   def handle_event("flash", %{"kind" => kind}, socket) do
     {kind, msg} =

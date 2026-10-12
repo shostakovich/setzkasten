@@ -57,8 +57,18 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "tbody tr") == ~w(relative row-hover)
+    assert classes(doc, "tbody tr") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200)
+
     assert attr(doc, "tbody tr:first-child td:first-child a", "href") == "/w/1"
+    link = classes(doc, "tbody tr:first-child td:first-child a")
+
+    assert Enum.all?(
+             ~w(after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2
+                focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary),
+             &(&1 in link)
+           )
+
     assert count(doc, "td:last-child a") == 0
   end
 
@@ -72,7 +82,9 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "#row-1") == ~w(relative row-hover)
+    assert classes(doc, "#row-1") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200)
+
     assert classes(doc, "#row-2") == []
     assert count(doc, "#row-2 a") == 0
     assert text(doc, "#row-2 td") == "Gold"
@@ -95,7 +107,9 @@ defmodule Setzkasten.DataTest do
       </.table>
       """)
 
-    assert classes(doc, "#row-1") == ~w(relative row-hover font-semibold)
+    assert classes(doc, "#row-1") ==
+             ~w(relative row-hover has-[td:first-child>a:active]:bg-base-200 font-semibold)
+
     assert attr(doc, "#row-1", "aria-current") == "true"
     assert attr(doc, "#row-1", "data-kind") == "stock"
     assert attr(doc, "#row-2", "hidden") != nil
@@ -227,6 +241,7 @@ defmodule Setzkasten.DataTest do
     # No chevron: the hover fill and the title say the row opens.
     assert count(doc, "li > svg.lucide") == 0
     assert "md:hover:bg-base-200" in classes(doc, "li.list-row")
+    assert "has-[.list-col-grow>:is(a,button):active]:bg-base-200" in classes(doc, "li.list-row")
     # An open menu lies above the menus of the rows below it.
     assert "open:z-20" in classes(doc, "details")
   end
@@ -502,7 +517,9 @@ defmodule Setzkasten.DataTest do
     assigns = %{}
     doc = parse(~H|<.avatar initials="KD" size={:sm} />|)
     assert attr(doc, ".avatar", "aria-hidden") == "true"
-    assert classes(doc, ".avatar > div") == ~w(bg-primary text-primary-content w-8 rounded-field)
+    assert classes(doc, ".avatar > div") == ~w(bg-base-300 text-base-content w-8 rounded-field)
+    doc = parse(~H|<.avatar initials="KD" tone={:primary} />|)
+    assert "bg-primary" in classes(doc, ".avatar > div")
     doc = parse(~H|<.avatar icon="user" shape={:round} label="Person" />|)
     assert attr(doc, ".avatar", "role") == "img"
     assert "rounded-full" in classes(doc, ".avatar > div")
@@ -768,5 +785,40 @@ defmodule Setzkasten.DataTest do
     assert "font-medium" in classes(plain, "dd")
     # Facts are data: 14px like tables.
     assert "text-sm" in classes(plain, "dl")
+  end
+
+  test "a stat with an id carries the change hook on its value; without one, none" do
+    assigns = %{}
+    doc = parse(~H|<.stat id="pv" label="PV" value="1.234" unit="W" />|)
+    assert attr(doc, ".stat", "id") == "pv"
+    assert attr(doc, "#pv-value", "phx-hook") == "Setzkasten.Components.Data.LiveValue"
+    assert text(doc, "#pv-value > span:first-child") == "1.234"
+
+    assert count(parse(~H|<.stat label="PV" value="1" />|), "[phx-hook]") == 0
+
+    assert count(parse(~H|<.stat id="pv" label="PV" value="1" animate={false} />|), "[phx-hook]") ==
+             0
+  end
+
+  test "an animated amount needs an id and carries the change hook" do
+    assigns = %{}
+    doc = parse(~H|<.amount id="b" value={-7420} signed tone animate />|)
+    assert attr(doc, "data", "phx-hook") == "Setzkasten.Components.Data.LiveValue"
+    assert attr(parse(~H|<.amount value={1} />|), "data", "phx-hook") == nil
+
+    assert_raise ArgumentError, ~r/needs an id/, fn ->
+      parse(~H|<.amount value={1} animate />|)
+    end
+  end
+
+  test "the change hook reads the motion tokens and has no glow" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ "--setzkasten-duration-count"
+    refute hook =~ "glow"
+    assert hook =~ "prefers-reduced-motion: reduce"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "--setzkasten-duration-count: 500ms"
+    refute css =~ "glow"
   end
 end

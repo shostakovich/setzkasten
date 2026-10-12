@@ -9,7 +9,7 @@ defmodule Setzkasten.FeedbackTest do
              ~w(alert alert-soft text-base-content alert-warning)
 
     assert attr(doc, "div", "role") == "status"
-    assert "text-warning" in classes(doc, "svg")
+    assert "text-chart-2" in classes(doc, "svg")
     assert text(doc, "p.font-semibold") == "API-Key fehlt"
   end
 
@@ -35,9 +35,9 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, ".alert", "aria-busy") == "true"
 
     assert classes(doc, ".loading") ==
-             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-info)
+             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-chart-6)
 
-    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-info)
+    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-chart-6)
     assert count(parse(~H|<.alert icon={false}>x</.alert>|), "svg") == 0
   end
 
@@ -49,6 +49,11 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, "#flash-info", "role") == "status"
     assert attr(doc, "button", "aria-label") == "Schließen"
     assert attr(doc, "button", "phx-click") =~ "lv:clear-flash"
+    # Leaves in the exit time on the motion tokens, without movement under reduced motion.
+    click = attr(doc, "button", "phx-click")
+    assert click =~ "duration-(--setzkasten-duration-exit)"
+    assert click =~ "motion-safe:-translate-y-2"
+    assert click =~ ~s("time":150)
   end
 
   test "alert with a close button keeps it at the end on phones" do
@@ -87,6 +92,15 @@ defmodule Setzkasten.FeedbackTest do
     assert count(doc, "#flash-group .alert") == 3
     assert attr(doc, "#client-error", "hidden") != nil
     assert "motion-reduce:hidden" in classes(doc, "#client-error .loading")
+
+    group = classes(doc, "#flash-group")
+
+    assert Enum.all?(
+             ["top-[calc(env(safe-area-inset-top)+4.5rem)]", "max-sm:inset-x-4", "max-sm:w-auto"],
+             &(&1 in group)
+           )
+
+    assert Enum.all?(~w(shadow-lg w-full sm:w-96), &(&1 in classes(doc, "#flash-error")))
 
     doc = parse(~H|<.flash_group flash={@flash} close_label="Close" />|)
     assert attr(doc, "#client-error button", "aria-label") == "Close"
@@ -155,12 +169,12 @@ defmodule Setzkasten.FeedbackTest do
 
     doc = parse(~H|<.empty_state plush="receipt" layout={:page} title="Leer">T</.empty_state>|)
     assert text(doc, "h2.text-lg") == "Leer"
-    assert count(doc, "img.size-12") == 2
+    assert count(doc, "img.size-12") == 1
 
     doc =
       parse(~H|<.empty_state plush="receipt" layout={:page} plush_size={:xxl}>T</.empty_state>|)
 
-    assert count(doc, "img.size-24") == 2
+    assert count(doc, "img.size-24") == 1
   end
 
   test "empty state falls back to its icon when the plush has no image" do

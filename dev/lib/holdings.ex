@@ -82,7 +82,7 @@ defmodule Setzkasten.Dev.Holdings do
       <:col :let={item} label="Anteil" align={:end} show_from={:md}>
         {percent(item.entry.value, @net_worth)}
       </:col>
-      <:col :let={item} label="Div.-Rendite" align={:end} show_from={:lg}>
+      <:col :let={item} label="Div.-Rendite" align={:end} show_from={:xl}>
         <span :if={item.type == :holding} class={item.entry.dividends == 0 && "text-base-content/70"}>
           {dividend_yield(item.entry.dividends, item.entry.value)}
         </span>
@@ -104,7 +104,7 @@ defmodule Setzkasten.Dev.Holdings do
         <td class={["text-end whitespace-nowrap", show_from(:md)]}>
           {@depot && percent(@total.value, @net_worth)}
         </td>
-        <td class={["text-end whitespace-nowrap", show_from(:lg)]}>
+        <td class={["text-end whitespace-nowrap", show_from(:xl)]}>
           {dividend_yield(@total.dividends, @total.securities_value)}
         </td>
       </:foot>
@@ -150,7 +150,7 @@ defmodule Setzkasten.Dev.Holdings do
   defp row_link(_item), do: nil
 
   defp row_attrs(%{type: :account, marked: true}),
-    do: %{"aria-current": "true", class: "bg-primary/8"}
+    do: %{"aria-current": "true", class: "bg-selected/8"}
 
   defp row_attrs(_item), do: %{}
 

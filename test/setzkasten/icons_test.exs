@@ -34,8 +34,9 @@ defmodule Setzkasten.IconsTest do
   end
 
   test "built-in set covers what the components draw" do
-    for name <- ~w(chevron-left chevron-right chevron-down x ellipsis-vertical circle-alert
-                   triangle-alert info circle-check trash-2 monitor sun moon panel-left) do
+    for name <-
+          ~w(chevron-left chevron-right chevron-down x ellipsis-vertical circle-alert
+                   triangle-alert info circle-check trash-2 sun-moon sun moon panel-left-open panel-left-close) do
       assert Setzkasten.Lucide.svg(name), name
     end
   end
@@ -59,7 +60,7 @@ defmodule Setzkasten.IconsTest do
 
   test "plush with a dark file renders two images that swap with the theme" do
     assigns = %{}
-    doc = parse(~H|<.plush name="cart" size={:lg} />|)
+    doc = parse(~H|<.plush src="/cart.webp" dark_src="/cart-dark.webp" size={:lg} />|)
     assert count(doc, "img.plush") == 2
     assert "dark:hidden" in classes(doc, "img:first-child")
     assert attr(doc, "img", "width") == "32"

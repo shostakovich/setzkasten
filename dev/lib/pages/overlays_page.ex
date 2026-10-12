@@ -25,7 +25,11 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button variant={:primary} phx-click={show_modal("booking")} aria-haspopup="dialog">
           Dialog öffnen
         </.button>
-        <.button icon="panel-left" phx-click={show_modal("category-panel")} aria-haspopup="dialog">
+        <.button
+          icon="panel-left-open"
+          phx-click={show_modal("category-panel")}
+          aria-haspopup="dialog"
+        >
           Seitenpanel öffnen
         </.button>
         <.button phx-click={show_modal("long-form")} aria-haspopup="dialog">

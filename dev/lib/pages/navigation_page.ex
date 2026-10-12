@@ -16,8 +16,9 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       code={code(0)}
     >
       <:intro>
-        Eine Wahl aus wenigen Optionen (Zeitraum, Ansicht): <code>join</code> aus Buttons, gewählt =
-        Primary. Drei Modi: Links, Buttons, Formularfeld.
+        Eine Wahl aus wenigen Optionen (Zeitraum, Ansicht): <code>join</code>
+        aus Buttons, die gewählte
+        Option in der neutralen Auswahlfarbe <code>selected</code>. Drei Modi: Links, Buttons, Formularfeld.
       </:intro>
       <.demo title="mode={:patch}, size={:sm} (klickbar, Zustand in der URL)">
         <.segmented
@@ -122,16 +123,16 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       code={code(1)}
     >
       <:intro>
-        Wechsel zwischen Geschwister-Ansichten eines Objekts. Nur Links, serverseitig, aktiv per <code>aria-current="page"</code>; scrollt auf dem Handy waagerecht.
+        Wechsel zwischen Geschwister-Ansichten eines Objekts. Nur Links, serverseitig, aktiv per <code>aria-current="page"</code>; scrollt auf dem Handy waagerecht, randlos, mit Ausblendung am Ende, solange mehr folgt. Ein aktiver Reiter außer Sicht wird beim Laden hereingescrollt.
       </:intro>
-      <.demo title="Sieben Bereiche (CMS)">
+      <.demo title="Sieben Bereiche (CMS), aktiv: Navigation">
         <.tabs label="Bereiche">
-          <:tab patch="/navigation" active>Posts</:tab>
+          <:tab patch="/navigation">Posts</:tab>
           <:tab patch="/navigation">Seiten</:tab>
           <:tab patch="/navigation">Bücher</:tab>
           <:tab patch="/navigation">Medien</:tab>
           <:tab patch="/navigation">Links</:tab>
-          <:tab patch="/navigation">Navigation</:tab>
+          <:tab patch="/navigation" active>Navigation</:tab>
           <:tab patch="/navigation">Einstellungen</:tab>
         </.tabs>
         <:note>Inaktive Reiter in base-content 70 % (Theme-Patch; daisyUI: 50 %, 3,4:1).</:note>

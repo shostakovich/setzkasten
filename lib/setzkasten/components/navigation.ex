@@ -1,12 +1,14 @@
 defmodule Setzkasten.Components.Navigation do
   @moduledoc "Segmented choices, tab navigation and dropdown menus."
   use Phoenix.Component
+  alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
   import Setzkasten.Click, only: [entry_click: 2]
 
   @doc """
-  One choice out of a few (time range, view): a `join` of buttons, selected = `btn-primary`.
+  One choice out of a few (time range, view): a `join` of buttons, the selected one in the
+  selection fill (`setzkasten-selected`, `bg-selected`).
 
   Modes:
 
@@ -57,7 +59,10 @@ defmodule Setzkasten.Components.Navigation do
     assigns =
       assigns
       |> assign(:options, Enum.map(assigns.options, &normalize_option/1))
-      |> assign(:option_class, [assigns.size == :sm && "btn-sm", block_option(assigns.block)])
+      |> assign(:option_class, [
+        assigns.size == :sm && "btn-sm pointer-coarse:min-w-11",
+        block_option(assigns.block)
+      ])
       |> assign(:join_class, ["join", block_join(assigns.block)])
       |> assign_field()
 
@@ -89,7 +94,7 @@ defmodule Setzkasten.Components.Navigation do
       <.link
         :for={option <- @options}
         patch={option.path}
-        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-current={selected?(option, @value) && "page"}
         aria-label={option[:long_label]}
       >
@@ -105,7 +110,7 @@ defmodule Setzkasten.Components.Navigation do
       <button
         :for={option <- @options}
         type="button"
-        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-pressed={to_string(selected?(option, @value))}
         aria-label={option[:long_label]}
         phx-value-value={option.value}
@@ -124,7 +129,7 @@ defmodule Setzkasten.Components.Navigation do
       <label
         :for={option <- @options}
         class={[
-          "join-item btn has-checked:btn-primary",
+          "join-item btn has-checked:setzkasten-selected",
           "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
           @option_class
         ]}
@@ -148,13 +153,22 @@ defmodule Setzkasten.Components.Navigation do
   @doc """
   Navigation between sibling views of one object (`tabs tabs-border`). Links only,
   server-rendered: the active tab carries `aria-current="page"` (daisyUI styles it, no
-  `tab-active`). Scrolls horizontally on phones; 44px on touch screens.
+  `tab-active`). 44px on touch screens.
+
+  Tabs that do not fit scroll sideways: on phones the strip runs into `main`'s 16px gutters,
+  tabs snap to the start, the end edge fades while more tabs follow, and an active tab out of
+  view is scrolled into it (colocated hook; `id` defaults to one derived from `label`, so pass
+  `id` when two tabs components share a label on one page).
 
       <.tabs label="Bereiche">
         <:tab navigate={~p"/sites/\#{@site}/posts"} active>Posts</:tab>
         <:tab navigate={~p"/sites/\#{@site}/pages"}>Seiten</:tab>
       </.tabs>
   """
+  attr :id, :string,
+    default: nil,
+    doc: "needed when two tabs components share a label on one page"
+
   attr :label, :string, required: true
   attr :class, :any, default: nil
   attr :rest, :global
@@ -170,8 +184,14 @@ defmodule Setzkasten.Components.Navigation do
   def tabs(assigns) do
     ~H"""
     <nav
+      id={@id || "tabs-#{:erlang.phash2(@label)}"}
       aria-label={@label}
-      class={["tabs tabs-border flex-nowrap overflow-x-auto", @class]}
+      phx-hook=".ScrollActive"
+      class={[
+        "setzkasten-scroller tabs tabs-border flex-nowrap overflow-x-auto snap-x scroll-px-4",
+        "max-sm:-mx-4 max-sm:px-4",
+        @class
+      ]}
       {@rest}
     >
       <.link
@@ -179,12 +199,27 @@ defmodule Setzkasten.Components.Navigation do
         navigate={tab[:navigate]}
         patch={tab[:patch]}
         href={tab[:href]}
-        class={["tab shrink-0 whitespace-nowrap", tab[:class]]}
+        class={["tab shrink-0 snap-start whitespace-nowrap", tab[:class]]}
         aria-current={tab[:active] && "page"}
       >
         {render_slot(tab)}
       </.link>
     </nav>
+    <script :type={ColocatedHook} name=".ScrollActive">
+      export default {
+        mounted() { this.reveal() },
+        updated() { this.reveal() },
+        reveal() {
+          const el = this.el
+          const item = el.querySelector('[aria-current="page"]')
+          if (!item || el.scrollWidth <= el.clientWidth) return
+          const pad = parseFloat(getComputedStyle(el).scrollPaddingInlineStart) || 0
+          const box = el.getBoundingClientRect()
+          const r = item.getBoundingClientRect()
+          if (r.left < box.left + pad || r.right > box.right) el.scrollLeft += r.left - box.left - pad
+        }
+      }
+    </script>
     """
   end
 
@@ -234,7 +269,7 @@ defmodule Setzkasten.Components.Navigation do
             patch={crumb[:patch]}
             href={crumb[:href]}
             class={[
-              "flex items-center gap-1 text-base-content/70 pointer-coarse:min-h-11",
+              "flex items-center gap-1 text-base-content/70 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
               index == @last_parent && "max-sm:-ms-1 max-sm:min-w-8 max-sm:pointer-coarse:min-w-11"
             ]}
           >

@@ -16,11 +16,13 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       code={code(0)}
     >
       <:intro>
-        Zwei Layouts. <code>:sidebar</code>: dunkle Seitenleiste mit Konto am Fuß ab <code>xl</code>, Icon-Leiste von
+        Zwei Layouts. <code>:sidebar</code>: dunkle Seitenleiste mit Konto und Einklapp-Knopf am Fuß ab <code>lg</code>, Icon-Leiste von
         <code>md</code>
-        bis <code>xl</code>
+        bis <code>lg</code>
         (ausklappbar als
-        Dialog) mit Kopfzeile, auf dem Handy Kopfzeile + Dock. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Ein
+        Dialog) mit Kopfzeile, auf dem Handy Kopfzeile + Dock. Eingeklappt zeigt auch ab
+        <code>lg</code>
+        die Icon-Leiste; das Gerät merkt sich die Wahl. <code>:topbar</code>: Navbar ab <code>md</code>, darunter Dock und ggf. FAB. Ein
         <code>count</code>
         steht in der Seitenleiste als Zahl, in Icon-Leiste und Dock als Badge am Icon;
         <code>count_label</code>
@@ -68,7 +70,7 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       <:nav key={:holdings} label="Bestand" icon="list" navigate={~p"/bestand"} />
       <:nav key={:bookings} label="Buchungen" icon="receipt" count={2} count_label="neu" navigate={…} />
       <:nav key={:kinder} label="Kinderdepot" icon="wallet" amount={799_483} section="Depots" navigate={…} />
-      <%!-- rail={false}: object lists such as accounts stay out of the icon rail (md–xl) --%>
+      <%!-- rail={false}: object lists such as accounts stay out of the icon rail --%>
       <:nav key={:giro} label="Girokonto" icon="landmark" amount={248_310} section="Konten" rail={false} navigate={…} />
       <:nav key={:settings} label="Einstellungen" icon="settings" navigate={…} />
       <:nav key={:stats} label="Statistik" plush="stats" icon="chart-pie" navigate={…} />
