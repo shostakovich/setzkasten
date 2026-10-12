@@ -50,7 +50,10 @@ defmodule Setzkasten.Components.Layout do
       </div>
       <div class="min-w-0 grow basis-40 min-h-10 flex flex-col justify-center">
         <div class="flex flex-wrap items-center gap-2">
-          <.dynamic_tag tag_name={"h#{@level}"} class="min-w-0 text-2xl font-semibold wrap-anywhere">
+          <.dynamic_tag
+            tag_name={"h#{@level}"}
+            class="min-w-0 text-2xl font-semibold tracking-[-0.01em] wrap-anywhere"
+          >
             {render_slot(@inner_block)}
           </.dynamic_tag>
           {render_slot(@badge)}
@@ -70,7 +73,7 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  A section heading (sentence case, `text-base` 600) with an optional count (quiet text)
+  A section heading (sentence case, `text-lg` 600) with an optional count (quiet text)
   and actions. `mt-8` above it, none when it is the first child (`first:mt-0`): at the top of a
   page, card or dialog, and as the first child of its own `<section aria-labelledby>`. Sections
   wrapped like that are stacked by their parent with a gap (`flex flex-col gap-8`, `space-y-8`
@@ -94,7 +97,7 @@ defmodule Setzkasten.Components.Layout do
       <.dynamic_tag
         tag_name={"h#{@level}"}
         id={@id}
-        class="flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere"
+        class="flex min-w-0 items-center gap-2 text-lg font-semibold wrap-anywhere"
       >
         {render_slot(@inner_block)}
         <span :if={@count} class="font-normal text-base-content/70 tabular-nums">{@count}</span>
@@ -199,8 +202,8 @@ defmodule Setzkasten.Components.Layout do
   end
 
   @doc """
-  Light/dark/system choice as a segmented control (sr-only radios in `label.btn`, selected =
-  primary). "System" removes `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on
+  Light/dark/system choice as a segmented control (sr-only radios in `label.btn`, the selected
+  one in the selection fill). "System" removes `data-theme`; light and dark set `zipfel-light`/`zipfel-dark` on
   `<html>` right away.
 
   `store={:local}` keeps the choice in `localStorage["setzkasten:theme"]` (pair with
@@ -292,7 +295,7 @@ defmodule Setzkasten.Components.Layout do
       <label
         :for={{value, icon} <- @options}
         class={[
-          "join-item btn btn-sm has-checked:btn-primary",
+          "join-item btn btn-sm has-checked:setzkasten-selected",
           "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
           @compact && "btn-square"
         ]}
@@ -333,7 +336,7 @@ defmodule Setzkasten.Components.Layout do
   def theme_meta(assigns) do
     ~H"""
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2d2f33" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#202328" />
     """
   end
 end

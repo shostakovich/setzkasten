@@ -502,7 +502,9 @@ defmodule Setzkasten.DataTest do
     assigns = %{}
     doc = parse(~H|<.avatar initials="KD" size={:sm} />|)
     assert attr(doc, ".avatar", "aria-hidden") == "true"
-    assert classes(doc, ".avatar > div") == ~w(bg-primary text-primary-content w-8 rounded-field)
+    assert classes(doc, ".avatar > div") == ~w(bg-base-300 text-base-content w-8 rounded-field)
+    doc = parse(~H|<.avatar initials="KD" tone={:primary} />|)
+    assert "bg-primary" in classes(doc, ".avatar > div")
     doc = parse(~H|<.avatar icon="user" shape={:round} label="Person" />|)
     assert attr(doc, ".avatar", "role") == "img"
     assert "rounded-full" in classes(doc, ".avatar > div")

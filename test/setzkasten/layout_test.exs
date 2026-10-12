@@ -27,7 +27,7 @@ defmodule Setzkasten.LayoutTest do
     doc = parse(~H|<.section_heading count={3} level={3}>Depots</.section_heading>|)
 
     assert classes(doc, "h3") ==
-             ~w(flex min-w-0 items-center gap-2 text-base font-semibold wrap-anywhere)
+             ~w(flex min-w-0 items-center gap-2 text-lg font-semibold wrap-anywhere)
 
     # The count is quiet text, no badge.
     assert text(doc, "h3 span.tabular-nums") == "3"
@@ -84,7 +84,7 @@ defmodule Setzkasten.LayoutTest do
     assert attr(doc, "#theme-toggle", "data-store") == "local"
     assert count(doc, "label.btn input[type=radio].sr-only") == 3
     assert attr(doc, "input[value=dark]", "checked") != nil
-    assert "has-checked:btn-primary" in classes(doc, "label")
+    assert "has-checked:setzkasten-selected" in classes(doc, "label")
     assert text(doc, "legend") == "Farbschema"
   end
 
@@ -100,7 +100,7 @@ defmodule Setzkasten.LayoutTest do
     assert rendered_to_string(~H|<.theme_script nonce="abc" />|) =~ ~s(nonce="abc")
     doc = parse(~H|<.theme_meta />|)
     assert attr(doc, "meta[media*=light]", "content") == "#ffffff"
-    assert attr(doc, "meta[media*=dark]", "content") == "#2d2f33"
+    assert attr(doc, "meta[media*=dark]", "content") == "#202328"
   end
 
   test "header and card text break long unbroken strings" do

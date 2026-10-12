@@ -21,16 +21,16 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @icon_colors %{
-    info: "text-info",
+    info: "text-chart-6",
     success: "text-success-ink",
-    warning: "text-warning",
+    warning: "text-chart-2",
     error: "text-error-ink",
     neutral: nil
   }
 
   @doc """
-  A message inside the page: `alert alert-soft alert-<tone>`, text in
-  base-content, icon in the tone colour (`error-ink`/`success-ink` for error and success).
+  A message inside the page: `alert alert-soft alert-<tone>`, text in base-content, icon in
+  the tone's line colour (`chart-6`, `success-ink`, `chart-2`, `error-ink`; ≥ 3:1 on the tint).
 
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
   the end from `sm` and move under the text on phones. `on_close` (event name or `%JS{}`) adds
@@ -160,7 +160,7 @@ defmodule Setzkasten.Components.Feedback do
       ]}
       {@rest}
     >
-      <.icon :if={@kind == :info} name="info" class="size-5 text-info" />
+      <.icon :if={@kind == :info} name="info" class="size-5 text-chart-6" />
       <.icon :if={@kind == :error} name="circle-alert" class="size-5 text-error-ink" />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>

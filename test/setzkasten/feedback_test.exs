@@ -9,7 +9,7 @@ defmodule Setzkasten.FeedbackTest do
              ~w(alert alert-soft text-base-content alert-warning)
 
     assert attr(doc, "div", "role") == "status"
-    assert "text-warning" in classes(doc, "svg")
+    assert "text-chart-2" in classes(doc, "svg")
     assert text(doc, "p.font-semibold") == "API-Key fehlt"
   end
 
@@ -35,9 +35,9 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, ".alert", "aria-busy") == "true"
 
     assert classes(doc, ".loading") ==
-             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-info)
+             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-chart-6)
 
-    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-info)
+    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-chart-6)
     assert count(parse(~H|<.alert icon={false}>x</.alert>|), "svg") == 0
   end
 

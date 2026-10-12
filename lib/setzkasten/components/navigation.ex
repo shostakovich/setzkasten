@@ -6,7 +6,8 @@ defmodule Setzkasten.Components.Navigation do
   import Setzkasten.Click, only: [entry_click: 2]
 
   @doc """
-  One choice out of a few (time range, view): a `join` of buttons, selected = `btn-primary`.
+  One choice out of a few (time range, view): a `join` of buttons, the selected one in the
+  selection fill (`setzkasten-selected`, `bg-selected`).
 
   Modes:
 
@@ -89,7 +90,7 @@ defmodule Setzkasten.Components.Navigation do
       <.link
         :for={option <- @options}
         patch={option.path}
-        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-current={selected?(option, @value) && "page"}
         aria-label={option[:long_label]}
       >
@@ -105,7 +106,7 @@ defmodule Setzkasten.Components.Navigation do
       <button
         :for={option <- @options}
         type="button"
-        class={["join-item btn", @option_class, selected?(option, @value) && "btn-primary"]}
+        class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-pressed={to_string(selected?(option, @value))}
         aria-label={option[:long_label]}
         phx-value-value={option.value}
@@ -124,7 +125,7 @@ defmodule Setzkasten.Components.Navigation do
       <label
         :for={option <- @options}
         class={[
-          "join-item btn has-checked:btn-primary",
+          "join-item btn has-checked:setzkasten-selected",
           "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
           @option_class
         ]}

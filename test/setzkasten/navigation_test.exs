@@ -15,7 +15,7 @@ defmodule Setzkasten.NavigationTest do
       """)
 
     assert attr(doc, "nav", "aria-label") == "Zeitraum"
-    assert classes(doc, "a[aria-current=page]") == ~w(join-item btn btn-sm btn-primary)
+    assert classes(doc, "a[aria-current=page]") == ~w(join-item btn btn-sm setzkasten-selected)
     assert attr(doc, "a[aria-current=page]", "data-phx-link") == "patch"
   end
 

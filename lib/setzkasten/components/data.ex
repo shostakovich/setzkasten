@@ -853,19 +853,21 @@ defmodule Setzkasten.Components.Data do
   }
 
   @doc """
-  Initials or an icon on a theme fill (every fill/content pair ≥ 4.5:1). Square chip
+  Initials or an icon on a quiet base-300 tile, or on a theme fill with `tone` (every
+  fill/content pair ≥ 4.5:1; `:primary` e.g. for the signed-in user). Square chip
   (`rounded-field`) by default, `shape={:round}` for people. Hidden from screen readers unless
   `label` is set (the name usually sits next to it). `loading` shows a spinner in the tile
   instead of its content (same size and tone); with reduced motion a still ellipsis. Only an
   avatar with `label` announces it (`aria-busy`); a hidden one leaves that to its row.
 
       <.avatar initials="KD" size={:sm} />
-      <.avatar icon="user" tone={:base} shape={:round} />
+      <.avatar icon="user" shape={:round} />
+      <.avatar initials="JM" tone={:primary} />
       <.avatar initials="DB" loading />
   """
   attr :initials, :string, default: nil
   attr :icon, :string, default: nil
-  attr :tone, :atom, default: :primary, values: Map.keys(@avatar_tones)
+  attr :tone, :atom, default: :base, values: Map.keys(@avatar_tones)
   attr :size, :atom, default: :md, values: [:sm, :md, :lg]
   attr :shape, :atom, default: :square, values: [:square, :round]
   attr :label, :string, default: nil

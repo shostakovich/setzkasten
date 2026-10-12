@@ -46,6 +46,8 @@
     --color-sidebar-content: oklch(98.07% 0.005 247.88);
     --color-sidebar-muted: oklch(83.02% 0.024 250.11);
     --color-sidebar-accent: oklch(79.98% 0.108 245.09);
+    --color-selected: oklch(40.09% 0.030 254.17);
+    --color-selected-content: oklch(98.07% 0.005 247.88);
     --color-popover: var(--color-base-100);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
@@ -64,14 +66,15 @@
     --color-chart-8-fill: var(--color-neutral);
     --color-chart-8: var(--color-neutral);
     --radius-selector: 0.5rem;
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
+    --radius-field: 0.5rem;
+    --radius-box: 0.75rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
     --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 25%;
+    --setzkasten-alert-neutral-tint: 5%;
     --setzkasten-alert-border: 10%;
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
@@ -82,9 +85,9 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       color-scheme: dark;
-      --color-base-100: oklch(30.48% 0.008 264.45);
-      --color-base-200: oklch(34.50% 0.008 264.45);
-      --color-base-300: oklch(38.50% 0.008 264.45);
+      --color-base-100: oklch(25.50% 0.010 262.00);
+      --color-base-200: oklch(29.50% 0.010 262.00);
+      --color-base-300: oklch(33.50% 0.010 262.00);
       --color-base-content: oklch(93.97% 0.006 264.53);
       --color-primary: oklch(76.88% 0.129 242.25);
       --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -92,7 +95,7 @@
       --color-secondary-content: oklch(25.97% 0.051 44.09);
       --color-accent: oklch(78.08% 0.119 294.97);
       --color-accent-content: oklch(23.03% 0.071 294.80);
-      --color-neutral: oklch(22.02% 0.007 248.17);
+      --color-neutral: oklch(16.00% 0.010 262.00);
       --color-neutral-content: oklch(93.97% 0.006 264.53);
       --color-info: oklch(82.11% 0.110 209.37);
       --color-info-content: oklch(24.90% 0.046 221.88);
@@ -104,10 +107,12 @@
       --color-error-content: oklch(21.87% 0.070 21.41);
       --color-success-ink: oklch(81.97% 0.170 150.02);
       --color-error-ink: oklch(74.93% 0.151 21.82);
-      --color-sidebar: oklch(22.60% 0.008 264.39);
+      --color-sidebar: oklch(20.00% 0.010 262.00);
       --color-sidebar-content: oklch(95.07% 0.005 247.88);
       --color-sidebar-muted: oklch(79.07% 0.010 258.34);
       --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+      --color-selected: oklch(88.00% 0.010 262.00);
+      --color-selected-content: oklch(25.50% 0.010 262.00);
       --color-popover: var(--color-base-200);
       --color-chart-1-fill: var(--color-primary);
       --color-chart-1: var(--color-primary);
@@ -126,14 +131,15 @@
       --color-chart-8-fill: oklch(72.00% 0.025 254.17);
       --color-chart-8: oklch(72.00% 0.025 254.17);
       --radius-selector: 0.5rem;
-      --radius-field: 0.25rem;
-      --radius-box: 0.5rem;
+      --radius-field: 0.5rem;
+      --radius-box: 0.75rem;
       --size-selector: 0.25rem;
       --size-field: 0.25rem;
       --border: 1px;
       --depth: 0;
       --noise: 0;
       --setzkasten-alert-tint: 8%;
+      --setzkasten-alert-neutral-tint: 8%;
       --setzkasten-alert-border: 40%;
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
@@ -145,9 +151,9 @@
   :root:has(input.theme-controller[value="zipfel-dark"]:checked),
   [data-theme="zipfel-dark"] {
     color-scheme: dark;
-    --color-base-100: oklch(30.48% 0.008 264.45);
-    --color-base-200: oklch(34.50% 0.008 264.45);
-    --color-base-300: oklch(38.50% 0.008 264.45);
+    --color-base-100: oklch(25.50% 0.010 262.00);
+    --color-base-200: oklch(29.50% 0.010 262.00);
+    --color-base-300: oklch(33.50% 0.010 262.00);
     --color-base-content: oklch(93.97% 0.006 264.53);
     --color-primary: oklch(76.88% 0.129 242.25);
     --color-primary-content: oklch(21.89% 0.055 245.19);
@@ -155,7 +161,7 @@
     --color-secondary-content: oklch(25.97% 0.051 44.09);
     --color-accent: oklch(78.08% 0.119 294.97);
     --color-accent-content: oklch(23.03% 0.071 294.80);
-    --color-neutral: oklch(22.02% 0.007 248.17);
+    --color-neutral: oklch(16.00% 0.010 262.00);
     --color-neutral-content: oklch(93.97% 0.006 264.53);
     --color-info: oklch(82.11% 0.110 209.37);
     --color-info-content: oklch(24.90% 0.046 221.88);
@@ -167,10 +173,12 @@
     --color-error-content: oklch(21.87% 0.070 21.41);
     --color-success-ink: oklch(81.97% 0.170 150.02);
     --color-error-ink: oklch(74.93% 0.151 21.82);
-    --color-sidebar: oklch(22.60% 0.008 264.39);
+    --color-sidebar: oklch(20.00% 0.010 262.00);
     --color-sidebar-content: oklch(95.07% 0.005 247.88);
     --color-sidebar-muted: oklch(79.07% 0.010 258.34);
     --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+    --color-selected: oklch(88.00% 0.010 262.00);
+    --color-selected-content: oklch(25.50% 0.010 262.00);
     --color-popover: var(--color-base-200);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
@@ -189,14 +197,15 @@
     --color-chart-8-fill: oklch(72.00% 0.025 254.17);
     --color-chart-8: oklch(72.00% 0.025 254.17);
     --radius-selector: 0.5rem;
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
+    --radius-field: 0.5rem;
+    --radius-box: 0.75rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
     --depth: 0;
     --noise: 0;
     --setzkasten-alert-tint: 8%;
+    --setzkasten-alert-neutral-tint: 8%;
     --setzkasten-alert-border: 40%;
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
@@ -205,16 +214,8 @@
   }
 }
 
-/* ------------------------------------------------------------------------------------------
- * Extra tokens that daisyUI has no slot for: text inks, chart series, the dark app sidebar and
- * the popover surface (dropdown menus, modals: base-100 in light, one step up, base-200, in dark).
- * Registered with @theme so Tailwind generates text-success-ink, bg-chart-1-fill, stroke-chart-1,
- * text-sidebar-content, … The values here are only fallbacks: both theme blocks above set every
- * one of them, and daisyUI's theme rules come later in the cascade than @theme's :root.
- * Chart series are the colour roles: chart-N-fill is the role fill (bars, areas, slices),
- * chart-N the line/outline colour that reaches 3:1 on base-100/200.
- * Charts read them at runtime with getComputedStyle.
- * ------------------------------------------------------------------------------------------ */
+/* Extra tokens with no daisyUI slot, registered so Tailwind generates bg-selected, stroke-chart-1, …
+   Fallbacks only: the theme blocks above set every one and win in the cascade. */
 @theme {
   --color-success-ink: oklch(52.13% 0.144 149.89);  /* #007f38 */
   --color-error-ink: oklch(54.94% 0.199 25.12);     /* #cc272e */
@@ -222,6 +223,8 @@
   --color-sidebar-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-sidebar-muted: oklch(83.02% 0.024 250.11); /* #bcc9d7 */
   --color-sidebar-accent: oklch(79.98% 0.108 245.09); /* #80c5ff */
+  --color-selected: oklch(40.09% 0.030 254.17);     /* #3d4958 */
+  --color-selected-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-popover: oklch(100.00% 0 0);              /* #ffffff base-100 */
   --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
   --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
@@ -255,6 +258,35 @@
   }
 }
 
+/* A utility, not a component rule, so has-checked: and other variants work. */
+@utility setzkasten-selected {
+  --btn-color: var(--color-selected);
+  --btn-fg: var(--color-selected-content);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  :root {
+    accent-color: var(--color-primary);
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 25%, var(--color-base-100));
+    color: var(--color-base-content);
+  }
+  :is(input, textarea, [contenteditable]) {
+    caret-color: var(--color-primary);
+  }
+  :is(h1, h2, h3) {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
 /* LiveView loading variants. */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
@@ -277,11 +309,10 @@
 }
 
 @layer utilities.setzkasten {
-  /* Menu: daisyUI marks keyboard focus with a 10 % tint only (≈1.2:1) and the active item with
-     neutral, which is below 3:1 against dark base-100. Selection is primary. */
+  /* daisyUI marks menu focus with a 10 % tint (≈1.2:1) and the active item with neutral (< 3:1 on dark). */
   .menu {
-    --menu-active-bg: var(--color-primary);
-    --menu-active-fg: var(--color-primary-content);
+    --menu-active-bg: var(--color-selected);
+    --menu-active-fg: var(--color-selected-content);
   }
   /* --noise is 0, so the noise layer is invisible; dropping it keeps contrast checkers exact. */
   .menu .menu-active {
@@ -372,6 +403,79 @@
   }
 }
 
+/* 25 % base-content, the tone alerts' tint, is a heavy grey slab in light. */
+@layer utilities.setzkasten {
+  .alert-soft:not(.alert-info, .alert-success, .alert-warning, .alert-error) {
+    background: color-mix(
+      in oklab,
+      var(--color-base-content) var(--setzkasten-alert-neutral-tint, 8%),
+      var(--color-base-100)
+    );
+  }
+}
+
+/* daisyUI's checked toggle differs from the unchecked one only by knob position and colour. */
+@layer utilities.setzkasten {
+  .toggle:is(:checked, [aria-checked="true"], :has(> input:checked)):not(:disabled) {
+    background-color: var(--input-color);
+    &::before {
+      background-color: var(--setzkasten-toggle-knob, var(--color-base-100));
+    }
+  }
+  .toggle-primary {
+    --setzkasten-toggle-knob: var(--color-primary-content);
+  }
+  .toggle-secondary {
+    --setzkasten-toggle-knob: var(--color-secondary-content);
+  }
+  .toggle-accent {
+    --setzkasten-toggle-knob: var(--color-accent-content);
+  }
+  .toggle-neutral {
+    --setzkasten-toggle-knob: var(--color-neutral-content);
+  }
+  .toggle-info {
+    --setzkasten-toggle-knob: var(--color-info-content);
+  }
+  .toggle-success {
+    --setzkasten-toggle-knob: var(--color-success-content);
+  }
+  .toggle-warning {
+    --setzkasten-toggle-knob: var(--color-warning-content);
+  }
+  .toggle-error {
+    --setzkasten-toggle-knob: var(--color-error-content);
+  }
+}
+
+/* Type scale: guides/design-system.md 2.5 (a card title never outranks its section heading). */
+@layer utilities.setzkasten {
+  .card-title {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  .stat-value {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .stat-title {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  .fieldset-legend {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+  }
+  .fieldset > .label {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+}
+
 /* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
    20 %), 5.33:1 light / 4.03:1 dark against the track on base-100, so it stands alone.
    daisyUI's progress-neutral uses the neutral fill, 1.3:1 on dark base-100. */
@@ -431,12 +535,12 @@
    carries the contrast (8.2:1). */
 @layer utilities.setzkasten {
   :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
     --btn-bg: var(--setzkasten-popover-control);
   }
   @media (hover: hover) {
     :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
+      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
       --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
     }
   }
@@ -463,6 +567,19 @@
   }
   .setzkasten-sidebar .btn:focus-visible {
     outline-color: var(--color-sidebar-accent);
+  }
+  /* The light theme's selection fill is as dark as the sidebar. */
+  .setzkasten-sidebar .btn {
+    --color-selected: var(--color-sidebar-content);
+    --color-selected-content: var(--color-sidebar);
+  }
+}
+
+/* daisyUI misses the first item of a fieldset join, whose first child is the sr-only legend. */
+@layer utilities.setzkasten {
+  .join > legend:first-child + .join-item {
+    --join-ss: var(--radius-field);
+    --join-es: var(--radius-field);
   }
 }
 
