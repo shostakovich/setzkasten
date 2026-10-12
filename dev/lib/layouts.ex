@@ -18,6 +18,13 @@ defmodule Setzkasten.Dev.Layouts do
         <script>
           (() => { const t = new URLSearchParams(location.search).get("theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", "zipfel-" + t) })()
         </script>
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          crossorigin
+          href="/setzkasten/fonts/Figtree-Variable.woff2"
+        />
         <link rel="stylesheet" href="/assets/app.css" />
         <script defer src="/assets/app.js">
         </script>

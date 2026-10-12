@@ -8,6 +8,7 @@ defmodule Setzkasten.Dev.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  plug Plug.Static, at: "/setzkasten", from: {:setzkasten, "priv/static"}, only: ~w(fonts)
   plug Plug.Static, at: "/", from: Path.expand("../static", __DIR__), gzip: false
 
   plug Plug.Session, @session_options

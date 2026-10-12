@@ -15,6 +15,37 @@
 /* Tailwind scans the package's HEEx for class names (path relative to this file). */
 @source "../../lib";
 
+/* Figtree (SIL OFL 1.1, fonts/OFL.txt), served by the app at /setzkasten/fonts. Without it the
+   metric-matched Arial fallback keeps line breaks and heights. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/Figtree-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/Figtree-Italic-Variable.woff2") format("woff2");
+}
+/* Figtree's average letter width at 400 over Arial's, and its 950/250 ascent/descent. */
+@font-face {
+  font-family: "Figtree Fallback";
+  src: local("Arial"), local("ArialMT");
+  size-adjust: 101.18%;
+  ascent-override: 93.9%;
+  descent-override: 24.71%;
+  line-gap-override: 0%;
+}
+
+@theme {
+  --font-sans: "Figtree", "Figtree Fallback", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
 @layer base {
   :where(:root),
   :root:has(input.theme-controller[value="zipfel-light"]:checked),
