@@ -6,6 +6,10 @@ defmodule Setzkasten.Dev.Dashboard do
   use Setzkasten
   alias Setzkasten.Format
 
+  @live %{pv: ~w(486 512 498 471 455 503), battery: ~w(78 78 77 77 76 76)}
+
+  def live(key, step), do: Enum.at(@live[key], rem(step, length(@live[key])))
+
   @hours Enum.to_list(14..23) ++ Enum.to_list(0..13)
 
   # kWh per hour, 14:00 yesterday to 13:00 today (the last hour is still running).

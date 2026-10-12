@@ -14,3 +14,16 @@ html {
     scroll-padding-top: 1.5rem;
   }
 }
+
+:not(pre) > code {
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+  padding: 0.125em 0.375em;
+  font-size: max(0.875em, 12px);
+  font-weight: 500;
+  white-space: nowrap;
+  box-decoration-break: clone;
+}
+:not(pre) > code.chip-wrap {
+  white-space: normal;
+}

@@ -35,7 +35,7 @@ defmodule Setzkasten.ShellTest do
 
     assert count(doc, "nav.dock a:first-child svg.lucide") == 1
     assert count(doc, "nav.dock a:first-child img") == 0
-    assert count(doc, "nav.dock a:last-child img.plush") == 2
+    assert count(doc, "nav.dock a:last-child img.plush") == 1
     assert count(doc, "nav.dock a:last-child svg") == 0
   end
 

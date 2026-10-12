@@ -146,6 +146,12 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       </:intro>
       <.demo title="Ausprobieren" class="flex flex-wrap items-center gap-4">
         <.theme_toggle id="theme-demo" />
+        <:note>
+          Die Wahl breitet sich als Kreis vom Symbol aus; siehe <.link
+            navigate="/delights"
+            class="link"
+          >Delights</.link>.
+        </:note>
       </.demo>
     </.showcase>
     """

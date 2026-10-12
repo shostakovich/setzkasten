@@ -60,7 +60,7 @@ defmodule Setzkasten.IconsTest do
 
   test "plush with a dark file renders two images that swap with the theme" do
     assigns = %{}
-    doc = parse(~H|<.plush name="cart" size={:lg} />|)
+    doc = parse(~H|<.plush src="/cart.webp" dark_src="/cart-dark.webp" size={:lg} />|)
     assert count(doc, "img.plush") == 2
     assert "dark:hidden" in classes(doc, "img:first-child")
     assert attr(doc, "img", "width") == "32"

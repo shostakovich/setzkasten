@@ -13,7 +13,9 @@ defmodule Setzkasten.Dev.Demo do
     ~H"""
     <section id={@id} class="space-y-6 scroll-mt-6">
       <div class="space-y-1">
-        <h2 class="text-xl font-semibold"><code>{@name}</code> {@title}</h2>
+        <h2 class="text-xl font-semibold">
+          {@title} <code class="ml-1 align-middle text-sm">{@name}</code>
+        </h2>
         <p :if={@intro != []} class="max-w-prose">{render_slot(@intro)}</p>
       </div>
       <pre :if={@code} class="rounded-box bg-base-200 px-4 py-3 text-xs leading-5 overflow-x-auto"><code>{dedent(@code)}</code></pre>

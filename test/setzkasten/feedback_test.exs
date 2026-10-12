@@ -169,12 +169,12 @@ defmodule Setzkasten.FeedbackTest do
 
     doc = parse(~H|<.empty_state plush="receipt" layout={:page} title="Leer">T</.empty_state>|)
     assert text(doc, "h2.text-lg") == "Leer"
-    assert count(doc, "img.size-12") == 2
+    assert count(doc, "img.size-12") == 1
 
     doc =
       parse(~H|<.empty_state plush="receipt" layout={:page} plush_size={:xxl}>T</.empty_state>|)
 
-    assert count(doc, "img.size-24") == 2
+    assert count(doc, "img.size-24") == 1
   end
 
   test "empty state falls back to its icon when the plush has no image" do

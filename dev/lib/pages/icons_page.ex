@@ -87,9 +87,10 @@ defmodule Setzkasten.Dev.Pages.IconsPage do
       code={code(1)}
     >
       <:intro>
-        Navigation, Kategorien, Wetter, Einstellungs-Links. WebP mit heller und dunkler Datei; die
-        App liefert die Bilder (<code>config :setzkasten, plush: MyAppWeb.Plush</code>). Der Katalog
-        zeigt Platzhalter.
+        Navigation, Kategorien, Wetter, Einstellungs-Links. Transparentes WebP, eine Datei für beide
+        Themes oder je eine helle und dunkle; die App liefert die Bilder
+        (<code class="chip-wrap">config :setzkasten, plush: MyAppWeb.Plush</code>). Der Katalog zeigt Filz-Plüsch aus
+        echten Apps.
       </:intro>
       <.demo
         title="Größen :sm 20 · :md 24 · :lg 32 · :xl 48px"
@@ -100,7 +101,7 @@ defmodule Setzkasten.Dev.Pages.IconsPage do
         </span>
       </.demo>
       <.demo
-        title="Kategorien (helle und dunkle Datei, wechselt mit dem Theme)"
+        title="Kategorien"
         class="grid grid-cols-3 sm:grid-cols-6 gap-3 text-xs text-base-content/70"
       >
         <span :for={{name, label} <- @categories} class="flex flex-col items-center gap-1.5">
@@ -108,7 +109,7 @@ defmodule Setzkasten.Dev.Pages.IconsPage do
         </span>
       </.demo>
       <.demo
-        title="Navigation (eine Datei für beide Themes)"
+        title="Navigation"
         class="grid grid-cols-3 sm:grid-cols-6 gap-3 text-xs text-base-content/70"
       >
         <span :for={{name, label} <- @nav_icons} class="flex flex-col items-center gap-1.5">

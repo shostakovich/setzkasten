@@ -36,7 +36,9 @@ defmodule Setzkasten.Dev.ScreenLive do
        filter: "all",
        posts: Data.posts(),
        holdings: Data.holdings(),
-       allocation: Data.allocation()
+       allocation: Data.allocation(),
+       live_step: 0,
+       ticking: false
      )}
   end
 
@@ -53,7 +55,22 @@ defmodule Setzkasten.Dev.ScreenLive do
        depot: Holdings.depot(socket.assigns.holdings, params["d"]),
        marked: params["k"],
        allocation_tab: Map.get(@allocation_params, params["a"], :regions)
-     )}
+     )
+     |> start_ticking()}
+  end
+
+  # The dashboard's live values change every 10 s, slow enough for the change animation.
+  defp start_ticking(%{assigns: %{screen: "dashboard", ticking: false}} = socket) do
+    if connected?(socket), do: Process.send_after(self(), :tick, 10_000)
+    assign(socket, ticking: connected?(socket))
+  end
+
+  defp start_ticking(socket), do: socket
+
+  @impl true
+  def handle_info(:tick, socket) do
+    Process.send_after(self(), :tick, 10_000)
+    {:noreply, update(socket, :live_step, &(&1 + 1))}
   end
 
   @impl true
@@ -67,8 +84,7 @@ defmodule Setzkasten.Dev.ScreenLive do
   def handle_event("book", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Buchung erfassen“.")}
 
-  def handle_event("save", _params, socket),
-    do: {:noreply, put_flash(socket, :info, "Einstellungen gespeichert.")}
+  def handle_event("save", _params, socket), do: {:noreply, push_saved(socket, "settings-save")}
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
@@ -347,7 +363,7 @@ defmodule Setzkasten.Dev.ScreenLive do
           placeholder="Name, z. B. Alex"
           inline
         >
-          <.button variant={:primary} icon="plus" class="join-item">Hinzufügen</.button>
+          <.button icon="plus" class="join-item">Hinzufügen</.button>
         </.input>
 
         <.section_heading>Darstellung</.section_heading>
@@ -385,7 +401,15 @@ defmodule Setzkasten.Dev.ScreenLive do
             </.button>
           </:secondary>
           <.button navigate="/screens/settings">Abbrechen</.button>
-          <.button type="submit" variant={:primary} phx-disable-with="Speichert …">Speichern</.button>
+          <.button
+            type="submit"
+            variant={:primary}
+            id="settings-save"
+            saved
+            phx-disable-with="Speichert …"
+          >
+            Speichern
+          </.button>
         </.action_bar>
       </form>
     </.app_shell>
@@ -500,7 +524,7 @@ defmodule Setzkasten.Dev.ScreenLive do
       <p class="mt-2 hidden text-sm text-base-content/70 lg:block">
         Div.-Rendite: brutto, nächste 12 Monate auf den heutigen Wert.
       </p>
-      <div class="mt-8 grid gap-x-10 gap-y-8 2xl:grid-cols-2">
+      <div class="mt-8 grid grid-cols-1 gap-x-10 gap-y-8 2xl:grid-cols-2">
         <Holdings.allocation
           allocation={@allocation}
           tab={@allocation_tab}
@@ -533,14 +557,14 @@ defmodule Setzkasten.Dev.ScreenLive do
 
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
-          <.stat label="PV jetzt" unit="W" desc="Sonnig, 17 °C">
+          <.stat id="live-pv" label="PV jetzt" unit="W" desc="Sonnig, 17 °C">
             <span class="inline-flex items-center gap-2">
-              <.plush name="sunny" size={:lg} />486
+              <.plush name="sunny" size={:lg} />{Dashboard.live(:pv, @live_step)}
             </span>
           </.stat>
-          <.stat label="Batterie" unit="%" desc="entlädt mit 120 W">
+          <.stat id="live-battery" label="Batterie" unit="%" desc="entlädt mit 120 W">
             <span class="inline-flex items-center gap-2">
-              <.plush name="battery" size={:lg} />78
+              <.plush name="battery" size={:lg} />{Dashboard.live(:battery, @live_step)}
             </span>
           </.stat>
         </div>

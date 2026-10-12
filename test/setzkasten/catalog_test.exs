@@ -18,6 +18,22 @@ defmodule Setzkasten.CatalogTest do
     end
   end
 
+  test "the settings screen confirms a save on its button instead of a flash" do
+    {:ok, view, _} = live(build_conn(), "/screens/settings")
+    html = view |> element("#settings-form") |> render_submit()
+    assert_push_event(view, "setzkasten:saved", %{id: "settings-save"})
+    refute html =~ "Einstellungen gespeichert"
+  end
+
+  test "the delights page changes its live values up and down" do
+    {:ok, view, html} = live(build_conn(), "/delights")
+    assert html =~ "63.279"
+    assert view |> element("#live-up") |> render_click() =~ "63.412"
+    assert view |> element("#live-down") |> render_click() =~ "63.279"
+    view |> element("#delight-save-form") |> render_submit()
+    assert_push_event(view, "setzkasten:saved", %{id: "demo-save"})
+  end
+
   test "delete events from the dialog reach the view" do
     {:ok, view, _} = live(build_conn(), "/overlays")
     assert render(view) =~ "Bisher gelöscht (Demo): 0"
