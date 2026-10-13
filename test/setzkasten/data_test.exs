@@ -215,6 +215,27 @@ defmodule Setzkasten.DataTest do
     assert Enum.all?(~w(hidden lg:block), &(&1 in classes(doc, "div")))
   end
 
+  test "show_from and hide_from accept 2xl" do
+    assigns = %{rows: @rows}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows}>
+        <:col :let={r} label="Name">{r.name}</:col>
+        <:col :let={r} label="Wert" show_from={:"2xl"}>{r.value}</:col>
+      </.table>
+      """)
+
+    assert Enum.all?(~w(hidden 2xl:table-cell), &(&1 in classes(doc, "th:last-child")))
+    assert show_from(:"2xl") == "hidden 2xl:table-cell"
+    assert "2xl:hidden" in classes(parse(~H|<.cell_sub hide_from={:"2xl"}>x</.cell_sub>|), "div")
+
+    assert Enum.all?(
+             ~w(hidden 2xl:block),
+             &(&1 in classes(parse(~H|<.cell_sub show_from={:"2xl"}>x</.cell_sub>|), "div"))
+           )
+  end
+
   test "list row with link, hover, meta and folded actions" do
     assigns = %{}
 

@@ -371,13 +371,15 @@ Visible and accessible default strings are German; each has an attr:
   - `size` `:md` (45px rows) | `:sm` (≈ 37px, read-only data: 8px row padding instead of 12px; text stays 14px
     and the side padding stays as `:md`, so edges line up; not daisyUI's `table-sm`); `zebra`; `flush` (inside a
     card or modal).
-  - `:col` attrs `label`, `align={:end}` (right-aligned, `tabular-nums`, no wrap), `show_from` (`:sm`…`:xl`).
-    With `layout={:sidebar}` the content is 256px narrower from `lg`, so choose `show_from` one step later.
+  - `:col` attrs `label`, `align={:end}` (right-aligned, `tabular-nums`, no wrap), `show_from` (`:sm`…`:"2xl"`).
+    With `layout={:sidebar}` the content is 256px narrower from `lg`, so choose `show_from` one step later
+    (`:xl` becomes `:"2xl"`).
   - `groups` (`%{id, label, rows}`, one `<tbody>` with a `th scope="colgroup"` row each), `:foot` (total row; use
     `show_from/1` on hidden columns), `:empty` (works with streams), `row_link` (link stretched over the row;
     keyboard focus rings the whole row, a tap fills it base-200; `nil` for a row without one: no link, no hover).
   - `row_attrs` (fn row → `<tr>` attributes such as `aria-current`, `data-*`, `hidden`, or `nil`; `class` is merged, `id` dropped: the table owns row ids).
-  - `<.cell_sub hide_from={:lg}>` repeats hidden columns' values under the name.
+  - `<.cell_sub hide_from={:lg}>` repeats hidden columns' values under the name (`hide_from`/`show_from` take the
+    same breakpoints).
   - Default: on the page between `border-y` hairlines, edge to edge on phones, horizontal scroll in its wrapper.
 - **`list`, `list_heading`, `list_row`** – collections. Same flat default as tables; `flush` in a card.
   `list_heading` takes global attrs (`id`).
