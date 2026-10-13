@@ -330,7 +330,8 @@ Visible and accessible default strings are German; each has an attr:
   Below `sm`: full width, stacked, primary on top. `sticky` pins it to the bottom (above the dock); on phones it
   spans `main`'s side gutters with a full-width hairline, from `sm` bar and hairline align with the content edge; 12px above and below the buttons on phones, 16px from `sm`, plus
   the bottom safe area without a dock. Below `sm` only cancel and primary stay pinned, side by side; `:secondary`
-  renders again in a normal row after the bar (its buttons need no `id`). In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
+  follows in a normal row after the bar. `:secondary` renders once (its buttons may carry ids); in a sticky bar it
+  comes last in the DOM and tab order, and `class` (spacing like `mt-6`) also lands on the pinned row. In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
   covers the box's bottom padding: 16px above and below the buttons; sticky, it pins to the box's bottom edge
   without the dock offset.
 

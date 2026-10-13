@@ -214,27 +214,43 @@ defmodule Setzkasten.FormsTest do
     refute "max-sm:-mx-4" in classes(parse(~H|<.action_bar>x</.action_bar>|), "div")
   end
 
-  test "a sticky bar keeps its secondary out of the pinned row on phones" do
+  test "a sticky bar pins cancel and primary on their own on phones, the secondary after them" do
     assigns = %{}
 
     doc =
       parse(~H"""
       <form>
-        <.action_bar sticky>
+        <.action_bar sticky class="mt-6">
           <:secondary><.button variant={:danger}>Löschen</.button></:secondary>
           <.button>Abbrechen</.button>
         </.action_bar>
       </form>
       """)
 
-    assert count(doc, "button") == 3
+    assert count(doc, "button") == 2
 
-    assert ~w(max-sm:hidden max-sm:[.modal-box_&]:flex)
-           |> Enum.all?(&(&1 in classes(doc, "form > div > div")))
+    assert Enum.all?(
+             ~w(max-sm:contents max-sm:[.modal-box_&]:flex),
+             &(&1 in classes(doc, "form > div"))
+           )
 
-    after_row = classes(doc, "form > div + div")
-    assert Enum.all?(~w(sm:hidden [.modal-box_&]:hidden), &(&1 in after_row))
-    assert text(doc, "form > div + div") == "Löschen"
+    pinned = classes(doc, "form > div > div:first-child")
+
+    assert Enum.all?(
+             ~w(contents max-sm:flex max-sm:[.modal-box_&]:contents sticky mt-6),
+             &(&1 in pinned)
+           )
+
+    assert text(doc, "form > div > div:first-child") == "Abbrechen"
+
+    secondary = classes(doc, "form > div > div:last-child")
+
+    assert Enum.all?(
+             ~w(sm:order-first sm:me-auto max-sm:[.modal-box_&]:basis-full),
+             &(&1 in secondary)
+           )
+
+    assert text(doc, "form > div > div:last-child") == "Löschen"
 
     doc =
       parse(~H"""
@@ -247,7 +263,34 @@ defmodule Setzkasten.FormsTest do
       """)
 
     assert count(doc, "button") == 2
-    refute "max-sm:hidden" in classes(doc, "form > div > div")
+    assert text(doc, "form > div > div:first-child") == "Löschen"
+    refute "max-sm:contents" in classes(doc, "form > div")
+  end
+
+  test "secondary buttons with an id render once, on a page and in a dialog" do
+    for sticky <- [true, false] do
+      assigns = %{sticky: sticky}
+
+      doc =
+        parse(~H"""
+        <form>
+          <.action_bar sticky={@sticky}>
+            <:secondary><.button id="delete">Löschen</.button></:secondary>
+            <.button type="submit">Speichern</.button>
+          </.action_bar>
+        </form>
+        <.modal id="dialog">
+          <.action_bar sticky={@sticky}>
+            <:secondary><.button id="discard">Verwerfen</.button></:secondary>
+            <.button type="submit">Speichern</.button>
+          </.action_bar>
+        </.modal>
+        """)
+
+      assert count(doc, "#delete") == 1
+      assert count(doc, ".modal-box #discard") == 1
+      assert count(doc, "#discard") == 1
+    end
   end
 
   test "a fieldset whose label is for screen readers only has no block padding" do
