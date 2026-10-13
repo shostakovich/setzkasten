@@ -413,8 +413,11 @@ defmodule Setzkasten.Components.Forms do
   and its hairline align with the content edge, like tables and lists. It keeps 12px above and
   below the buttons on phones and 16px from `sm`, plus the home indicator
   (`safe-area-inset-bottom`) when no dock is below it. Below `sm` only cancel and primary
-  stay pinned, side by side; `:secondary` renders a second time in a normal row after the bar,
-  so a delete is not under the thumb all the time (give its buttons no `id`).
+  stay pinned, side by side, and `:secondary` follows in a normal row after the bar, so a delete
+  is not under the thumb all the time. `:secondary` renders once, so its buttons may carry ids;
+  in a sticky bar it comes last in the DOM and tab order. Below `sm` outside a modal the sticky
+  bar's element is `display: contents` and the pinned row takes `class` as well, so spacing
+  like `mt-6` holds at every width.
 
   Inside a `<.modal>` the bar takes the dialog's surface (`bg-popover`), covers the box's
   bottom padding and keeps 16px above and below the buttons; a sticky bar pins to the box's
@@ -446,11 +449,8 @@ defmodule Setzkasten.Components.Forms do
         "[.modal-box_&]:bg-popover [.modal-box_&]:-mb-6 [.modal-box_&]:py-4",
         if(@sticky,
           do: [
-            "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10",
-            "max-sm:-mx-4 max-sm:px-4",
-            "[--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem] pt-(--setzkasten-bar-pad)",
-            "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset,0px)))]",
-            "max-sm:flex-wrap max-sm:[&>.btn]:flex-1",
+            pinned_bar(),
+            "max-sm:contents max-sm:[.modal-box_&]:flex max-sm:flex-wrap",
             "[.modal-box_&]:-mx-6 [.modal-box_&]:px-6 [.modal-box_&]:-bottom-6"
           ],
           else: "pt-4 flex-col-reverse max-sm:[&_.btn]:w-full"
@@ -460,23 +460,43 @@ defmodule Setzkasten.Components.Forms do
       {@rest}
     >
       <div
-        :if={@secondary != []}
-        class={[
-          "flex flex-col gap-2 sm:me-auto sm:flex-row",
-          @sticky &&
-            "max-sm:hidden max-sm:[.modal-box_&]:flex max-sm:order-last max-sm:basis-full max-sm:[&_.btn]:w-full"
-        ]}
+        :if={@secondary != [] and not @sticky}
+        class="flex flex-col gap-2 sm:me-auto sm:flex-row"
       >
         {render_slot(@secondary)}
       </div>
-      {render_slot(@inner_block)}
-    </div>
-    <div
-      :if={@sticky and @secondary != []}
-      class="flex flex-col gap-2 pt-4 sm:hidden [.modal-box_&]:hidden [&_.btn]:w-full"
-    >
-      {render_slot(@secondary)}
+      <%= if @sticky do %>
+        <%!-- Pinned on its own on phone pages, where the outer bar is display: contents. --%>
+        <div class={[
+          "contents max-sm:flex max-sm:[.modal-box_&]:contents flex-wrap gap-2",
+          "border-t border-base-content/10 bg-base-100 max-sm:[&>.btn]:flex-1",
+          pinned_bar(),
+          @class
+        ]}>
+          {render_slot(@inner_block)}
+        </div>
+        <div
+          :if={@secondary != []}
+          class={[
+            "flex flex-col gap-2 sm:order-first sm:me-auto sm:flex-row max-sm:[&_.btn]:w-full",
+            "max-sm:pt-4 max-sm:[.modal-box_&]:basis-full max-sm:[.modal-box_&]:pt-0"
+          ]}
+        >
+          {render_slot(@secondary)}
+        </div>
+      <% else %>
+        {render_slot(@inner_block)}
+      <% end %>
     </div>
     """
+  end
+
+  defp pinned_bar do
+    [
+      "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10",
+      "max-sm:-mx-4 max-sm:px-4",
+      "[--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem] pt-(--setzkasten-bar-pad)",
+      "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset,0px)))]"
+    ]
   end
 end

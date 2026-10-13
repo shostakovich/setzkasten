@@ -14,17 +14,27 @@ defmodule Setzkasten.Components.Data do
     sm: "hidden sm:table-cell",
     md: "hidden md:table-cell",
     lg: "hidden lg:table-cell",
-    xl: "hidden xl:table-cell"
+    xl: "hidden xl:table-cell",
+    "2xl": "hidden 2xl:table-cell"
   }
 
-  @hide_from %{nil => nil, sm: "sm:hidden", md: "md:hidden", lg: "lg:hidden", xl: "xl:hidden"}
+  @hide_from %{
+    nil => nil,
+    sm: "sm:hidden",
+    md: "md:hidden",
+    lg: "lg:hidden",
+    xl: "xl:hidden",
+    "2xl": "2xl:hidden"
+  }
   @block_from %{
     nil => nil,
     sm: "hidden sm:block",
     md: "hidden md:block",
     lg: "hidden lg:block",
-    xl: "hidden xl:block"
+    xl: "hidden xl:block",
+    "2xl": "hidden 2xl:block"
   }
+  @breakpoints [:sm, :md, :lg, :xl, :"2xl"]
 
   @flat "border-y border-base-content/10 max-sm:-mx-4"
   # Word joiner and no-break space glue the dot to the part before it; it breaks after.
@@ -32,7 +42,7 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   Class list for a table cell that appears from breakpoint `bp` on (`:sm`, `:md`, `:lg`,
-  `:xl`). Use it on `:foot` cells of columns with `show_from`.
+  `:xl`, `:"2xl"`). Use it on `:foot` cells of columns with `show_from`.
   """
   def show_from(bp), do: Map.fetch!(@show_from, bp)
 
@@ -46,7 +56,7 @@ defmodule Setzkasten.Components.Data do
   runs edge to edge on phones. `flush` drops both for a card's `:list` slot or a modal.
 
   `:col` attrs: `label`, `align` (`:end` right-aligns with tabular figures), `show_from`
-  (`:sm` … `:xl`, hides the column below), `class`. `row_link` turns the first cell into a
+  (`:sm` … `:"2xl"`, hides the column below), `class`. `row_link` turns the first cell into a
   link stretched over the row; a row for which it returns `nil` has no link and no hover.
   `row_attrs` returns extra attributes for a row's `<tr>` (`aria-current`, `data-*`,
   `hidden`, …) as a map or keyword list, or `nil` for none; its `class` is added to the row's
@@ -81,7 +91,7 @@ defmodule Setzkasten.Components.Data do
   slot :col, required: true do
     attr :label, :string
     attr :align, :atom, values: [:start, :end]
-    attr :show_from, :atom, values: [:sm, :md, :lg, :xl]
+    attr :show_from, :atom, values: @breakpoints
     attr :class, :any
   end
 
@@ -233,8 +243,8 @@ defmodule Setzkasten.Components.Data do
 
       <.cell_sub hide_from={:lg}>{h.shares} Stück<.meta_sep /><.amount value={h.price} /></.cell_sub>
   """
-  attr :hide_from, :atom, default: nil, values: [nil, :sm, :md, :lg, :xl]
-  attr :show_from, :atom, default: nil, values: [nil, :sm, :md, :lg, :xl]
+  attr :hide_from, :atom, default: nil, values: [nil | @breakpoints]
+  attr :show_from, :atom, default: nil, values: [nil | @breakpoints]
   attr :class, :any, default: nil
   slot :inner_block, required: true
 

@@ -330,7 +330,8 @@ Visible and accessible default strings are German; each has an attr:
   Below `sm`: full width, stacked, primary on top. `sticky` pins it to the bottom (above the dock); on phones it
   spans `main`'s side gutters with a full-width hairline, from `sm` bar and hairline align with the content edge; 12px above and below the buttons on phones, 16px from `sm`, plus
   the bottom safe area without a dock. Below `sm` only cancel and primary stay pinned, side by side; `:secondary`
-  renders again in a normal row after the bar (its buttons need no `id`). In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
+  follows in a normal row after the bar. `:secondary` renders once (its buttons may carry ids); in a sticky bar it
+  comes last in the DOM and tab order, and `class` (spacing like `mt-6`) also lands on the pinned row. In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
   covers the box's bottom padding: 16px above and below the buttons; sticky, it pins to the box's bottom edge
   without the dock offset.
 
@@ -371,13 +372,15 @@ Visible and accessible default strings are German; each has an attr:
   - `size` `:md` (45px rows) | `:sm` (≈ 37px, read-only data: 8px row padding instead of 12px; text stays 14px
     and the side padding stays as `:md`, so edges line up; not daisyUI's `table-sm`); `zebra`; `flush` (inside a
     card or modal).
-  - `:col` attrs `label`, `align={:end}` (right-aligned, `tabular-nums`, no wrap), `show_from` (`:sm`…`:xl`).
-    With `layout={:sidebar}` the content is 256px narrower from `lg`, so choose `show_from` one step later.
+  - `:col` attrs `label`, `align={:end}` (right-aligned, `tabular-nums`, no wrap), `show_from` (`:sm`…`:"2xl"`).
+    With `layout={:sidebar}` the content is 256px narrower from `lg`, so choose `show_from` one step later
+    (`:xl` becomes `:"2xl"`).
   - `groups` (`%{id, label, rows}`, one `<tbody>` with a `th scope="colgroup"` row each), `:foot` (total row; use
     `show_from/1` on hidden columns), `:empty` (works with streams), `row_link` (link stretched over the row;
     keyboard focus rings the whole row, a tap fills it base-200; `nil` for a row without one: no link, no hover).
   - `row_attrs` (fn row → `<tr>` attributes such as `aria-current`, `data-*`, `hidden`, or `nil`; `class` is merged, `id` dropped: the table owns row ids).
-  - `<.cell_sub hide_from={:lg}>` repeats hidden columns' values under the name.
+  - `<.cell_sub hide_from={:lg}>` repeats hidden columns' values under the name (`hide_from`/`show_from` take the
+    same breakpoints).
   - Default: on the page between `border-y` hairlines, edge to edge on phones, horizontal scroll in its wrapper.
 - **`list`, `list_heading`, `list_row`** – collections. Same flat default as tables; `flush` in a card.
   `list_heading` takes global attrs (`id`).

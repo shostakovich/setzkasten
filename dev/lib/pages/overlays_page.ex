@@ -94,6 +94,17 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           <.input name="l[purpose]" id="l-purpose" type="textarea" label="Verwendungszweck" rows="3" />
           <.input name="l[notify]" id="l-notify" type="toggle" label="Vor jeder Ausführung erinnern" />
           <.action_bar sticky>
+            <:secondary>
+              <.button
+                type="button"
+                id="long-form-discard"
+                variant={:danger_outline}
+                icon="trash-2"
+                phx-click={hide_modal("long-form")}
+              >
+                Verwerfen
+              </.button>
+            </:secondary>
             <.button type="button" phx-click={hide_modal("long-form")}>Abbrechen</.button>
             <.button type="submit" variant={:primary} phx-click={hide_modal("long-form")}>
               Anlegen
