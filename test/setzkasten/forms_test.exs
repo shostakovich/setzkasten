@@ -606,6 +606,9 @@ defmodule Setzkasten.FormsTest do
     assert hook =~ ~r/case "Tab":\s*if \(this.active\) this.pick\(this.active\)/
     # Enter on a text that matches nothing does not submit the old value under it.
     assert hook =~ "else if (this.input.value !== this.text) e.preventDefault()"
+    # A server-set value reaches a focused field the user has not typed in.
+    assert hook =~
+             ~r/const typed = this.input.value !== this.text\s*this.text = text\s*(\/\/[^\n]*\s*)?if \(document.activeElement !== this.input \|\| !typed\) \{\s*this.input.value = text\s*if \(this.isOpen\(\)\) this.input.select\(\)/
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-combobox \{\s*anchor-scope: --setzkasten-combobox;/

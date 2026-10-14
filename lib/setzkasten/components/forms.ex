@@ -531,8 +531,13 @@ defmodule Setzkasten.Components.Forms do
         updated() {
           const text = this.el.dataset.text || ""
           if (text !== this.text) {
+            const typed = this.input.value !== this.text
             this.text = text
-            if (document.activeElement !== this.input) this.input.value = text
+            // A server-set value reaches a focused field the user has not typed in, so blur does not clear it.
+            if (document.activeElement !== this.input || !typed) {
+              this.input.value = text
+              if (this.isOpen()) this.input.select()
+            }
           }
           if (!this.isOpen()) return
           const active = this.active && this.active.id
