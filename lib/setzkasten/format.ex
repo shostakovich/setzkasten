@@ -1,7 +1,7 @@
 defmodule Setzkasten.Format do
   @moduledoc """
-  German number formatting as the components render it: thousands dot, decimal comma,
-  U+2212 minus, no-break space before the unit.
+  German number, date and time formatting as the components render it: thousands dot, decimal
+  comma, U+2212 minus, no-break space before the unit; dates as `14.10.2026`, times as `18:05`.
 
   Values are integers in minor units (cents) or `Decimal` structs. `Decimal` is read
   structurally, so the package does not depend on it.
@@ -10,6 +10,7 @@ defmodule Setzkasten.Format do
   @minus "−"
   @nbsp " "
   @symbols %{"EUR" => "€", "USD" => "$", "GBP" => "£", "CHF" => "CHF"}
+  @weekdays {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"}
 
   @doc """
   Formats money.
@@ -107,6 +108,63 @@ defmodule Setzkasten.Format do
   def sign(value) when is_float(value) and value > 0, do: 1
   def sign(value) when is_float(value) and value < 0, do: -1
   def sign(value) when is_float(value), do: 0
+
+  @doc """
+  Formats a calendar date; a `NaiveDateTime` or `DateTime` gives its date part as it is.
+
+      iex> Setzkasten.Format.date(~D[2026-10-14])
+      "14.10.2026"
+      iex> Setzkasten.Format.date(~D[2026-10-14], weekday: :short)
+      "Mi, 14.10.2026"
+      iex> Setzkasten.Format.date(~N[2026-10-14 18:05:00], year: false)
+      "14.10."
+
+  Options: `:weekday` (`:short` puts the German short name in front), `:year` (`false` leaves
+  it out).
+  """
+  def date(value, opts \\ [])
+
+  def date(%Date{} = date, opts) do
+    day = pad(date.day) <> "." <> pad(date.month) <> "."
+    day = if Keyword.get(opts, :year, true), do: day <> Integer.to_string(date.year), else: day
+
+    case Keyword.get(opts, :weekday) do
+      nil -> day
+      :short -> elem(@weekdays, Date.day_of_week(date) - 1) <> ", " <> day
+    end
+  end
+
+  def date(%NaiveDateTime{} = moment, opts), do: moment |> NaiveDateTime.to_date() |> date(opts)
+  def date(%DateTime{} = moment, opts), do: moment |> DateTime.to_date() |> date(opts)
+
+  @doc """
+  Formats a local date and time. No time zone math: the app passes its local time.
+
+      iex> Setzkasten.Format.datetime(~N[2026-10-14 18:05:42])
+      "14.10.2026, 18:05"
+      iex> Setzkasten.Format.datetime(~N[2026-10-14 06:00:00], weekday: :short, year: false)
+      "Mi, 14.10., 06:00"
+
+  Options: those of `date/2` for the date part.
+  """
+  def datetime(%NaiveDateTime{} = moment, opts \\ []),
+    do: date(moment, opts) <> ", " <> time(moment)
+
+  @doc """
+  Formats the time of day in hours and minutes.
+
+      iex> Setzkasten.Format.time(~T[06:00:59])
+      "06:00"
+      iex> Setzkasten.Format.time(~N[2026-10-14 18:05:00])
+      "18:05"
+
+  No options yet; the argument keeps the call open for them.
+  """
+  def time(value, opts \\ [])
+  def time(%Time{} = time, _opts), do: pad(time.hour) <> ":" <> pad(time.minute)
+  def time(%NaiveDateTime{} = moment, opts), do: moment |> NaiveDateTime.to_time() |> time(opts)
+
+  defp pad(number), do: number |> Integer.to_string() |> String.pad_leading(2, "0")
 
   defp symbol(code), do: Map.get(@symbols, code, code)
 

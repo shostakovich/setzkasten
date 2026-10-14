@@ -37,6 +37,28 @@ defmodule Setzkasten.FormatTest do
     assert Format.money(110, currency: "USD", currency_display: :symbol) == "1,10#{@nbsp}$"
   end
 
+  test "dates with two-digit day and month, weekday and year by option" do
+    assert Format.date(~D[2026-03-01]) == "01.03.2026"
+    assert Format.date(~D[2026-10-12], weekday: :short) == "Mo, 12.10.2026"
+    assert Format.date(~D[2026-10-18], weekday: :short, year: false) == "So, 18.10."
+
+    for {day, name} <- Enum.zip(12..18, ~w(Mo Di Mi Do Fr Sa So)) do
+      assert Format.date(Date.new!(2026, 10, day), weekday: :short) =~ ~r/\A#{name}, /
+    end
+  end
+
+  test "the date of a moment is its date part, without time zone math" do
+    assert Format.date(~N[2026-10-14 23:59:59]) == "14.10.2026"
+    assert Format.date(~U[2026-10-14 23:30:00Z]) == "14.10.2026"
+  end
+
+  test "date and time of a local moment, times in hours and minutes" do
+    assert Format.datetime(~N[2026-01-05 07:09:59.999]) == "05.01.2026, 07:09"
+    assert Format.datetime(~N[2026-01-05 00:00:00], year: false) == "05.01., 00:00"
+    assert Format.time(~T[23:59:59]) == "23:59"
+    assert Format.time(~N[2026-01-05 00:07:00]) == "00:07"
+  end
+
   test "the minus sign comes from its own Figtree face, roman and italic" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 

@@ -112,3 +112,5 @@
 - `stat` `:meter`: a full-width meter under the value; `bar` `hide_label` keeps its label only as the accessible name.
 - `list` `:foot`: a total row whose value lines up with the rows' trailing column, also beside their actions.
 - `input` checkbox and toggle `bare`: no field padding or row height, beside a heading; a 44px hit area on touch screens.
+- `Setzkasten.Format.date/2`, `datetime/2` and `time/2`: German dates and times ("14.10.2026", "Mi, 14.10.",
+  "14.10.2026, 18:05", "18:05") from the app's local time.
