@@ -114,3 +114,5 @@
 - `input` checkbox and toggle `bare`: no field padding or row height, beside a heading; a 44px hit area on touch screens.
 - `Setzkasten.Format.date/2`, `datetime/2` and `time/2`: German dates and times ("14.10.2026", "Mi, 14.10.",
   "14.10.2026, 18:05", "18:05") from the app's local time.
+- `amount` and `Format.money/2` take `minor_digits` for integers in another minor unit: yen without decimals, dinar with
+  three.

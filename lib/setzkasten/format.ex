@@ -24,10 +24,13 @@ defmodule Setzkasten.Format do
 
       iex> Setzkasten.Format.money(110, currency: "USD", currency_display: :code)
       "1,10 USD"
+      iex> Setzkasten.Format.money(4850, currency: "JPY", minor_digits: 0)
+      "4.850 JPY"
 
   Options: `:currency` (default `"EUR"`, unknown codes print as the code), `:currency_display`
   (`:symbol`, the default, or `:code` for the ISO code), `:signed` (prefix `+` for positive
-  values), `:decimals` (default 2).
+  values), `:minor_digits` (the decimal places of an integer's minor unit: 2 by default, 0 for
+  yen, 3 for dinar), `:decimals` (default: `:minor_digits`).
   """
   def money(value, opts \\ []) do
     currency = Keyword.get(opts, :currency, "EUR")
@@ -50,8 +53,9 @@ defmodule Setzkasten.Format do
       "−20,5"
   """
   def number(value, opts \\ []) do
-    decimals = Keyword.get(opts, :decimals, if(opts[:minor_units], do: 2, else: 0))
-    {sign, units} = scaled(value, decimals, opts[:minor_units] || false)
+    minor = if opts[:minor_units], do: Keyword.get(opts, :minor_digits, 2)
+    decimals = Keyword.get(opts, :decimals, minor || 0)
+    {sign, units} = scaled(value, decimals, minor)
     {int, frac} = split_digits(Integer.to_string(units), decimals)
     prefix(sign, units, opts[:signed]) <> group(int) <> frac
   end
@@ -69,30 +73,37 @@ defmodule Setzkasten.Format do
   defp prefix(_sign, _units, _signed), do: ""
 
   @doc """
-  The machine-readable value for `<data value>`: dot decimal, ASCII minus.
+  The machine-readable value for `<data value>`: dot decimal, ASCII minus. Options as in
+  `money/2`: `:minor_digits` and `:decimals`.
 
       iex> Setzkasten.Format.machine(-7420)
       "-74.20"
+      iex> Setzkasten.Format.machine(4850, minor_digits: 0)
+      "4850"
   """
   def machine(value, opts \\ []) do
-    decimals = Keyword.get(opts, :decimals, 2)
-    {sign, units} = scaled(value, decimals, true)
+    minor = Keyword.get(opts, :minor_digits, 2)
+    decimals = Keyword.get(opts, :decimals, minor)
+    {sign, units} = scaled(value, decimals, minor)
     digits = units |> Integer.to_string() |> String.pad_leading(decimals + 1, "0")
     {int, frac} = String.split_at(digits, -decimals)
-    if(sign < 0 and units != 0, do: "-", else: "") <> int <> "." <> frac
+    sign = if sign < 0 and units != 0, do: "-", else: ""
+    if decimals == 0, do: sign <> digits, else: sign <> int <> "." <> frac
   end
 
   @doc """
-  Sign of a money value as `money/2` shows it with `decimals` places: a value that rounds to
-  zero is 0.
+  Sign of a money value as `money/2` shows it with `decimals` places, for an integer in minor
+  units of `minor_digits` places: a value that rounds to zero is 0.
 
       iex> Setzkasten.Format.shown_sign(-40, 0)
       0
       iex> Setzkasten.Format.shown_sign(-40)
       -1
+      iex> Setzkasten.Format.shown_sign(-40, 0, 0)
+      -1
   """
-  def shown_sign(value, decimals \\ 2) do
-    case scaled(value, decimals, true) do
+  def shown_sign(value, decimals \\ 2, minor_digits \\ 2) do
+    case scaled(value, decimals, minor_digits) do
       {_sign, 0} -> 0
       {sign, _units} -> sign
     end
@@ -168,12 +179,13 @@ defmodule Setzkasten.Format do
 
   defp symbol(code), do: Map.get(@symbols, code, code)
 
-  # Returns {sign, absolute value scaled to `decimals` places, rounded half away from zero}.
-  defp scaled(value, decimals, true) when is_integer(value),
-    do: {sign(value), shift(abs(value), decimals - 2)}
-
-  defp scaled(value, decimals, false) when is_integer(value),
+  # Returns {sign, absolute value scaled to `decimals` places, rounded half away from zero}; an
+  # integer is whole (minor nil) or in minor units of `minor` places.
+  defp scaled(value, decimals, nil) when is_integer(value),
     do: {sign(value), abs(value) * pow10(decimals)}
+
+  defp scaled(value, decimals, minor) when is_integer(value),
+    do: {sign(value), shift(abs(value), decimals - minor)}
 
   defp scaled(%{__struct__: Decimal, sign: sign, coef: coef, exp: exp}, decimals, _minor)
        when is_integer(coef),

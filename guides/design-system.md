@@ -570,7 +570,8 @@ Visible and accessible default strings are German; each has an attr:
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,
   positive `success-ink`, zero 70 %, by the shown value; `tone={:negative}` for balances in lists: negative
   `error-ink`, zero 70 %, positive plain, since green on every positive balance is noise, not state); `decimals` (default 2, `0` for whole-currency KPIs;
-  `<data value>` stays exact); `currency_display={:code}` shows the ISO code ("1,10 USD") where currencies mix;
+  `<data value>` stays exact); `currency_display={:code}` shows the ISO code ("1,10 USD") where currencies mix; `minor_digits` (0 for yen, 3 for dinar,
+  default 2) for an integer in another currency's minor unit;
   `size={:lg}` for totals; `animate` (needs `id`) for a rolling number (2.10).
 - **`Setzkasten.Format`** – the components' German formats for the app's own text: `money/2`, `number/2`,
   `machine/2`, and dates and times: `date/2` ("14.10.2026"; `weekday: :short` "Mi, 14.10.2026", `year: false`

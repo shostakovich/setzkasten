@@ -681,11 +681,14 @@ defmodule Setzkasten.Components.Data do
   rounds half away from zero; `<data value>` keeps the exact value.
   `size={:lg}` for totals; inside `<.stat>` the stat sets the size. `currency_display={:code}`
   shows the ISO code instead of the symbol ("1,10 USD"), e.g. where several currencies meet.
+  `minor_digits` says how many decimal places the integer's minor unit has: 2 by default, 0 for
+  yen, 3 for dinar; `decimals` follows it unless given.
 
       <.amount value={-7420} signed tone />
       <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
       <.amount value={110} currency="USD" currency_display={:code} />
+      <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
 
   `animate` (needs an `id`): when a LiveView update changes the value, it counts from the old to
   the new value. Never on first render. Inside a `<.stat>` value the stat does this already.
@@ -695,7 +698,8 @@ defmodule Setzkasten.Components.Data do
   attr :value, :any, required: true, doc: "integer minor units (cents) or Decimal"
   attr :currency, :string, default: "EUR"
   attr :currency_display, :atom, default: :symbol, values: [:symbol, :code]
-  attr :decimals, :integer, default: 2
+  attr :minor_digits, :integer, default: 2, doc: "decimal places of the integer's minor unit"
+  attr :decimals, :integer, default: nil, doc: "shown decimal places; `minor_digits` by default"
   attr :signed, :boolean, default: false
 
   attr :tone, :any,
@@ -713,13 +717,15 @@ defmodule Setzkasten.Components.Data do
   end
 
   def amount(assigns) do
+    assigns = assign(assigns, :decimals, assigns.decimals || assigns.minor_digits)
+
     ~H"""
     <data
-      value={Format.machine(@value)}
+      value={Format.machine(@value, minor_digits: @minor_digits)}
       phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
-        @tone && tone_class(Format.shown_sign(@value, @decimals), @tone),
+        @tone && tone_class(Format.shown_sign(@value, @decimals, @minor_digits), @tone),
         @size == :lg && "text-lg font-semibold",
         @class
       ]}
@@ -728,6 +734,7 @@ defmodule Setzkasten.Components.Data do
       currency: @currency,
       currency_display: @currency_display,
       signed: @signed,
+      minor_digits: @minor_digits,
       decimals: @decimals
     )}</data>
     """

@@ -484,6 +484,19 @@ defmodule Setzkasten.DataTest do
     assert "text-base-content/70" in classes(doc, "data")
   end
 
+  test "amount in minor units of a currency without cents" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.amount value={-4850} currency="JPY" minor_digits={0} currency_display={:code} tone />|
+      )
+
+    assert text(doc, "data") == "−4.850\u00A0JPY"
+    assert attr(doc, "data", "value") == "-4850"
+    assert "text-error-ink" in classes(doc, "data")
+  end
+
   test "stat tile with unit, tone, stale and loading" do
     assigns = %{}
     doc = parse(~H|<.stat label="Saldo" value="−42" unit="€" tone={:error} size={:sm} stale />|)

@@ -37,6 +37,15 @@ defmodule Setzkasten.FormatTest do
     assert Format.money(110, currency: "USD", currency_display: :symbol) == "1,10#{@nbsp}$"
   end
 
+  test "money in minor units of a currency with other decimal places" do
+    assert Format.money(485_000, currency: "JPY", minor_digits: 0) == "485.000#{@nbsp}JPY"
+    assert Format.money(-1234, currency: "KWD", minor_digits: 3) == "#{@minus}1,234#{@nbsp}KWD"
+    assert Format.money(1235, currency: "KWD", minor_digits: 3, decimals: 2) == "1,24#{@nbsp}KWD"
+    assert Format.machine(-485_000, minor_digits: 0) == "-485000"
+    assert Format.machine(1234, minor_digits: 3) == "1.234"
+    assert Format.shown_sign(-4, 2, 3) == 0
+  end
+
   test "dates with two-digit day and month, weekday and year by option" do
     assert Format.date(~D[2026-03-01]) == "01.03.2026"
     assert Format.date(~D[2026-10-12], weekday: :short) == "Mo, 12.10.2026"
