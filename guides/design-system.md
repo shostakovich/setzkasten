@@ -547,7 +547,7 @@ Visible and accessible default strings are German; each has an attr:
   pass their count (`actions`, the buttons from `md`), `menu` and `actions_class`, and it keeps an invisible copy of
   that column, from `md` and on phones with the rows' `trailing_on_phone={:title}`. It takes the list's `id` with
   `-foot`, so a stream keeps it and adds rows above it.
-  - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
+  - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates; one line per `:meta`), `:trailing` (value, badge; moves to
     a second line below `md`, its lines aligned at the start; with `trailing_on_phone={:meta}` to the end of the
     meta line; with `trailing_on_phone={:title}` a short value (amount, optional small second line such as a
     percentage) stays at the end of the title line, lines right-aligned, the `⋮` menu centred on that line beside

@@ -172,6 +172,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           <.list_row title="Pizza Da Michele" navigate="/tables">
             <:leading><.plush name="utensils" size={:lg} /></:leading>
             <:meta>Dana für Jonas, Dana</:meta>
+            <:meta>Dein Saldo: <.amount value={-2175} signed tone={:negative} /></:meta>
             <:trailing><.amount value={4350} /></:trailing>
           </.list_row>
           <.list_heading>Montag, 5. Oktober</.list_heading>

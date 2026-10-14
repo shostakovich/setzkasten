@@ -363,8 +363,8 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   A list row: `:leading` (plush, icon, avatar), title (`title` or the inner block,
-  `font-medium`), `:meta` (70 %, truncates), `:trailing` (value, amount, badge) and `:action`
-  entries. With `navigate`/`patch`/`href` the title link covers the row, which takes a light
+  `font-medium`), `:meta` (70 %, truncates; each `:meta` is a line of its own), `:trailing`
+  (value, amount, badge) and `:action` entries. With `navigate`/`patch`/`href` the title link covers the row, which takes a light
   fill under the pointer (no chevron: the row's title and its hover say it opens). With
   `on_click` instead (an event name with `phx-target={@myself}`, or a `%JS{}` that carries its
   own target: `JS.push("open", target: @myself)`) the
@@ -465,6 +465,7 @@ defmodule Setzkasten.Components.Data do
             else: assigns.actions_label
           ),
         wrap?: assigns.trailing != [] and assigns.trailing_on_phone == :line,
+        meta_lines: meta_lines(assigns),
         meta_trailing?: assigns.trailing != [] and assigns.trailing_on_phone == :meta,
         title_trailing?: assigns.trailing != [] and assigns.trailing_on_phone == :title,
         inline_actions:
@@ -524,14 +525,16 @@ defmodule Setzkasten.Components.Data do
         <p :if={!@link? && !@title_click} class="font-medium wrap-anywhere">
           {@title}{render_slot(@inner_block)}
         </p>
-        <p :if={@meta != [] and !@meta_trailing?} class="text-sm text-base-content/70 truncate">
-          {render_slot(@meta)}
+        <p :for={line <- @meta_lines} class="text-sm text-base-content/70 truncate">
+          {render_slot(line)}
         </p>
         <div
           :if={@meta_trailing?}
           class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-base-content/70"
         >
-          <p :if={@meta != []} class="min-w-0 max-w-full truncate">{render_slot(@meta)}</p>
+          <p :if={@meta != []} class="min-w-0 max-w-full truncate">
+            {render_slot(List.last(@meta))}
+          </p>
           <div class="flex shrink-0 items-center gap-2 md:hidden">
             {render_slot(@trailing, :meta)}
           </div>
@@ -652,6 +655,12 @@ defmodule Setzkasten.Components.Data do
     </li>
     """
   end
+
+  # With the trailing content at the end of the meta line, the last line renders beside it.
+  defp meta_lines(%{trailing: [_ | _], trailing_on_phone: :meta, meta: meta}),
+    do: Enum.drop(meta, -1)
+
+  defp meta_lines(%{meta: meta}), do: meta
 
   # The row link (table) or the title link or button (list) covers the row; keyboard focus
   # rings the row, not the text.

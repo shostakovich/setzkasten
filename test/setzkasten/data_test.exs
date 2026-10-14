@@ -351,6 +351,36 @@ defmodule Setzkasten.DataTest do
     refute "max-md:row-start-2" in column
   end
 
+  test "list row meta lines: one per meta, trailing at the end of the last on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Einkauf">
+        <:meta>Bezahlt von Anna für alle</:meta>
+        <:meta>Dein Saldo: 3,00 €</:meta>
+      </.list_row>
+      """)
+
+    lines =
+      for line <- find(doc, ".list-col-grow > p.truncate"), do: String.trim(LazyHTML.text(line))
+
+    assert lines ==
+             ["Bezahlt von Anna für alle", "Dein Saldo: 3,00 €"]
+
+    doc =
+      parse(~H"""
+      <.list_row title="Einkauf" trailing_on_phone={:meta}>
+        <:meta>Bezahlt von Anna</:meta>
+        <:meta>Dein Saldo</:meta>
+        <:trailing :let={place}><span id={"badge-#{place}"}>Neu</span></:trailing>
+      </.list_row>
+      """)
+
+    assert text(doc, ".list-col-grow > p.truncate") == "Bezahlt von Anna"
+    assert text(doc, ".list-col-grow > div:has(#badge-meta) > p") == "Dein Saldo"
+  end
+
   test "list row moves trailing content under the title on phones" do
     assigns = %{}
 

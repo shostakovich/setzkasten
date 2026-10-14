@@ -116,3 +116,5 @@
   "14.10.2026, 18:05", "18:05") from the app's local time.
 - `amount` and `Format.money/2` take `minor_digits` for integers in another minor unit: yen without decimals, dinar with
   three.
+- `list_row` takes `:meta` more than once, one truncated line each (who paid, then what it means for you); with
+  `trailing_on_phone={:meta}` the trailing content ends the last line.
