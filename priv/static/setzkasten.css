@@ -654,9 +654,9 @@
         }
       }
     }
-    /* On modal boxes and menus one step lifted, as base-200 on the dark page; the label
+    /* On modal boxes, menus and popovers one step lifted, as base-200 on the dark page; the label
        carries the contrast. */
-    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) & {
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content, .setzkasten-popover) & {
       --btn-bg: var(--setzkasten-popover-control);
       @media (hover: hover) {
         &:hover {
@@ -704,6 +704,24 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .setzkasten-sidebar .tooltip {
+    --tt-bg: var(--color-sidebar-content);
+  }
+  .setzkasten-sidebar .tooltip > .tooltip-content,
+  .setzkasten-sidebar .tooltip[data-tip]::before {
+    color: var(--color-sidebar);
+  }
+}
+
+/* Tooltips take the selection fill: daisyUI's neutral is nearly the dark page itself (1.2:1). */
+@layer utilities.setzkasten {
+  .tooltip {
+    --tt-bg: var(--color-selected);
+  }
+  .tooltip > .tooltip-content,
+  .tooltip[data-tip]::before {
+    color: var(--color-selected-content);
   }
 }
 
@@ -906,6 +924,65 @@
     transition: content-visibility var(--setzkasten-duration-exit) allow-discrete;
   }
 
+  /* A popover unfolds like a dropdown; display and overlay keep it in the top layer for its exit. */
+  .setzkasten-popover {
+    --setzkasten-enter-from: 0 -0.25rem;
+    --setzkasten-enter-scale: 0.96;
+    --setzkasten-enter-opacity: 0;
+    transform-origin: top left;
+    opacity: var(--setzkasten-enter-opacity);
+    translate: var(--setzkasten-enter-from);
+    scale: var(--setzkasten-enter-scale);
+    transition:
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      translate var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      overlay var(--setzkasten-duration-exit) allow-discrete,
+      display var(--setzkasten-duration-exit) allow-discrete;
+  }
+  .setzkasten-popover-end {
+    transform-origin: top right;
+  }
+  .setzkasten-popover-top {
+    --setzkasten-enter-from: 0 0.25rem;
+    transform-origin: bottom left;
+  }
+  .setzkasten-popover-top.setzkasten-popover-end {
+    transform-origin: bottom right;
+  }
+  @media (width < 40rem) {
+    .setzkasten-popover[popover] {
+      --setzkasten-enter-from: 0 100%;
+      --setzkasten-enter-scale: 1;
+      --setzkasten-enter-opacity: 1;
+    }
+    .setzkasten-popover[popover]::backdrop {
+      transition:
+        background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+        overlay var(--setzkasten-duration-exit) allow-discrete,
+        display var(--setzkasten-duration-exit) allow-discrete;
+    }
+    @starting-style {
+      .setzkasten-popover[popover]:popover-open::backdrop {
+        background-color: transparent;
+      }
+    }
+  }
+  .setzkasten-popover:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    transition-duration: var(--setzkasten-duration);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .setzkasten-popover:popover-open {
+      opacity: var(--setzkasten-enter-opacity);
+      translate: var(--setzkasten-enter-from);
+      scale: var(--setzkasten-enter-scale);
+    }
+  }
+
   /* daisyUI drops the open arrow under reduced motion; the rotation is state, so it stays. */
   .collapse:is(details)::details-content {
     transition: none;
@@ -1015,6 +1092,7 @@
       mask-image: none;
     }
     .modal .modal-box,
+    .setzkasten-popover[popover],
     .dropdown:is(details) > .dropdown-content,
     .collapse:is(details) > .collapse-content,
     .toast > *,
@@ -1039,6 +1117,71 @@
     }
     .toggle {
       transition: color var(--setzkasten-duration);
+    }
+  }
+}
+
+/* <.popover>: a top-layer panel on the popover surface. anchor-scope keeps every trigger's anchor
+   name to its own popover; browsers without it get the hook's placement. Below sm a bottom sheet. */
+@layer utilities.setzkasten {
+  .setzkasten-popover-root {
+    anchor-scope: --setzkasten-popover;
+  }
+  .setzkasten-popover-root > [popovertarget] {
+    anchor-name: --setzkasten-popover;
+  }
+  .setzkasten-popover {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    min-width: min(16rem, calc(100vw - 1rem));
+    max-width: min(22rem, calc(100vw - 1rem));
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+    padding: 1rem;
+    color: var(--color-base-content);
+    background-color: var(--color-popover);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: var(--radius-box);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    --setzkasten-dock-offset: 0px;
+  }
+  @supports (anchor-scope: all) and (position-area: block-end) {
+    .setzkasten-popover:not([data-anchor]) {
+      position-anchor: --setzkasten-popover;
+      position-area: block-end span-inline-end;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+      margin-block: 0.25rem;
+    }
+    .setzkasten-popover-end:not([data-anchor]) {
+      position-area: block-end span-inline-start;
+    }
+    .setzkasten-popover-top:not([data-anchor]) {
+      position-area: block-start span-inline-end;
+    }
+    .setzkasten-popover-top.setzkasten-popover-end:not([data-anchor]) {
+      position-area: block-start span-inline-start;
+    }
+  }
+  .setzkasten-popover::backdrop {
+    background-color: transparent;
+  }
+  @media (width < 40rem) {
+    .setzkasten-popover[popover] {
+      position-area: none;
+      inset: auto 0 0 0;
+      margin: 0;
+      width: 100%;
+      max-width: none;
+      max-height: 85dvh;
+      border-width: 1px 0 0;
+      border-radius: var(--radius-box) var(--radius-box) 0 0;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+    .setzkasten-popover[popover]:popover-open::backdrop {
+      background-color: oklch(0% 0 0 / 0.4);
     }
   }
 }

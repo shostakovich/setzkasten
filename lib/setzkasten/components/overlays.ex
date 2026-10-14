@@ -1,9 +1,13 @@
 defmodule Setzkasten.Components.Overlays do
   @moduledoc """
-  Native `<dialog>` modals, the shared delete confirmation and `<details>` disclosures.
+  Native `<dialog>` modals, the shared delete confirmation, `<details>` disclosures, popovers
+  and tooltips.
 
-  The modal hook is colocated; apps import it from `phoenix-colocated/setzkasten`
-  (see the README).
+  The modal, popover and tooltip hooks are colocated; apps import them from
+  `phoenix-colocated/setzkasten` (see the README).
+
+  `show_modal/1`, `hide_modal/1`, `show_confirm/5`, `show_popover/1` and `hide_popover/1` turn
+  an id into a `#id` selector, so ids are plain CSS identifiers, without `.` or `:`.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
@@ -84,7 +88,8 @@ defmodule Setzkasten.Components.Overlays do
   close it; focus moves in and back natively; `on_cancel` runs after every close.
 
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
-  `show={false}` skips `on_cancel`).
+  `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
+  stays closed until `show` turns `true` again.
 
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.patch(~p"/konten")}>
         …
@@ -156,6 +161,7 @@ defmodule Setzkasten.Components.Overlays do
           this.el.addEventListener("setzkasten:show-modal", (e) => this.open(e.detail))
           this.el.addEventListener("setzkasten:hide-modal", () => this.el.close())
           this.el.addEventListener("close", () => {
+            this.resume()
             this.returnFocus()
             if (this.silent) { this.silent = false; return }
             const cancel = this.el.getAttribute("data-cancel")
@@ -167,6 +173,8 @@ defmodule Setzkasten.Components.Overlays do
         destroyed() { if (this.unwatch) this.unwatch() },
         sync() {
           const show = this.el.getAttribute("data-show")
+          if (show === this.shown) return
+          this.shown = show
           if (show === "true") this.show()
           if (show === "false" && this.el.open) { this.silent = true; this.el.close() }
         },
@@ -181,15 +189,29 @@ defmodule Setzkasten.Components.Overlays do
         show() {
           if (this.el.open) return
           this.trigger = document.activeElement
+          // showModal() closes the open popovers; they come back with the trigger inside them.
+          this.suspended = [...document.querySelectorAll(".setzkasten-popover:popover-open")]
+            .filter((popover) => !popover.contains(this.el))
+          for (const popover of this.suspended) this.js().setAttribute(popover, "data-suspended", "")
           this.el.showModal()
           // Chrome focuses a scrolling box itself instead of its first field.
           const box = this.el.querySelector(".modal-box")
           if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
         },
-        // The browser returns focus to the trigger. A trigger in a menu that closed meanwhile is
-        // hidden, so focus goes to the menu's summary. If the trigger later disappears (the
-        // confirmed action deleted its row) or loses focus while still focused, focus moves to
-        // the row that took its place inside the closest [data-focus-fallback], else to <main>.
+        resume() {
+          let resumed = false
+          for (const popover of this.suspended || []) {
+            if (!popover.hasAttribute("data-suspended")) continue
+            this.js().removeAttribute(popover, "data-suspended")
+            if (!popover.isConnected) continue
+            popover.dispatchEvent(new CustomEvent("setzkasten:resume-popover"))
+            resumed = true
+          }
+          this.suspended = []
+          // A reopened popover focuses its autofocus field; the trigger inside it comes first.
+          if (resumed && this.trigger && usable(this.trigger)) this.trigger.focus()
+        },
+        // The browser's own return misses a trigger in a closed menu and one the action removes.
         returnFocus() {
           if (this.unwatch) this.unwatch()
           const trigger = this.trigger
@@ -213,9 +235,12 @@ defmodule Setzkasten.Components.Overlays do
           let current = trigger
           if (!usable(trigger)) {
             const menu = trigger.closest("details")
-            const summary = menu && menu.querySelector(":scope > summary")
-            if (!summary || !usable(summary)) return fallback()
-            current = summary
+            const popover = trigger.closest(".setzkasten-popover")
+            const opener = menu
+              ? menu.querySelector(":scope > summary")
+              : popover && document.getElementById(popover.dataset.anchor || `${popover.id}-trigger`)
+            if (!opener || !usable(opener)) return fallback()
+            current = opener
             current.focus()
           }
           const check = () => {
@@ -239,6 +264,7 @@ defmodule Setzkasten.Components.Overlays do
           document.addEventListener("focusin", onFocus)
           document.addEventListener("pointerdown", stop, true)
           this.unwatch = stop
+          check()
         }
       }
     </script>
@@ -260,7 +286,8 @@ defmodule Setzkasten.Components.Overlays do
   confirm button; Cancel, Escape and the backdrop only close. Focus starts on Cancel. On phones
   it is a bottom sheet with full-width buttons, the destructive one on top.
 
-  On close, focus returns to the trigger (the summary of its menu if the menu closed). When the
+  On close, focus returns to the trigger (the summary of its menu if the menu closed, the
+  trigger or anchor of its popover if the confirmed action hid the popover). When the
   confirmed action removes the trigger, focus moves to the next (else previous) row of the
   closest `[data-focus-fallback]` element (`<.list>` and `<.table>` bodies carry it), else to
   that element, else to `<main>`. `<.modal>` behaves the same.
@@ -325,6 +352,319 @@ defmodule Setzkasten.Components.Overlays do
         <button tabindex="-1">{@close_label}</button>
       </form>
     </dialog>
+    """
+  end
+
+  @doc """
+  Opens the `<.popover>` `id`, anchored to its trigger or `anchor`.
+
+      <.button phx-click={show_popover("cover")}>Decken</.button>
+  """
+  def show_popover(js \\ %JS{}, id) when is_binary(id) do
+    JS.dispatch(js, "setzkasten:show-popover", to: "##{id}")
+  end
+
+  @doc "Closes the `<.popover>` `id`; focus returns to where it was, its `on_cancel` runs."
+  def hide_popover(js \\ %JS{}, id) when is_binary(id) do
+    JS.dispatch(js, "setzkasten:hide-popover", to: "##{id}")
+  end
+
+  @doc """
+  Free content next to what it belongs to: a small form (move money, rename, a colour), not a
+  menu (that is `dropdown/1`). The panel lives in the top layer (HTML Popover API), so it
+  escapes scrolling tables and other `overflow` containers.
+
+  The `:trigger` button toggles it natively (`popovertarget`); a click on an `anchor` of an
+  open popover closes it too, without opening it again. It closes on a click outside, on
+  Escape, with `hide_popover/1` or `show={false}`; Escape and `hide_popover/1` return focus to
+  where it was (the trigger). Its open state survives LiveView patches. Give the first field
+  `autofocus` to start there.
+
+  Placement: below the trigger, its start edge at the trigger's (`align={:end}`: end edges),
+  `position={:top}` above; it flips when there is no room. CSS anchor positioning places it; a
+  colocated hook does where the browser has none, and always for `anchor` (the id of an element
+  elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger` may be left
+  out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
+
+  Open it from the server with `show={true}` (closing with `show={false}` skips `on_cancel`) or
+  with `show_popover/1`. As for `modal/1`, `show` acts when it changes. `on_cancel` runs after every other close, e.g. to clear the server's
+  state of an open popover. A modal opened meanwhile (a confirmation from inside it) closes it
+  without `on_cancel` and opens it again when the modal closes, unless the confirmed action
+  hid it.
+
+      <.popover id="rename" title="Kategorie umbenennen" align={:end} variant={:ghost}>
+        <:trigger><.icon name="pencil" /> Umbenennen</:trigger>
+        <form phx-submit={JS.push("rename") |> hide_popover("rename")} class="grid gap-3">
+          <.input name="name" id="rename-name" label="Name" value={@category.name} autofocus />
+          <.button type="submit" variant={:primary} size={:sm}>Speichern</.button>
+        </form>
+      </.popover>
+
+      <.popover id="cover" anchor={@cover_cell} show={@cover != nil} on_cancel={JS.push("cover_closed")}>
+        …
+      </.popover>
+  """
+  attr :id, :string, required: true
+  attr :title, :string, default: nil, doc: "heading of the panel, its accessible name"
+  attr :label, :string, default: nil, doc: "accessible name of the trigger when it is no text"
+  attr :align, :atom, default: :start, values: [:start, :end]
+  attr :position, :atom, default: :bottom, values: [:bottom, :top]
+  attr :variant, :atom, default: :neutral, values: [:neutral, :ghost]
+  attr :chevron, :boolean, default: false
+  attr :trigger_class, :any, default: nil
+
+  attr :anchor, :string,
+    default: nil,
+    doc: "id of the element to place it at, instead of the trigger"
+
+  attr :show, :boolean, default: nil
+  attr :on_cancel, JS, default: nil
+  attr :class, :any, default: nil, doc: "on the panel, e.g. a width (`w-80`)"
+  attr :rest, :global
+  slot :trigger
+  slot :inner_block, required: true
+
+  def popover(%{trigger: [], anchor: nil}) do
+    raise ArgumentError, "<.popover> needs a :trigger or an anchor to be placed at"
+  end
+
+  def popover(assigns) do
+    ~H"""
+    <div
+      class={["setzkasten-popover-root", if(@trigger != [], do: "inline-block", else: "contents")]}
+      {@rest}
+    >
+      <button
+        :if={@trigger != []}
+        type="button"
+        id={"#{@id}-trigger"}
+        class={["btn", @variant == :ghost && "btn-ghost", @trigger_class]}
+        popovertarget={@id}
+        aria-haspopup="dialog"
+        aria-label={@label}
+      >
+        {render_slot(@trigger)}<.icon :if={@chevron} name="chevron-down" />
+      </button>
+      <div
+        id={@id}
+        popover="auto"
+        role="dialog"
+        aria-labelledby={@title && "#{@id}-title"}
+        class={[
+          "setzkasten-popover shadow-lg",
+          @align == :end && "setzkasten-popover-end",
+          @position == :top && "setzkasten-popover-top",
+          @class
+        ]}
+        phx-hook=".Popover"
+        data-anchor={@anchor}
+        data-show={show_attr(@show)}
+        data-cancel={@on_cancel}
+      >
+        <h2 :if={@title} id={"#{@id}-title"} class="mb-3 font-semibold wrap-anywhere">{@title}</h2>
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    <script :type={ColocatedHook} name=".Popover">
+      // Anchor positioning with anchor-scope places a popover at its own trigger; without it, and
+      // for an anchor elsewhere, the hook does.
+      const NATIVE = CSS.supports("anchor-scope: all") && CSS.supports("position-area: block-end")
+      const phone = window.matchMedia("(width < 40rem)")
+      const EDGE = 8
+      const GAP = 4
+      export default {
+        mounted() {
+          this.onMove = () => {
+            cancelAnimationFrame(this.frame)
+            this.frame = requestAnimationFrame(() => this.place())
+          }
+          // A press on the anchor dismisses the open popover; its click must not open it again.
+          this.onPointer = (e) => {
+            if (this.el.contains(e.target)) return
+            this.byPointer = true
+            const anchor = this.el.hasAttribute("data-anchor") && this.anchor()
+            if (anchor && anchor.contains(e.target)) this.swallow = e.timeStamp
+          }
+          this.onClick = (e) => {
+            const pressed = this.swallow
+            this.swallow = null
+            const anchor = this.anchor()
+            if (pressed == null || e.timeStamp - pressed > 1000 || !anchor || !anchor.contains(e.target)) return
+            e.preventDefault()
+            e.stopPropagation()
+          }
+          document.addEventListener("click", this.onClick, true)
+          // Synchronous, unlike toggle: this close must reach the server before another popover's open.
+          this.el.addEventListener("beforetoggle", (e) => {
+            if (e.newState === "open") {
+              if (this.resuming) return
+              const active = document.activeElement
+              this.returnTo = active && !this.el.contains(active) ? active : null
+              this.byPointer = false
+              return
+            }
+            if (!this.el.hasAttribute("data-suspended")) this.cancel()
+          })
+          this.el.addEventListener("toggle", (e) => {
+            if (e.newState === "open") {
+              this.place()
+              window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
+              window.addEventListener("resize", this.onMove)
+              document.addEventListener("pointerdown", this.onPointer, true)
+            } else {
+              this.stopTracking()
+              if (!this.el.hasAttribute("data-suspended")) this.returnFocus()
+            }
+          })
+          this.el.addEventListener("setzkasten:show-popover", () => this.show())
+          this.el.addEventListener("setzkasten:resume-popover", () => {
+            this.resuming = true
+            this.show()
+            this.resuming = false
+          })
+          this.el.addEventListener("setzkasten:hide-popover", () => this.hide())
+          this.sync()
+        },
+        updated() {
+          this.sync()
+          if (this.isOpen()) this.place()
+        },
+        destroyed() {
+          this.stopTracking()
+          document.removeEventListener("click", this.onClick, true)
+          this.returnFocus()
+        },
+        isOpen() { return this.el.matches(":popover-open") },
+        sync() {
+          const show = this.el.getAttribute("data-show")
+          if (show === this.shown) return
+          this.shown = show
+          if (show === "true") this.show()
+          if (show === "false" && this.isOpen()) { this.silent = true; this.hide() }
+        },
+        anchor() {
+          const id = this.el.getAttribute("data-anchor")
+          return id ? document.getElementById(id) : document.getElementById(`${this.el.id}-trigger`)
+        },
+        show() {
+          if (this.isOpen() || !this.el.isConnected || this.el.hasAttribute("data-suspended")) return
+          this.el.showPopover({ source: this.anchor() || undefined })
+        },
+        // Hidden while a modal holds it (the confirmed action closes it): it stays closed.
+        hide() {
+          if (this.el.hasAttribute("data-suspended")) {
+            this.js().removeAttribute(this.el, "data-suspended")
+            this.cancel()
+          } else if (this.isOpen()) this.el.hidePopover()
+        },
+        cancel() {
+          if (this.silent) { this.silent = false; return }
+          const cancel = this.el.getAttribute("data-cancel")
+          if (cancel) this.js().exec(cancel)
+        },
+        // The browser returns focus only while it is inside the popover; a form submit inside it
+        // can drop it to <body> first. A click outside keeps focus where it went.
+        returnFocus() {
+          const target = this.returnTo
+          this.returnTo = null
+          const active = document.activeElement
+          if (this.byPointer || !target || !target.isConnected) return
+          if (!active || active === document.body || this.el.contains(active)) target.focus()
+        },
+        stopTracking() {
+          document.removeEventListener("pointerdown", this.onPointer, true)
+          cancelAnimationFrame(this.frame)
+          window.removeEventListener("scroll", this.onMove, { capture: true })
+          window.removeEventListener("resize", this.onMove)
+        },
+        place() {
+          const style = this.el.style
+          const anchor = this.anchor()
+          if (!anchor || phone.matches || (NATIVE && !this.el.hasAttribute("data-anchor"))) {
+            style.removeProperty("left")
+            style.removeProperty("top")
+            return
+          }
+          const a = anchor.getBoundingClientRect()
+          const width = this.el.offsetWidth
+          const height = this.el.offsetHeight
+          const vw = document.documentElement.clientWidth
+          const vh = window.innerHeight
+          const rtl = getComputedStyle(this.el).direction === "rtl"
+          const end = this.el.classList.contains("setzkasten-popover-end") !== rtl
+          const left = Math.min(Math.max(EDGE, end ? a.right - width : a.left), vw - width - EDGE)
+          const above = a.top - GAP - height
+          const below = a.bottom + GAP
+          const top = this.el.classList.contains("setzkasten-popover-top")
+            ? (above >= EDGE ? above : below)
+            : (below + height <= vh - EDGE || above < EDGE ? below : above)
+          style.left = `${Math.max(EDGE, left)}px`
+          style.top = `${Math.max(EDGE, top)}px`
+        }
+      }
+    </script>
+    """
+  end
+
+  @tooltip_placements %{
+    top: "tooltip-top",
+    bottom: "tooltip-bottom",
+    left: "tooltip-left",
+    right: "tooltip-right"
+  }
+
+  @doc """
+  A short hint on hover and keyboard focus around one element: daisyUI's `tooltip` with
+  `data-tip`, `placement` `:top` (default), `:bottom`, `:left` or `:right`.
+
+  Screen readers get the text as the description of the first control inside
+  (`aria-describedby` to a hidden copy, set by a colocated hook), unless it only repeats that
+  element's name, as for an icon button whose `label` is the tooltip.
+
+  Touch screens show it at best on a tap, so a tooltip never holds what the user needs to know:
+  a hint, a full name behind an ellipsis or an icon's name, not an error or a value.
+
+      <.tooltip id="sync-hint" text="Zuletzt vor 5 Minuten abgeglichen">
+        <.button icon="refresh-cw" icon_only label="Abgleichen" />
+      </.tooltip>
+  """
+  attr :id, :string, required: true
+  attr :text, :string, required: true
+  attr :placement, :atom, default: :top, values: [:top, :bottom, :left, :right]
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def tooltip(assigns) do
+    assigns = assign(assigns, :tooltip_placements, @tooltip_placements)
+
+    ~H"""
+    <span
+      id={@id}
+      class={["tooltip", @tooltip_placements[@placement], @class]}
+      data-tip={@text}
+      phx-hook=".Tooltip"
+      {@rest}
+    >
+      {render_slot(@inner_block)}<span id={"#{@id}-text"} hidden>{@text}</span>
+    </span>
+    <script :type={ColocatedHook} name=".Tooltip">
+      const FOCUSABLE = "a[href], button, input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex='-1'])"
+      export default {
+        mounted() { this.describe() },
+        updated() { this.describe() },
+        describe() {
+          const target = this.el.querySelector(FOCUSABLE)
+          const text = this.el.querySelector(`#${CSS.escape(this.el.id)}-text`)
+          if (!target || !text) return
+          const name = (target.getAttribute("aria-label") || target.textContent).trim()
+          const ids = (target.getAttribute("aria-describedby") || "").split(" ").filter((id) => id && id !== text.id)
+          if (name !== text.textContent.trim()) ids.push(text.id)
+          if (ids.length) this.js().setAttribute(target, "aria-describedby", ids.join(" "))
+          else this.js().removeAttribute(target, "aria-describedby")
+        }
+      }
+    </script>
     """
   end
 

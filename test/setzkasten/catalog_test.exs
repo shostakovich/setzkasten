@@ -11,7 +11,9 @@ defmodule Setzkasten.CatalogTest do
 
   for path <- paths do
     test "catalog page #{path} renders" do
-      {:ok, view, html} = live(build_conn(), unquote(path))
+      conn = get(build_conn(), unquote(path))
+      assert Plug.Conn.get_resp_header(conn, "content-security-policy") == ["style-src 'self'"]
+      {:ok, view, html} = live(conn)
       assert html =~ ~s(id="main")
       refute html =~ ~s(style=")
       assert render(view) =~ "</main>"

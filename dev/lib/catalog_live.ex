@@ -29,6 +29,7 @@ defmodule Setzkasten.Dev.CatalogLive do
        view: "list",
        deleted: 0,
        level: 0,
+       cover: nil,
        sort: "date",
        form: Pages.FormsPage.build_form(%{})
      )}
@@ -76,6 +77,21 @@ defmodule Setzkasten.Dev.CatalogLive do
     do: {:noreply, update(socket, :level, &(&1 - 1))}
 
   def handle_event("save-demo", _params, socket), do: {:noreply, push_saved(socket, "demo-save")}
+
+  def handle_event("open_cover", %{"cell" => cell}, socket),
+    do: {:noreply, assign(socket, cover: cell)}
+
+  def handle_event("cover_closed", _params, socket), do: {:noreply, assign(socket, cover: nil)}
+
+  def handle_event("cover", %{"from" => from}, socket) do
+    {:noreply,
+     socket
+     |> assign(cover: nil)
+     |> put_flash(:info, "Gedeckt (Demo) aus „#{from}“.")}
+  end
+
+  def handle_event("rename", %{"name" => name}, socket),
+    do: {:noreply, put_flash(socket, :info, "Umbenannt (Demo) in „#{name}“.")}
 
   def handle_event("flash", %{"kind" => kind}, socket) do
     {kind, msg} =

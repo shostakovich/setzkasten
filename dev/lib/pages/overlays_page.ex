@@ -3,9 +3,10 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
   use Phoenix.Component
   use Setzkasten
   import Setzkasten.Dev.Demo
+  alias Phoenix.LiveView.JS
 
   def title, do: "Dialoge"
-  def summary, do: "modal, confirm_dialog, disclosure"
+  def summary, do: "modal, confirm_dialog, popover, disclosure, tooltip"
 
   def render(assigns) do
     ~H"""
@@ -154,6 +155,99 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </.demo>
     </.showcase>
 
+    <.showcase id="popover" name="<.popover>" title="Popover" code={code(4)}>
+      <:intro>
+        Freier Inhalt an seinem Auslöser, meist ein kleines Formular; kein Menü. Liegt in der
+        obersten Ebene (Popover-API) und entkommt so scrollenden Tabellen. Schließt bei Klick
+        daneben, mit Escape und <code>hide_popover/1</code>; Escape gibt den Fokus zurück. Platziert
+        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Unter <code>sm</code>
+        ein Blatt von unten.
+      </:intro>
+      <.demo title="Formular, align={:end}, position={:top}" class="flex flex-wrap gap-3">
+        <.popover id="pop-rename" title="Kategorie umbenennen">
+          <:trigger><.icon name="pencil" />Umbenennen</:trigger>
+          <form
+            id="pop-rename-form"
+            class="grid gap-3"
+            phx-submit={JS.push("rename") |> hide_popover("pop-rename")}
+          >
+            <.input name="name" id="pop-rename-name" label="Name" value="Lebensmittel" autofocus />
+            <div class="flex justify-end gap-2">
+              <.button
+                id="pop-rename-delete"
+                size={:sm}
+                variant={:danger_outline}
+                class="me-auto"
+                confirm="Kategorie „Lebensmittel“ löschen?"
+                phx-click={JS.push("delete") |> hide_popover("pop-rename")}
+              >
+                Löschen
+              </.button>
+              <.button size={:sm} phx-click={hide_popover("pop-rename")}>Abbrechen</.button>
+              <.button type="submit" size={:sm} variant={:primary}>Speichern</.button>
+            </div>
+          </form>
+        </.popover>
+        <.popover id="pop-end" title="Farbe" align={:end} variant={:ghost} chevron>
+          <:trigger>Markierung</:trigger>
+          <p>Rechtsbündig am Auslöser, mit Pfeil.</p>
+        </.popover>
+        <.popover id="pop-top" position={:top} label="Hinweis" trigger_class="btn-square">
+          <:trigger><.icon name="info" /></:trigger>
+          <p class="max-w-60">Öffnet nach oben, für Auslöser am unteren Rand.</p>
+        </.popover>
+      </.demo>
+      <.demo title="In einer scrollenden Tabelle, vom Server geöffnet (anchor, show, on_cancel)">
+        <div class="max-h-40 overflow-auto rounded-box border border-base-content/10">
+          <table class="table">
+            <tbody>
+              <tr :for={{cell, label, amount} <- cover_cells()}>
+                <td>{label}</td>
+                <td class="text-end">
+                  <button
+                    id={"cover-#{cell}"}
+                    type="button"
+                    class="btn btn-ghost btn-sm tabular-nums"
+                    aria-haspopup="dialog"
+                    phx-click="open_cover"
+                    phx-value-cell={cell}
+                  >
+                    <.amount value={amount} tone />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <.popover
+          :if={@cover}
+          id="pop-cover"
+          title="Überzug decken"
+          anchor={"cover-#{@cover}"}
+          align={:end}
+          show
+          on_cancel={JS.push("cover_closed")}
+        >
+          <form id="pop-cover-form" class="grid gap-3" phx-submit="cover">
+            <.input
+              name="from"
+              id="pop-cover-from"
+              type="select"
+              label="Decken aus"
+              options={["Zu verteilen", "Urlaub", "Geschenke"]}
+              autofocus
+            />
+            <.button type="submit" size={:sm} variant={:primary} class="justify-self-end">
+              Decken
+            </.button>
+          </form>
+        </.popover>
+        <:note>
+          Der Betrag öffnet das Popover über den Server; es entkommt dem Rahmen der Tabelle.
+        </:note>
+      </.demo>
+    </.showcase>
+
     <.showcase
       id="disclosure"
       name="<.disclosure>"
@@ -177,6 +271,30 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.disclosure id="more-options" variant={:button} icon="settings" summary="Weitere Optionen">
           <.input name="o[notify]" id="o-notify" type="toggle" label="Beteiligte benachrichtigen" />
         </.disclosure>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="tooltip" name="<.tooltip>" title="Tooltip" code={code(3)}>
+      <:intro>
+        Ein kurzer Hinweis bei Zeiger und Tastaturfokus. Screenreader bekommen den Text als
+        Beschreibung des ersten fokussierbaren Elements, außer er wiederholt nur dessen Namen. Auf
+        Touch-Geräten erscheint er höchstens beim Tippen: nie für etwas, das man wissen muss.
+      </:intro>
+      <.demo title="Oben, unten, links, rechts" class="flex flex-wrap items-center gap-6 py-8">
+        <.tooltip id="tip-sync" text="Zuletzt vor 5 Minuten abgeglichen">
+          <.button icon="refresh-cw">Abgleichen</.button>
+        </.tooltip>
+        <.tooltip id="tip-edit" text="Bearbeiten" placement={:bottom}>
+          <.button variant={:ghost} icon="pencil" icon_only label="Bearbeiten" />
+        </.tooltip>
+        <.tooltip id="tip-left" text="Wird am Monatsende gebucht" placement={:left}>
+          <.badge tone={:info} tabindex="0">Geplant</.badge>
+        </.tooltip>
+        <.tooltip id="tip-right" text="Gemeinsames Haushaltskonto" placement={:right}>
+          <span class="inline-block max-w-32 truncate text-sm" tabindex="0">
+            Gemeinsames Haushaltskonto
+          </span>
+        </.tooltip>
       </.demo>
     </.showcase>
     """
@@ -219,10 +337,49 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     """
   end
 
+  defp code(4) do
+    ~S"""
+    <.popover id="rename" title="Kategorie umbenennen">
+      <:trigger><.icon name="pencil" /> Umbenennen</:trigger>
+      <form phx-submit={JS.push("rename") |> hide_popover("rename")} class="grid gap-3">
+        <.input name="name" id="rename-name" label="Name" value={@category.name} autofocus />
+        <.button type="submit" variant={:primary} size={:sm}>Speichern</.button>
+      </form>
+    </.popover>
+
+    <%!-- opened by the server at a cell elsewhere --%>
+    <.popover :if={@cover} id="cover" title="Überzug decken" anchor={"cover-#{@cover}"}
+              align={:end} show on_cancel={JS.push("cover_closed")}>…</.popover>
+    """
+  end
+
+  defp code(3) do
+    ~S"""
+    <.tooltip id="sync-hint" text="Zuletzt vor 5 Minuten abgeglichen">
+      <.button icon="refresh-cw">Abgleichen</.button>
+    </.tooltip>
+    <%!-- the text repeats the button's name: no description --%>
+    <.tooltip id="edit-hint" text="Bearbeiten" placement={:bottom}>
+      <.button variant={:ghost} icon="pencil" icon_only label="Bearbeiten" />
+    </.tooltip>
+    """
+  end
+
   defp code(2) do
     ~S"""
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
     """
+  end
+
+  defp cover_cells do
+    for {label, amount, i} <- [
+          {"Lebensmittel", -4_210, 1},
+          {"Tanken", -1_890, 2},
+          {"Drogerie", -560, 3},
+          {"Geschenke", -2_500, 4},
+          {"Urlaub", -12_000, 5}
+        ],
+        do: {"cell-#{i}", label, amount}
   end
 end
