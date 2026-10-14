@@ -57,7 +57,14 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       </:intro>
       <.demo title=":md" class="setzkasten-stat-grid grid gap-4 sm:grid-cols-2">
         <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
-        <.stat label="Dein Saldo" value="−42,17" unit="€" tone={:error} desc="du schuldest Dana" />
+        <.stat
+          label="Dein Saldo"
+          value="−42,17"
+          unit="€"
+          tone={:error}
+          desc="du schuldest Dana"
+          navigate="/values"
+        />
       </.demo>
       <.demo
         title="Beschreibung mit Markup, :note"

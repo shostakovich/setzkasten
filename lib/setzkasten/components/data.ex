@@ -772,6 +772,10 @@ defmodule Setzkasten.Components.Data do
   the number. It is hidden from screen readers; give it `label` when it says something the
   value does not (a gauge's verdict), and it becomes an image with that name.
 
+  `navigate`, `patch` or `href` makes the tile a link to the KPI's detail page: the label is the
+  link and covers the tile, which takes a light fill under the pointer and on tap; keyboard
+  focus rings the tile.
+
   With an `id`, a value that a LiveView update changes counts from the old to the new number
   (500 ms, `tabular-nums`); never on first render or a reconnect that brings the same value.
   Numbers in the components' German format ("2,14", "−0,88", "12.521,00 €"); the final text is
@@ -791,6 +795,7 @@ defmodule Setzkasten.Components.Data do
         <.stat label="PV jetzt" value="486" unit="W" size={:sm}>
           <:figure><.plush name="sunny" size={:lg} /></:figure>
         </.stat>
+        <.stat label="Dein Saldo" value="12,50" unit="€" navigate={~p"/salden"} />
       </div>
   """
   attr :id, :string, default: nil, doc: "needed for the change animation"
@@ -804,6 +809,9 @@ defmodule Setzkasten.Components.Data do
   attr :stale_label, :string, default: "veraltet"
   attr :loading, :boolean, default: false
   attr :animate, :boolean, default: true, doc: "count on change (with `id`)"
+  attr :navigate, :string, default: nil, doc: "makes the tile a link (also `patch`, `href`)"
+  attr :patch, :string, default: nil
+  attr :href, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
@@ -816,16 +824,40 @@ defmodule Setzkasten.Components.Data do
   end
 
   def stat(assigns) do
-    assigns = assign(assigns, :live, assigns.id && assigns.animate)
+    assigns =
+      assign(assigns,
+        live: assigns.id && assigns.animate,
+        link?: Enum.any?([assigns.navigate, assigns.patch, assigns.href])
+      )
 
     ~H"""
     <div
       id={@id}
-      class={["stat bg-base-100 rounded-box border border-base-content/10", @class]}
+      class={[
+        "stat bg-base-100 rounded-box border border-base-content/10",
+        @link? &&
+          [
+            "relative hover:bg-base-200 has-[a:active]:bg-base-200",
+            "has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-primary",
+            "has-[a:focus-visible]:outline-offset-2"
+          ],
+        @class
+      ]}
       aria-busy={@loading && "true"}
       {@rest}
     >
-      <div class="stat-title">{@label}</div>
+      <div class="stat-title">
+        <.link
+          :if={@link?}
+          navigate={@navigate}
+          patch={@patch}
+          href={@href}
+          class="after:absolute after:inset-0 after:rounded-box focus-visible:outline-none"
+        >
+          {@label}
+        </.link>
+        {if !@link?, do: @label}
+      </div>
       <div
         :if={@loading}
         class={["skeleton h-8 w-full max-w-24 mt-1", @figure != [] && "max-sm:col-span-2"]}

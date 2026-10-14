@@ -118,3 +118,4 @@
   three.
 - `list_row` takes `:meta` more than once, one truncated line each (who paid, then what it means for you); with
   `trailing_on_phone={:meta}` the trailing content ends the last line.
+- `stat` with `navigate`, `patch` or `href`: the tile links to the KPI's detail page.

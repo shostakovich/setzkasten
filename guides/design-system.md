@@ -586,6 +586,8 @@ Visible and accessible default strings are German; each has an attr:
   a stat has a note), so a German label that hyphenates onto two lines ("Eigenverbrauchs-quote") keeps every value
   of the row level; also with `size={:sm}`, `:figure` and `:note`. Opt-in, as every tile then spans two or three
   rows: leave it off where a stat places itself (`row-span-*`) or the grid sizes its rows (`auto-rows-*`).
+  `navigate`/`patch`/`href`: the tile links to the KPI's detail page (the label is the link and covers the tile; a
+  light fill under the pointer and on tap, a focus ring around the tile).
   `:meter`: a full-width meter under the value, before the note (a battery level as `<.bar hide_label>`), in the
   same row as the note, so grids keep their shared rows. `:figure`: a non-interactive widget at the tile's end (daisyUI `stat-figure`: plush, icon, gauge, sparkline),
   centred beside the rows; below `sm` at the end of the label row, value and note across the full width.

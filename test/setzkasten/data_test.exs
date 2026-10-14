@@ -541,6 +541,24 @@ defmodule Setzkasten.DataTest do
     assert count(parse(~H|<.stat label="x" loading />|), ".skeleton") == 1
   end
 
+  test "a stat with a target is a link over the whole tile" do
+    assigns = %{}
+    doc = parse(~H|<.stat label="Dein Saldo" value="12,50" unit="€" navigate="/salden" />|)
+
+    assert text(doc, ".stat-title a[href='/salden']") == "Dein Saldo"
+    assert "after:inset-0" in classes(doc, ".stat-title a")
+    tile = classes(doc, ".stat")
+
+    assert Enum.all?(
+             ~w(relative hover:bg-base-200 has-[a:focus-visible]:outline-2),
+             &(&1 in tile)
+           )
+
+    plain = parse(~H|<.stat label="Saldo" value="1" />|)
+    assert count(plain, ".stat a") == 0
+    refute "relative" in classes(plain, ".stat")
+  end
+
   test "stat tones colour the value with the inks, warning included" do
     for {tone, ink} <- [
           success: "text-success-ink",
