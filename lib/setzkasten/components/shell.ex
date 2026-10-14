@@ -146,7 +146,12 @@ defmodule Setzkasten.Components.Shell do
       class={[
         "min-h-dvh pr-[env(safe-area-inset-right)]",
         if(@layout == :sidebar,
-          do: "md:flex max-md:pl-[env(safe-area-inset-left)]",
+          do: [
+            "md:flex max-md:pl-[env(safe-area-inset-left)]",
+            "md:[--setzkasten-shell-start:calc(4.25rem+env(safe-area-inset-left))]",
+            "lg:[--setzkasten-shell-start:16rem]",
+            "lg:sidebar-collapsed:[--setzkasten-shell-start:calc(4.25rem+env(safe-area-inset-left))]"
+          ],
           else: "pl-[env(safe-area-inset-left)]"
         ),
         @dock_items != [] &&

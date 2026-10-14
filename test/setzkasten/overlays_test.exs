@@ -66,6 +66,25 @@ defmodule Setzkasten.OverlaysTest do
     assert count(doc, "#confirm-delete-confirm-icon svg.lucide") == 1
   end
 
+  test "focus waits for a confirmed submit button that LiveView disables until the reply" do
+    assigns = %{}
+    doc = parse(~H|<.confirm_dialog />|)
+    # The parked action submits first, so the trigger is already disabled when the dialog closes.
+    assert [["exec", _], ["dispatch", %{"event" => "setzkasten:hide-modal"}]] =
+             Jason.decode!(attr(doc, "#confirm-delete-confirm", "phx-click"))
+
+    live_view = Application.app_dir(:phoenix_live_view, "priv/static/phoenix_live_view.esm.js")
+    assert File.read!(live_view) =~ ~s|var PHX_DISABLED = "data-phx-disabled";|
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+
+    assert hook =~
+             ~s|const pending = (el) => el.isConnected && el.hasAttribute("data-phx-disabled")|
+
+    assert hook =~ "if (!usable(trigger) && !pending(trigger)) {"
+    assert hook =~ "if ((active && active !== document.body) || pending(current)) return"
+  end
+
   test "a modal opened from a popover suspends it and brings it back on close" do
     assigns = %{}
 
@@ -147,7 +166,7 @@ defmodule Setzkasten.OverlaysTest do
     assert length(String.split(css, "--setzkasten-popover-control: var(--color-base-300);")) == 3
 
     assert css =~
-             ~r/\.modal-box:not\(\.setzkasten-sidebar\), \.dropdown-content, \.setzkasten-popover\) & \{\s*--btn-bg: var\(--setzkasten-popover-control\);/
+             ~r/\.modal-box:not\(\.setzkasten-sidebar\), \.dropdown-content, \.setzkasten-popover, \.setzkasten-selection-bar\) & \{\s*--btn-bg: var\(--setzkasten-popover-control\);/
 
     # One plain-button selector for every surface that lifts it.
     assert length(String.split(css, ".btn:not(.btn-ghost, .btn-link, .btn-outline,")) == 2

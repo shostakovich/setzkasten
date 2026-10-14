@@ -5,7 +5,9 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Formulare"
-  def summary, do: "input, field_error, field_help, action_bar, Formular mit Fehlern, Inline"
+
+  def summary,
+    do: "input, combobox, file_drop, field_error, field_help, action_bar, Formular mit Fehlern"
 
   @initial %{
     "title" => "",
@@ -337,7 +339,145 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
         </.input>
       </.demo>
     </.showcase>
+
+    <.showcase id="file-drop" name="<.file_drop>" title="Datei ablegen" code={code(5)}>
+      <:intro>
+        Eine Ablagefläche um <code>live_file_input</code>: Datei hineinziehen oder antippen. Das
+        Dateifeld ist das Bedienelement (Tab, Enter), unsichtbar; an seiner Stelle stehen ein
+        Knopf „Datei auswählen“ und der gewählte Dateiname statt des Browsertexts. Beim Ziehen
+        wird der Rand blau. Fehler des Uploads stehen auf Deutsch darunter.
+      </:intro>
+      <.demo title="Kontoauszug (CSV oder PDF, eine Datei, höchstens 5 MB)" class="max-w-xl">
+        <form id="statement-form" phx-change="statement" phx-submit="statement">
+          <.file_drop
+            upload={@uploads.statement}
+            label="Kontoauszug"
+            help="CSV oder PDF aus dem Online-Banking, höchstens 5 MB"
+          >
+            <div
+              :for={entry <- @uploads.statement.entries}
+              class="flex items-center gap-3 py-1 text-sm"
+            >
+              <progress
+                class="progress progress-primary w-full max-w-48"
+                value={entry.progress}
+                max="100"
+              >
+                {entry.progress} %
+              </progress>
+              <span class="flex-1 text-base-content/70 tabular-nums">{entry.progress}&nbsp;%</span>
+              <.button
+                variant={:ghost}
+                size={:sm}
+                icon="x"
+                icon_only
+                label={"#{entry.client_name} entfernen"}
+                phx-click="cancel_statement"
+                phx-value-ref={entry.ref}
+              />
+            </div>
+          </.file_drop>
+        </form>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="combobox" name="<.combobox>" title="Suchbare Auswahl" code={code(4)}>
+      <:intro>
+        Ein Textfeld, das seine Optionen beim Tippen filtert, für lange Listen wie Empfänger oder
+        Kategorien. Pfeiltasten wählen, Enter und Tab übernehmen, Escape schließt nur die Liste.
+        Ein verstecktes Feld trägt den Wert; erst eine Wahl löst <code>phx-change</code>
+        aus. Mit <code>allow_create</code>
+        lässt sich ein neuer Eintrag anlegen.
+      </:intro>
+      <.demo title="Gruppen und eigener Inhalt, anlegen, Fehler" class="max-w-3xl">
+        <.form for={@combo} id="combo-form" phx-change="combo" class="grid gap-4 md:grid-cols-2">
+          <.combobox
+            field={@combo[:category]}
+            label="Kategorie"
+            placeholder="Kategorie suchen"
+            options={combo_categories()}
+          >
+            <:option :let={option}>
+              <span class="min-w-0 flex-1 truncate">{option.label}</span>
+              <.amount value={option.available} tone />
+            </:option>
+          </.combobox>
+          <.combobox
+            field={@combo[:payee]}
+            label="Empfänger"
+            placeholder="Empfänger"
+            options={combo_payees()}
+            allow_create
+            help="Ein neuer Name wird angelegt."
+          />
+          <.combobox
+            field={@combo[:account]}
+            label="Konto"
+            options={[{"🏦 Girokonto", "giro"}, {"💳 Kreditkarte", "card"}]}
+            allow_create
+            create_label="Konto „%{text}“ hinzufügen"
+            create_field={@combo[:new_account]}
+          />
+          <.combobox
+            name="combo-error"
+            id="combo-error"
+            label="Mit Fehler"
+            options={[{"Miete", "rent"}]}
+            errors={["muss gewählt sein"]}
+          />
+        </.form>
+        <:note>
+          Gesendet: Kategorie „{@combo[:category].value}“, Empfänger „{@combo[:payee].value}“,
+          Konto „{@combo[:account].value}“, neues Konto „{@combo[:new_account].value}“.
+        </:note>
+      </.demo>
+      <.demo title="Aufteilung: eine Liste für alle Teile (options_from)" class="max-w-3xl">
+        <.combobox_options id="split-categories" options={combo_categories()}>
+          <:option :let={option}>
+            <span class="min-w-0 flex-1 truncate">{option.label}</span>
+            <.amount value={option.available} tone />
+          </:option>
+        </.combobox_options>
+        <div class="grid gap-4 md:grid-cols-3">
+          <.combobox
+            :for={part <- 1..3}
+            id={"split-#{part}"}
+            name={"split[#{part}]"}
+            label={"Teil #{part}"}
+            placeholder="Kategorie suchen"
+            options_from="split-categories"
+          />
+        </div>
+        <:note>
+          Die Optionen stehen einmal im Markup; jedes Feld kopiert sie, solange es offen ist.
+        </:note>
+      </.demo>
+    </.showcase>
     """
+  end
+
+  defp combo_payees,
+    do:
+      Enum.map(
+        ["Bäckerei Krume", "Stadtwerke", "Supermarkt Frisch", "Tankstelle Nord"],
+        &{&1, &1}
+      )
+
+  defp combo_categories do
+    [
+      {"Fixkosten",
+       [
+         %{label: "Miete", value: "rent", available: 0},
+         %{label: "Strom", value: "power", available: 4_500},
+         %{label: "Internet", value: "internet", available: -1_299}
+       ]},
+      {"Alltag",
+       [
+         %{label: "Lebensmittel", value: "groceries", available: 31_248, key: "Essen Einkauf"},
+         %{label: "Drogerie", value: "drugstore", available: 2_310},
+         %{label: "Café & Bäckerei", value: "cafe", available: 870}
+       ]}
+    ]
   end
 
   defp error_title([_]), do: "1 Feld ist noch nicht richtig"
@@ -353,6 +493,38 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     <.input field={@form[:split]} type="radio_group" label="Aufteilung"
             options={[{"Gleichmäßig", "equal"}, {"Nach Anteilen", "shares"}]} />
     <.input field={@form[:iban]} label="IBAN" help="Noch nicht bestätigt" help_tone={:warning} />
+    """
+  end
+
+  defp code(5) do
+    ~S"""
+    <%!-- allow_upload(socket, :statement, accept: ~w(.csv .pdf), max_entries: 1) --%>
+    <form id="import-form" phx-change="validate" phx-submit="import">
+      <.file_drop upload={@uploads.statement} label="Kontoauszug"
+                  help="CSV oder PDF aus dem Online-Banking, höchstens 5 MB">
+        <%!-- the zone names the chosen file; below it, e.g., progress and a remove button --%>
+        <progress :for={e <- @uploads.statement.entries} class="progress" value={e.progress} max="100" />
+      </.file_drop>
+    </form>
+    """
+  end
+
+  defp code(4) do
+    ~S"""
+    <.combobox field={@form[:category_id]} label="Kategorie" options={@category_groups}
+               placeholder="Kategorie suchen">
+      <:option :let={option}>
+        <span class="min-w-0 flex-1 truncate">{option.label}</span>
+        <.amount value={option.available} tone />
+      </:option>
+    </.combobox>
+
+    <%!-- a name field: the typed text becomes the value --%>
+    <.combobox field={@form[:payee]} label="Empfänger" options={@payees} allow_create />
+
+    <%!-- an id field: a new entry's text goes into create_field --%>
+    <.combobox field={@form[:account_id]} label="Konto" options={@accounts} allow_create
+               create_field={@form[:new_account]} />
     """
   end
 

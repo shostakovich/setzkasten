@@ -43,6 +43,18 @@ defmodule Setzkasten.CatalogTest do
     assert render(view) =~ "Bisher gelöscht (Demo): 1"
   end
 
+  test "a confirmed submit button sends its form with its name and value" do
+    {:ok, view, _} = live(build_conn(), "/overlays")
+
+    html =
+      view
+      |> form("#import-form")
+      |> put_submitter("#import-replace")
+      |> render_submit()
+
+    assert html =~ "ersetzt (Demo)"
+  end
+
   test "a confirm inside a live component parks a push that targets the component's cid" do
     {:ok, view, html} = live(build_conn(), "/overlays")
     doc = LazyHTML.from_document(html)

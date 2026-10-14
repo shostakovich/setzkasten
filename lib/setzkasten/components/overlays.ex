@@ -232,8 +232,10 @@ defmodule Setzkasten.Components.Overlays do
             if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
             target.focus()
           }
+          // A confirmed submit disables its form's buttons until the reply: wait for the trigger.
+          const pending = (el) => el.isConnected && el.hasAttribute("data-phx-disabled")
           let current = trigger
-          if (!usable(trigger)) {
+          if (!usable(trigger) && !pending(trigger)) {
             const menu = trigger.closest("details")
             const popover = trigger.closest(".setzkasten-popover")
             const opener = menu
@@ -245,7 +247,7 @@ defmodule Setzkasten.Components.Overlays do
           }
           const check = () => {
             const active = document.activeElement
-            if (active && active !== document.body) return
+            if ((active && active !== document.body) || pending(current)) return
             stop()
             if (usable(current)) current.focus()
             else fallback()

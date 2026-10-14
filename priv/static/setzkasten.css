@@ -656,7 +656,7 @@
     }
     /* On modal boxes, menus and popovers one step lifted, as base-200 on the dark page; the label
        carries the contrast. */
-    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content, .setzkasten-popover) & {
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content, .setzkasten-popover, .setzkasten-selection-bar) & {
       --btn-bg: var(--setzkasten-popover-control);
       @media (hover: hover) {
         &:hover {
@@ -875,7 +875,7 @@
     transition-property: color, background-color, border-color, box-shadow, scale, opacity, visibility;
     transition-behavior: allow-discrete;
   }
-  :root:has(.modal[open]) .setzkasten-fab {
+  :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab {
     opacity: 0;
     scale: 0.8;
     visibility: hidden;
@@ -980,6 +980,26 @@
       opacity: var(--setzkasten-enter-opacity);
       translate: var(--setzkasten-enter-from);
       scale: var(--setzkasten-enter-scale);
+    }
+  }
+
+  /* The selection bar rises 8px into place; it leaves at once with the selection. */
+  .setzkasten-selection-bar {
+    transition:
+      opacity var(--setzkasten-duration) var(--setzkasten-ease-out),
+      translate var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .setzkasten-selection-bar {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    @starting-style {
+      .setzkasten-selection-bar {
+        translate: none;
+      }
     }
   }
 
@@ -1101,7 +1121,7 @@
       --setzkasten-enter-scale: 1;
       --setzkasten-enter-opacity: 0;
     }
-    :root:has(.modal[open]) .setzkasten-fab,
+    :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab,
     .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
       scale: none;
       translate: none;
@@ -1182,6 +1202,145 @@
     }
     .setzkasten-popover[popover]:popover-open::backdrop {
       background-color: oklch(0% 0 0 / 0.4);
+    }
+  }
+}
+
+/* <.combobox>: the listbox is a manual popover in the top layer, anchored below the field box. */
+@layer utilities.setzkasten {
+  .setzkasten-combobox {
+    anchor-scope: --setzkasten-combobox;
+  }
+  .setzkasten-combobox > .input {
+    anchor-name: --setzkasten-combobox;
+  }
+  .setzkasten-listbox {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    min-width: 16rem;
+    max-width: calc(100vw - 1rem);
+    max-height: min(19rem, calc(100dvh - 1rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem;
+    color: var(--color-base-content);
+    background-color: var(--color-popover);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: var(--radius-box);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    opacity: 0;
+    transition:
+      opacity var(--setzkasten-duration-press) linear,
+      overlay var(--setzkasten-duration-press) allow-discrete,
+      display var(--setzkasten-duration-press) allow-discrete;
+  }
+  .setzkasten-listbox:popover-open {
+    opacity: 1;
+  }
+  @starting-style {
+    .setzkasten-listbox:popover-open {
+      opacity: 0;
+    }
+  }
+  @supports (anchor-scope: all) and (position-area: block-end) {
+    .setzkasten-listbox {
+      position-anchor: --setzkasten-combobox;
+      position-area: block-end span-inline-end;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+      margin-block: 0.25rem;
+      min-width: max(16rem, anchor-size(width));
+    }
+  }
+  .setzkasten-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-field);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .setzkasten-option:hover {
+    background-color: var(--setzkasten-popover-control);
+  }
+  /* The highlighted option is the field's visual focus: a primary ring as on focused menu items. */
+  .setzkasten-option[aria-selected="true"] {
+    background-color: var(--setzkasten-popover-control);
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+  .setzkasten-option:not([data-current]) > .setzkasten-option-check {
+    visibility: hidden;
+  }
+  .setzkasten-option-group {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  .setzkasten-listbox-empty {
+    padding: 0.375rem 0.75rem;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  @media (pointer: coarse) {
+    .setzkasten-option {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* <.file_drop>: a dashed area around the file input, primary while a file is dragged over it. */
+@layer utilities.setzkasten {
+  .setzkasten-file-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border: 1px dashed color-mix(in oklab, var(--color-base-content) 50%, transparent);
+    border-radius: var(--radius-box);
+    cursor: pointer;
+    transition:
+      background-color var(--setzkasten-duration) var(--setzkasten-ease-out),
+      border-color var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .setzkasten-file-drop-error {
+    border-color: var(--color-error-ink);
+  }
+  .setzkasten-file-drop:has(> input:focus-visible) .setzkasten-file-drop-button {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  .setzkasten-file-drop:has(> input:disabled) {
+    cursor: not-allowed;
+  }
+  .setzkasten-file-drop.phx-drop-target-active {
+    border-style: solid;
+    border-color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 8%, var(--color-base-100));
+  }
+}
+
+@layer utilities.setzkasten {
+  .setzkasten-selection-bar .dropdown > .dropdown-content {
+    top: auto;
+    bottom: 100%;
+    margin-bottom: 0.25rem;
+    transform-origin: bottom left;
+  }
+  .setzkasten-selection-bar .dropdown-end > .dropdown-content {
+    transform-origin: bottom right;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .setzkasten-selection-bar .dropdown > .dropdown-content {
+      --setzkasten-enter-from: 0 0.25rem;
     }
   }
 }

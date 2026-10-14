@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Aktionen"
-  def summary, do: "button, fab"
+  def summary, do: "button, fab, selection_bar"
 
   def render(assigns) do
     ~H"""
@@ -84,8 +84,63 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
       </.demo>
       <.fab label="Ausgabe (Demo)" class="bottom-4!" phx-click="flash" phx-value-kind="info" />
     </.showcase>
+
+    <.showcase id="selection-bar" name="<.selection_bar>" title="Auswahlleiste" code={code(2)}>
+      <:intro>
+        Für eine Mehrfachauswahl: unten fest über dem Inhalt, neben Seitenleiste oder Icon-Leiste,
+        über Dock und sicherem Rand. Aufheben, Anzahl (für Screenreader angesagt), Aktionen; Menüs
+        darin öffnen nach oben. Bei 0 verschwindet sie.
+      </:intro>
+      <.demo title="Zeilen auswählen">
+        <ul class="divide-y divide-base-content/10 border-y border-base-content/10">
+          <li :for={{id, label} <- picks()} class="flex items-center gap-3 py-2">
+            <input
+              type="checkbox"
+              id={"pick-#{id}"}
+              class="checkbox"
+              checked={id in @picked}
+              phx-click="pick"
+              phx-value-id={id}
+            />
+            <label for={"pick-#{id}"} class="text-sm">{label}</label>
+          </li>
+        </ul>
+        <.selection_bar id="picked" count={length(@picked)} on_clear="clear_picked">
+          <.button size={:sm} variant={:ghost} icon="archive" phx-click="clear_picked">
+            Archivieren
+          </.button>
+          <.dropdown
+            id="picked-more"
+            label="Weitere Aktionen"
+            variant={:ghost}
+            align={:end}
+            trigger_class="btn-sm"
+          >
+            <:trigger>Mehr</:trigger>
+            <:item
+              on_click="clear_picked"
+              icon="trash-2"
+              danger
+              confirm="Auswahl löschen?"
+              confirm_text="Die ausgewählten Einträge verschwinden."
+            >
+              Löschen
+            </:item>
+          </.dropdown>
+        </.selection_bar>
+        <:note>Bisher ausgewählt: {length(@picked)}.</:note>
+      </.demo>
+    </.showcase>
     """
   end
+
+  defp picks,
+    do: [
+      {"a", "Wocheneinkauf, 87,42 €"},
+      {"b", "Tanken, 64,30 €"},
+      {"c", "Bäckerei, 12,60 €"},
+      {"d", "Miete, 1.180,00 €"}
+    ]
 
   defp code(0) do
     ~S"""
@@ -101,6 +156,21 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
   defp code(1) do
     ~S"""
         <.fab navigate={~p"/ausgaben/neu"} icon="plus" label="Ausgabe" />
+    """
+  end
+
+  defp code(2) do
+    ~S"""
+    <%!-- render it always: at 0 it hides, the count is announced --%>
+    <.selection_bar id="selection" count={length(@selected)} on_clear="clear_selection"
+                    label={ngettext("1 Buchung", "%{count} Buchungen", length(@selected))}>
+      <.button size={:sm} variant={:ghost} icon="check" phx-click="approve_selected">Bestätigen</.button>
+      <.dropdown id="selection-more" label="Weitere Aktionen" variant={:ghost} align={:end}
+                 trigger_class="btn-sm">
+        <:trigger>Mehr</:trigger>
+        <:item on_click="delete_selected" icon="trash-2" danger confirm="Auswahl löschen?">Löschen</:item>
+      </.dropdown>
+    </.selection_bar>
     """
   end
 end

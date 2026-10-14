@@ -1,5 +1,5 @@
 defmodule Setzkasten.Components.Actions do
-  @moduledoc "Buttons and the floating action button."
+  @moduledoc "Buttons, the floating action button and the selection bar."
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
@@ -30,7 +30,16 @@ defmodule Setzkasten.Components.Actions do
   its own target (`JS.push("delete", target: @myself)`); only an event name takes the button's
   `phx-value-*` and `phx-target` along. Without `confirm` a `phx-value-value` also renders as
   the button's `value`: LiveView's client sends that property in its place. `confirm` with `href`, `navigate`, `patch` or `method`
-  raises: the link would navigate without asking.
+  raises: the link would navigate without asking; so does `confirm` without `phx-click` on a
+  button that does not submit.
+
+  On a `type="submit"` button (needs an `id`) `confirm` asks before the form is sent: the
+  click and Enter in a field no longer submit, the dialog's confirm button submits the
+  button's form (also one named by `form`) with the button as submitter, so its `name` and
+  `value` go along; Cancel sends nothing. Its hook is Setzkasten's, so a `phx-hook` there raises.
+  The hook does the asking, so the button needs a connected LiveView: before it mounts (a dead
+  render, a slow connect) a click submits without asking. Its `id` becomes a `#id` selector: a
+  plain CSS identifier, without `.` or `:`.
 
   `saved` (needs an `id`) confirms a save in place: after `push_saved(socket, id)` the button shows
   a check and `saved_label` for 1.5 s, then its label again, at the same width, announced in a
@@ -42,6 +51,8 @@ defmodule Setzkasten.Components.Actions do
       <.button navigate={~p"/depots"} size={:sm}>Alle Depots</.button>
       <.button type="submit" variant={:primary} id="settings-save" saved
                phx-disable-with="Speichert …">Speichern</.button>
+      <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger}
+               confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
   """
   attr :variant, :atom, default: :neutral, values: Map.keys(@variants)
   attr :size, :atom, default: :md, values: Map.keys(@sizes)
@@ -82,6 +93,16 @@ defmodule Setzkasten.Components.Actions do
     raise ArgumentError, "<.button saved> must be a button, not a link"
   end
 
+  def button(%{confirm: confirm, type: "submit", rest: rest})
+      when is_binary(confirm) and not is_map_key(rest, :id) do
+    raise ArgumentError,
+          "<.button type=\"submit\" confirm> needs an id: the confirmation submits the form by it"
+  end
+
+  def button(%{confirm: confirm, type: "submit", saved: true}) when is_binary(confirm) do
+    raise ArgumentError, "<.button type=\"submit\"> takes confirm or saved, not both"
+  end
+
   def button(%{confirm: confirm, rest: rest})
       when is_binary(confirm) and
              (is_map_key(rest, :href) or is_map_key(rest, :navigate) or
@@ -89,6 +110,18 @@ defmodule Setzkasten.Components.Actions do
     raise ArgumentError,
           "<.button confirm> cannot ask before a link (href, navigate, patch or method): " <>
             "it would navigate without asking; confirm a phx-click instead"
+  end
+
+  def button(%{confirm: confirm, type: type, rest: rest})
+      when is_binary(confirm) and type != "submit" and not is_map_key(rest, :"phx-click") do
+    raise ArgumentError,
+          "<.button confirm> needs a phx-click (or type=\"submit\"): it would park nothing to confirm"
+  end
+
+  def button(%{confirm: confirm, type: "submit", rest: rest})
+      when is_binary(confirm) and is_map_key(rest, :"phx-hook") do
+    raise ArgumentError,
+          "<.button type=\"submit\" confirm> takes no phx-hook: the confirmation needs its own"
   end
 
   def button(assigns) do
@@ -132,6 +165,17 @@ defmodule Setzkasten.Components.Actions do
     >
       {button_content(assigns)}
     </button>
+    <script :type={ColocatedHook} name=".ConfirmSubmit">
+      export default {
+        mounted() {
+          // The click opens the confirmation (phx-click) instead of sending the form.
+          this.el.addEventListener("click", (e) => e.preventDefault())
+          this.el.addEventListener("setzkasten:confirm-submit", () => {
+            if (this.el.form) this.el.form.requestSubmit(this.el)
+          })
+        }
+      }
+    </script>
     """
   end
 
@@ -234,7 +278,7 @@ defmodule Setzkasten.Components.Actions do
     {target, rest} =
       if is_binary(click), do: Map.pop(rest, :"phx-target"), else: {nil, rest}
 
-    action = confirm_action(click, values, target)
+    action = confirm_action(click, values, target) |> confirm_submit(assigns)
 
     js =
       show_confirm(%JS{}, assigns.confirm_id, assigns.confirm, action,
@@ -242,8 +286,21 @@ defmodule Setzkasten.Components.Actions do
         label: assigns.confirm_label
       )
 
-    assign(assigns, :rest, Map.merge(rest, %{"phx-click": js, "aria-haspopup": "dialog"}))
+    rest = Map.merge(rest, %{"phx-click": js, "aria-haspopup": "dialog"})
+
+    rest =
+      if assigns.type == "submit",
+        do: Map.put(rest, :"phx-hook", "#{inspect(__MODULE__)}.ConfirmSubmit"),
+        else: rest
+
+    assign(assigns, :rest, rest)
   end
+
+  # A confirmed submit button sends its form from the dialog; its own click only asks.
+  defp confirm_submit(js, %{type: "submit", rest: %{id: id}}),
+    do: JS.dispatch(js, "setzkasten:confirm-submit", to: "##{id}")
+
+  defp confirm_submit(js, _assigns), do: js
 
   defp confirm_action(event, values, target) when is_binary(event) do
     # As rendered attributes: nil and false are left out, true is an empty value, the rest strings.
@@ -257,6 +314,104 @@ defmodule Setzkasten.Components.Actions do
   end
 
   defp confirm_action(click, _values, _target), do: click_js(click, nil, [])
+
+  @doc """
+  The bar for a multi-selection (e.g. checked rows of a table): fixed at the bottom of the
+  content, with a button that clears the selection, the count and the actions for the selected
+  items (buttons, dropdowns, popovers) in the inner block.
+
+  Render it always and pass the count: at 0 it hides (focus inside moves to the closest
+  `[data-focus-fallback]`, else `<main id="main">`), and a polite live region announces each
+  new count. `label` is the count's text (`%{count}` is the number), `on_clear` an event name
+  (with `phx-target`) or a `%JS{}`.
+
+  It keeps to the content area: beside the sidebar or rail of `app_shell/1` (also collapsed),
+  above the dock and the bottom safe area, with a spacer at its place so the last rows can
+  scroll above it. Dropdowns inside open upwards; popovers flip above by themselves. While it
+  shows, the floating action button steps back. It enters from below (a fade with reduced motion).
+
+      <.selection_bar id="selection" count={length(@selected)} on_clear="clear_selection"
+        label={ngettext("1 Buchung", "%{count} Buchungen", length(@selected))}>
+        <.button size={:sm} variant={:ghost} icon="check" phx-click="approve_selected">Bestätigen</.button>
+        <.dropdown id="selection-more" label="Mehr" variant={:ghost} trigger_class="btn-sm" align={:end}>
+          <:trigger>Mehr</:trigger>
+          <:item on_click="delete_selected" icon="trash-2" danger confirm="Auswahl löschen?">Löschen</:item>
+        </.dropdown>
+      </.selection_bar>
+  """
+  attr :id, :string, required: true
+  attr :count, :integer, required: true
+  attr :label, :string, default: "%{count} ausgewählt", doc: "`%{count}` is the number"
+  attr :on_clear, :any, required: true, doc: "an event name or `%JS{}`"
+  attr :"phx-target", :any, default: nil, doc: "for an event name in `on_clear`"
+  attr :clear_label, :string, default: "Auswahl aufheben"
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, doc: "the actions for the selected items"
+
+  def selection_bar(assigns) do
+    assigns =
+      assign(assigns,
+        text: String.replace(assigns.label, "%{count}", to_string(assigns.count)),
+        clear: click_js(assigns.on_clear, assigns[:"phx-target"], [])
+      )
+
+    ~H"""
+    <div id={@id} phx-hook=".SelectionBar" {@rest}>
+      <p id={"#{@id}-status"} class="sr-only" role="status">{if @count > 0, do: @text}</p>
+      <div :if={@count > 0} class="h-20" aria-hidden="true"></div>
+      <div
+        class={[
+          "setzkasten-selection-bar fixed z-40 flex justify-center pointer-events-none",
+          "start-(--setzkasten-shell-start,0px) end-0 px-4",
+          "pe-[calc(1rem+env(safe-area-inset-right))]",
+          "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]"
+        ]}
+        hidden={@count == 0}
+      >
+        <div
+          role="group"
+          aria-labelledby={"#{@id}-count"}
+          class={[
+            "pointer-events-auto flex max-w-full flex-wrap items-center gap-1 rounded-box",
+            "border border-base-content/10 bg-popover p-1.5 text-sm shadow-lg",
+            @class
+          ]}
+        >
+          <.button
+            variant={:ghost}
+            size={:sm}
+            icon="x"
+            icon_only
+            label={@clear_label}
+            phx-click={@clear}
+          />
+          <span
+            id={"#{@id}-count"}
+            class="px-1 font-semibold whitespace-nowrap tabular-nums"
+            aria-hidden="true"
+          >
+            {@text}
+          </span>
+          <span class="mx-1 h-6 w-px bg-base-content/10" aria-hidden="true"></span>
+          {render_slot(@inner_block)}
+        </div>
+      </div>
+    </div>
+    <script :type={ColocatedHook} name=".SelectionBar">
+      export default {
+        beforeUpdate() { this.focused = this.el.contains(document.activeElement) },
+        updated() {
+          if (!this.focused || !this.el.querySelector(".setzkasten-selection-bar").hidden) return
+          const target = this.el.closest("[data-focus-fallback]") || document.getElementById("main")
+          if (!target) return
+          if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
+          target.focus()
+        }
+      }
+    </script>
+    """
+  end
 
   @doc """
   The one main action on phones (`md:hidden`): 16px above the dock inside `<.app_shell>`

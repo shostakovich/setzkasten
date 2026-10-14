@@ -146,6 +146,55 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button icon="archive">Archivieren (ohne Frage)</.button>
         <:note>Bisher gelöscht (Demo): {@deleted}</:note>
       </.demo>
+      <.demo title="Formular absenden (type=&quot;submit&quot;)">
+        <form id="import-form" phx-submit="import" class="flex flex-wrap items-end gap-3">
+          <.input
+            name="import[file]"
+            id="import-file"
+            type="select"
+            label="Datei"
+            options={["umsaetze-oktober.ofx", "umsaetze-september.ofx"]}
+          />
+          <.button type="submit" id="import-add" name="mode" value="add" variant={:primary}>
+            Ergänzen
+          </.button>
+        </form>
+        <.button
+          type="submit"
+          id="import-replace"
+          form="import-form"
+          name="mode"
+          value="replace"
+          variant={:danger_outline}
+          confirm="Alle Buchungen des Kontos ersetzen?"
+          confirm_text="Buchungen, die nicht in der Datei stehen, werden gelöscht."
+          confirm_label="Ersetzen"
+          class="mt-3"
+        >
+          Ersetzen
+        </.button>
+        <form id="close-account-form" phx-submit="close_account" class="mt-3 grid max-w-sm gap-3">
+          <.combobox
+            id="close-target"
+            name="close[target]"
+            label="Restbetrag überweisen auf"
+            options={[{"Girokonto", "giro"}, {"Sparkonto", "savings"}]}
+          />
+          <.button
+            type="submit"
+            id="close-account"
+            confirm="Konto „Tagesgeld“ schließen?"
+            confirm_label="Schließen"
+          >
+            Konto schließen
+          </.button>
+        </form>
+        <:note>
+          „Ersetzen“ steht außerhalb des Formulars (<code>form</code>-Attribut) und fragt erst;
+          die Bestätigung sendet das Formular mit <code>mode=replace</code>. Enter im Feld sendet
+          über den ersten Submit-Button, „Ergänzen“.
+        </:note>
+      </.demo>
       <.demo title="In einer LiveComponent, phx-target">
         <.live_component module={Setzkasten.Dev.TargetDemo} id="target-demo" />
         <:note>
@@ -331,6 +380,10 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
 
     <.button variant={:danger_outline} icon="trash-2" confirm="Ausgabe löschen?"
              phx-click="delete" phx-value-id={@expense.id}>Löschen</.button>
+
+    <%!-- a submit button: the confirmation sends its form, with name and value --%>
+    <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger_outline}
+             confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
 
     <%!-- inside a live component --%>
     <.button confirm="Eintrag löschen?" phx-click="delete" phx-target={@myself}>Löschen</.button>
