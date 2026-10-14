@@ -5,7 +5,8 @@ defmodule Setzkasten.Components.Shell do
   alias Phoenix.LiveView.JS
   alias Setzkasten.Format
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [modal: 1, show_modal: 1]
+  import Setzkasten.Click, only: [click_js: 2]
+  import Setzkasten.Components.Overlays, only: [modal: 1, show_modal: 1, hide_modal: 1]
 
   @widths %{narrow: "max-w-3xl", default: "max-w-5xl", wide: "max-w-7xl", full: nil}
 
@@ -22,24 +23,50 @@ defmodule Setzkasten.Components.Shell do
   which its collapse button, Escape or the scrim close. Ghost buttons in the sidebar take its
   colours.
 
+  `width` (`:narrow`, `:default`, `:wide`, `:full`) caps the page column. With
+  `layout={:sidebar}` the column starts at the content edge (sidebar or rail plus the page
+  padding), so every page starts at the same x whatever its width; the top bar row takes the
+  same width. With `layout={:topbar}` the column and the navbar row are centred together.
+
   `layout={:topbar}` (e.g. a dashboard or a CMS): a navbar with a horizontal menu from
   `md`, the dock below. With `dock={false}` the menu stays in the navbar on phones and
   scrolls sideways. Without `:nav` entries the navbar has no menu, for apps whose navigation
   lives in the page (e.g. `<.tabs>` at the top of `main`).
 
   `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` (Lucide) or `plush` (falls back
-  to `icon` when the plush module has no image for it), `count`
+  to `icon` when the plush module has no image for it) or `glyph` (a short text such as an
+  emoji or an initial in the icon's place), `count`
   (+ `count_label`, e.g. "neu": the link is then named "Buchungen, 2 neu"; the rail and the
   dock show a positive count as a badge on the icon), `amount` (minor units, sidebar balances), `section` (sidebar group title, shown before the
-  first entry of a section; an entry without one after a section stands apart by the same gap), `dock` (default true; the first five go into the dock) and `rail` (default
+  first entry of a section; an entry without one after a section stands apart by the same gap),
+  `section_amount` (on a section's first entry: the section's total next to its title), `dock` (default true; the first five go into the dock) and `rail` (default
   true; `false` leaves the entry out of the icon rail, e.g. object lists
   such as accounts, which stay in the full sidebar, its dialog and the dock). The rail keeps a
   gap between sections, without their titles. With
   `layout={:sidebar}` and more than five dock entries, or entries left out of the dock, the
   dock shows at most four and a `more_label` button that opens the full sidebar.
-  The entry whose `key` equals `current` is marked with `aria-current="page"`.
+  The entry whose `key` equals `current` is marked with `aria-current="page"`. An entry left
+  out of the dock or the rail (an account under "Konten") names the entry that stands in for
+  it there with `parent` (that entry's key): while it is current, dock and rail mark the parent
+  (`aria-current="true"`) instead of "more" or nothing.
+
+  In the sidebar and its dialog all labels share one text column: once any entry has an icon,
+  plush or glyph, an entry without one keeps its place empty. Without any, labels start at the
+  section titles' edge.
 
   Long labels end in an ellipsis (the full label as `title`, the accessible name unchanged).
+  With both `count` and `amount`, a positive count is a small badge before the amount, so it
+  does not read as part of the number. `amount_tone={:negative}` tones entry and section
+  amounts as `<.amount tone={:negative}>` does: negative in `sidebar-negative`, zero muted,
+  positive in the sidebar's full text colour.
+
+  An entry with `on_click` (an event name with `phx-target`, or a `%JS{}`) is a button, a
+  quiet action in its place, e.g. "Konto hinzufügen" as the last entry of the accounts'
+  section. It stays out of the rail and the dock unless `rail` or `dock` is `true`. In the
+  sidebar dialog it closes the dialog before its action runs.
+
+  An entry renders once per place, so its `id` becomes `<id>-sidebar`, `<id>-dialog` (the
+  sidebar as a dialog), `<id>-rail`, `<id>-menu` (the top-bar menu) and `<id>-dock`.
   `:fab` reserves space for a floating action above the dock.
 
   The brand shrinks before the account does, so the bar stays one row: give long brand
@@ -90,23 +117,41 @@ defmodule Setzkasten.Components.Shell do
   attr :expand_label, :string, default: "Seitenleiste ausklappen"
   attr :collapse_label, :string, default: "Seitenleiste einklappen"
   attr :more_label, :string, default: "Mehr"
+
+  attr :amount_tone, :any,
+    default: false,
+    values: [false, :negative],
+    doc: "`:negative`: nav and section amounts toned as `<.amount tone={:negative}>`"
+
   attr :class, :any, default: nil
   slot :inner_block, required: true
   slot :brand, required: true
 
   slot :nav do
     attr :key, :any, required: true
+
+    attr :id, :string,
+      doc:
+        "the entry renders once per place, as `<id>-sidebar`, `-dialog`, `-rail`, `-menu`, `-dock`"
+
     attr :label, :string, required: true
     attr :navigate, :string
     attr :href, :string
     attr :icon, :string
     attr :plush, :string
+    attr :glyph, :string, doc: "an emoji or initial in the icon's place"
     attr :count, :integer
     attr :count_label, :string, doc: ~s(what the count counts, for screen readers, e.g. "neu")
     attr :amount, :integer
     attr :section, :string
+    attr :section_amount, :integer, doc: "on the section's first entry: its total"
+    attr :on_click, :any, doc: "makes the entry a button: an event name or `%JS{}`"
+    attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :dock, :boolean
     attr :rail, :boolean, doc: "false leaves the entry out of the icon rail"
+
+    attr :parent, :any,
+      doc: "key of the entry that dock and rail mark while this one is current but left out there"
   end
 
   slot :nav_footer
@@ -116,7 +161,7 @@ defmodule Setzkasten.Components.Shell do
   slot :fab
 
   def app_shell(assigns) do
-    dock_entries = Enum.reject(assigns.nav, &(&1[:dock] == false))
+    dock_entries = Enum.filter(assigns.nav, &shown?(&1, :dock))
     # Detail pages (a `:bar`) go back through the bar, so they keep the screen without the dock.
     dock? = assigns.dock and assigns.bar == []
     # Entries left out of the dock stay reachable through the sidebar dialog behind "more".
@@ -126,11 +171,21 @@ defmodule Setzkasten.Components.Shell do
 
     dock_items = Enum.take(dock_entries, if(more?, do: 4, else: 5))
 
+    rail_items = rail_items(assigns.nav)
+    dock_current = place_current(assigns.nav, dock_items, assigns.current)
+
     assigns =
       assign(assigns,
         width_class: @widths[assigns.width],
         dock_items: if(dock?, do: dock_items, else: []),
-        rail_items: rail_items(assigns.nav),
+        rail_items: rail_items,
+        media?: Enum.any?(assigns.nav, &media?/1),
+        rail_current:
+          place_current(assigns.nav, Enum.map(rail_items, &elem(&1, 0)), assigns.current),
+        dock_current: dock_current,
+        # "Mehr" is marked only while the current entry has no stand-in in the dock.
+        more_current?:
+          dock_current == nil and Enum.any?(assigns.nav, &current?(&1, assigns.current)),
         dock_more?: more?
       )
 
@@ -181,24 +236,24 @@ defmodule Setzkasten.Components.Shell do
             "bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh"
           ]}
         >
-          <.link
+          <.nav_target
             :for={{item, gap?} <- @rail_items}
-            navigate={item[:navigate]}
-            href={item[:href]}
+            item={item}
+            place={:rail}
             class={[
               rail_button(),
               "tooltip tooltip-right",
               gap? && "mt-3",
-              current?(item, @current) && "bg-white/10"
+              mark(@rail_current, item) && "bg-white/10"
             ]}
             data-tip={item.label}
             aria-label={nav_name(item) || item.label}
-            aria-current={current?(item, @current) && "page"}
+            aria-current={mark(@rail_current, item)}
           >
             <.icon_count count={item[:count]} class="bg-sidebar-accent text-sidebar border-0">
               {nav_icon(item)}
             </.icon_count>
-          </.link>
+          </.nav_target>
           <button
             type="button"
             class={[rail_button(), "mt-auto"]}
@@ -276,7 +331,7 @@ defmodule Setzkasten.Components.Shell do
             if(@bar == [], do: "lg:hidden lg:sidebar-collapsed:block", else: "sticky top-0 z-20")
           ]}
         >
-          <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8 mx-auto", @width_class]}>
+          <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8", @width_class]}>
             <div :if={@bar == []} class="flex-1 flex min-w-0 items-center gap-2 font-semibold">
               {render_slot(@brand, :bar)}
             </div>
@@ -337,16 +392,16 @@ defmodule Setzkasten.Components.Shell do
             >
               <ul class="menu menu-horizontal flex-nowrap gap-1">
                 <li :for={item <- @nav} class="snap-start">
-                  <.link
-                    navigate={item[:navigate]}
-                    href={item[:href]}
+                  <.nav_target
+                    item={item}
+                    place={:menu}
                     class={["whitespace-nowrap", current?(item, @current) && "menu-active"]}
                     aria-label={nav_name(item)}
                     aria-current={current?(item, @current) && "page"}
                   >
                     {nav_icon(item, :sm)}{item.label}
                     <span :if={item[:count]} class="badge badge-sm tabular-nums">{item[:count]}</span>
-                  </.link>
+                  </.nav_target>
                 </li>
               </ul>
             </nav>
@@ -358,7 +413,8 @@ defmodule Setzkasten.Components.Shell do
         <main
           id="main"
           class={[
-            "mx-auto px-4 sm:px-6 lg:px-8 py-6",
+            "px-4 sm:px-6 lg:px-8 py-6",
+            @layout == :topbar && "mx-auto",
             @width_class,
             @dock_items != [] && @fab == [] && "max-md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
             @dock_items != [] && @fab != [] && "max-md:pb-[calc(10rem+env(safe-area-inset-bottom))]"
@@ -373,22 +429,22 @@ defmodule Setzkasten.Components.Shell do
         aria-label={@nav_label}
         class="dock md:hidden z-30 border-t border-base-content/10"
       >
-        <.link
+        <.nav_target
           :for={item <- @dock_items}
-          navigate={item[:navigate]}
-          href={item[:href]}
-          class={["min-w-0", current?(item, @current) && "dock-active"]}
+          item={item}
+          place={:dock}
+          class={["min-w-0", mark(@dock_current, item) && "dock-active"]}
           aria-label={nav_name(item)}
-          aria-current={current?(item, @current) && "page"}
+          aria-current={mark(@dock_current, item)}
         >
           <.icon_count count={item[:count]} class="badge-primary">{nav_icon(item, :md)}</.icon_count>
           <span class="dock-label max-w-full truncate">{item.label}</span>
-        </.link>
+        </.nav_target>
         <button
           :if={@dock_more?}
           type="button"
-          class={["min-w-0", more_current?(@nav, @dock_items, @current) && "dock-active"]}
-          aria-current={more_current?(@nav, @dock_items, @current) && "true"}
+          class={["min-w-0", @more_current? && "dock-active"]}
+          aria-current={@more_current? && "true"}
           aria-haspopup="dialog"
           phx-click={show_modal("#{@id}-sidebar")}
         >
@@ -413,16 +469,25 @@ defmodule Setzkasten.Components.Shell do
         <%= for {item, index} <- Enum.with_index(@nav) do %>
           <li
             :if={item[:section] && section_start?(@nav, index)}
-            class={["menu-title text-sidebar-muted", index > 0 && "mt-4"]}
+            class={[
+              "menu-title flex flex-row flex-nowrap items-baseline gap-2 text-sidebar-muted",
+              index > 0 && "mt-4"
+            ]}
           >
-            {item[:section]}
+            <span class="min-w-0 flex-1 truncate" title={item[:section]}>{item[:section]}</span>
+            <.nav_amount amount={item[:section_amount]} tone={@amount_tone} />
           </li>
           <li class={["flex-nowrap", section_end?(@nav, index) && "mt-4"]}>
-            <.link
-              navigate={item[:navigate]}
-              href={item[:href]}
+            <.nav_target
+              item={item}
+              place={@place}
+              dialog={@place == :dialog && "#{@id}-sidebar"}
               class={[
-                "flex text-sidebar-content hover:bg-white/10 focus-visible:outline-sidebar-accent",
+                "flex hover:bg-white/10 focus-visible:outline-sidebar-accent",
+                if(item[:on_click],
+                  do: "text-sidebar-muted hover:text-sidebar-content",
+                  else: "text-sidebar-content"
+                ),
                 current?(item, @current) &&
                   "relative bg-white/10 before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-sidebar-accent"
               ]}
@@ -430,15 +495,22 @@ defmodule Setzkasten.Components.Shell do
               aria-current={current?(item, @current) && "page"}
             >
               {nav_icon(item)}
+              <span :if={@media? and not media?(item)} class="size-5 shrink-0" aria-hidden="true"></span>
               <span class="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>
-              <span :if={item[:count]} class="tabular-nums text-sidebar-muted">{item[:count]}</span>
               <span
-                :if={item[:amount]}
-                class="shrink-0 tabular-nums whitespace-nowrap text-sidebar-muted"
+                :if={item[:count] && !item[:amount]}
+                class="tabular-nums text-sidebar-muted"
               >
-                {Format.money(item[:amount])}
+                {item[:count]}
               </span>
-            </.link>
+              <span
+                :if={item[:amount] && is_integer(item[:count]) && item[:count] > 0}
+                class="badge badge-sm shrink-0 tabular-nums bg-sidebar-accent text-sidebar border-0"
+              >
+                {item[:count]}
+              </span>
+              <.nav_amount amount={item[:amount]} tone={@amount_tone} />
+            </.nav_target>
           </li>
         <% end %>
       </ul>
@@ -472,6 +544,70 @@ defmodule Setzkasten.Components.Shell do
     </div>
     """
   end
+
+  # A link closes the sidebar dialog by replacing the view; a button has to close it itself.
+  attr :item, :map, required: true
+  attr :place, :atom, required: true
+  attr :dialog, :any, default: nil
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  defp nav_target(%{item: %{on_click: click}} = assigns) when not is_nil(click) do
+    js = click_js(click, assigns.item[:"phx-target"])
+    js = if assigns.dialog, do: JS.concat(hide_modal(assigns.dialog), js), else: js
+    assigns = assign(assigns, :click, js)
+
+    ~H"""
+    <button
+      type="button"
+      id={@item[:id] && "#{@item[:id]}-#{@place}"}
+      class={@class}
+      phx-click={@click}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </button>
+    """
+  end
+
+  defp nav_target(assigns) do
+    ~H"""
+    <.link
+      id={@item[:id] && "#{@item[:id]}-#{@place}"}
+      navigate={@item[:navigate]}
+      href={@item[:href]}
+      class={@class}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
+
+  attr :amount, :integer, default: nil
+  attr :tone, :any, required: true
+
+  defp nav_amount(%{amount: nil} = assigns), do: ~H""
+
+  defp nav_amount(assigns) do
+    ~H"""
+    <span class={[
+      "shrink-0 tabular-nums whitespace-nowrap",
+      amount_class(@tone, @amount)
+    ]}>
+      {Format.money(@amount)}
+    </span>
+    """
+  end
+
+  defp amount_class(:negative, amount) when amount < 0, do: "text-sidebar-negative"
+  defp amount_class(:negative, amount) when amount > 0, do: "text-sidebar-content"
+  defp amount_class(_tone, _amount), do: "text-sidebar-muted"
+
+  # Button entries are actions in the sidebar; the rail and the dock take them only when asked.
+  defp shown?(%{on_click: click} = item, place) when not is_nil(click), do: item[place] == true
+  defp shown?(item, place), do: item[place] != false
 
   defp rail_button do
     [
@@ -511,7 +647,7 @@ defmodule Setzkasten.Components.Shell do
       gap? = gap? or (index > 0 and Enum.at(nav, index - 1)[:section] != item[:section])
 
       cond do
-        item[:rail] == false -> {items, gap?}
+        not shown?(item, :rail) -> {items, gap?}
         items == [] -> {[{item, false}], false}
         true -> {[{item, gap?} | items], false}
       end
@@ -555,29 +691,61 @@ defmodule Setzkasten.Components.Shell do
 
   defp icon_count(assigns), do: ~H"{render_slot(@inner_block)}"
 
-  # The "more" button is active while the current page is one of the entries it holds.
-  defp more_current?(nav, dock_items, current),
-    do: Enum.any?(nav -- dock_items, &current?(&1, current))
+  defp mark({key, value}, %{key: key}), do: value
+  defp mark(_place_current, _item), do: nil
 
-  # A plush without an image falls back to the entry's icon.
-  defp nav_icon(item, size \\ :lg) do
+  defp place_current(_nav, _items, nil), do: nil
+
+  defp place_current(nav, items, current) do
+    keys = Enum.map(items, & &1.key)
+    parent = Enum.find_value(nav, &(&1.key == current && &1[:parent]))
+
     cond do
-      is_binary(item[:plush]) and Setzkasten.Plush.available?(item[:plush]) ->
-        assigns = %{name: item[:plush], size: if(size == :lg, do: :sm, else: size)}
-
-        ~H"""
-        <.plush name={@name} size={@size} />
-        """
-
-      is_binary(item[:icon]) ->
-        assigns = %{name: item[:icon], class: if(size == :sm, do: "size-4", else: "size-5")}
-
-        ~H"""
-        <.icon name={@name} class={@class} />
-        """
-
-      true ->
-        nil
+      current in keys -> {current, "page"}
+      parent != nil and parent in keys -> {parent, "true"}
+      true -> nil
     end
   end
+
+  # A plush without an image falls back to the entry's icon, then to its glyph.
+  defp media_kind(item) do
+    cond do
+      is_binary(item[:plush]) and Setzkasten.Plush.available?(item[:plush]) -> :plush
+      is_binary(item[:icon]) -> :icon
+      is_binary(item[:glyph]) -> :glyph
+      true -> nil
+    end
+  end
+
+  defp media?(item), do: media_kind(item) != nil
+
+  defp nav_icon(item, size \\ :lg), do: nav_icon(media_kind(item), item, size)
+
+  defp nav_icon(:plush, item, size) do
+    assigns = %{name: item[:plush], size: if(size == :lg, do: :sm, else: size)}
+
+    ~H"""
+    <.plush name={@name} size={@size} />
+    """
+  end
+
+  defp nav_icon(:icon, item, size) do
+    assigns = %{name: item[:icon], class: if(size == :sm, do: "size-4", else: "size-5")}
+
+    ~H"""
+    <.icon name={@name} class={@class} />
+    """
+  end
+
+  defp nav_icon(:glyph, item, size) do
+    assigns = %{glyph: item[:glyph], class: if(size == :sm, do: "size-4", else: "size-5")}
+
+    ~H"""
+    <span class={["grid shrink-0 place-items-center leading-none", @class]} aria-hidden="true">
+      {@glyph}
+    </span>
+    """
+  end
+
+  defp nav_icon(nil, _item, _size), do: nil
 end

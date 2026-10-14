@@ -15,6 +15,8 @@ defmodule Setzkasten.ShellTest do
 
     assert attr(doc, "a[href='#main']", "class") =~ "sr-only"
     assert classes(doc, "main#main") |> Enum.member?("max-w-3xl")
+    assert classes(doc, "main#main") |> Enum.member?("mx-auto")
+    assert "mx-auto" in classes(doc, "header .navbar")
     assert attr(doc, ".menu-horizontal a.menu-active", "aria-current") == "page"
     assert count(doc, "nav.dock a") == 2
     assert attr(doc, "nav.dock a.dock-active", "href") == "/a"
@@ -427,6 +429,169 @@ defmodule Setzkasten.ShellTest do
              ~r/\.setzkasten-sidebar \.tooltip\[data-tip\]::before \{\s*white-space: nowrap;\s*overflow: hidden;\s*text-overflow: ellipsis;/
   end
 
+  test "amount_tone={:negative} tones nav and section amounts as <.amount tone={:negative}>" do
+    for tone <- [:negative, false] do
+      assigns = %{tone: tone}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={:sidebar} amount_tone={@tone}>
+          <:brand>App</:brand>
+          <:nav
+            key={:g}
+            label="Giro"
+            amount={-1250}
+            section="Konten"
+            section_amount={-1000}
+            navigate="/g"
+          />
+          <:nav key={:t} label="Tagesgeld" amount={250} section="Konten" navigate="/t" />
+          <:nav key={:z} label="Leer" amount={0} section="Konten" navigate="/z" /> x
+        </.app_shell>
+        """)
+
+      sidebar = "aside.lg\\:flex"
+
+      {negative, positive} =
+        if tone,
+          do: {"text-sidebar-negative", "text-sidebar-content"},
+          else: {"text-sidebar-muted", "text-sidebar-muted"}
+
+      assert negative in classes(doc, "#{sidebar} a[href='/g'] span.tabular-nums")
+      assert text(doc, "#{sidebar} a[href='/g'] span.tabular-nums") == "−12,50\u00A0€"
+      assert positive in classes(doc, "#{sidebar} a[href='/t'] span.tabular-nums")
+      assert "text-sidebar-muted" in classes(doc, "#{sidebar} a[href='/z'] span.tabular-nums")
+      assert negative in classes(doc, "#{sidebar} li.menu-title span.tabular-nums")
+      assert text(doc, "#{sidebar} li.menu-title span.tabular-nums") == "−10,00\u00A0€"
+      assert attr(doc, "#{sidebar} li.menu-title span.truncate", "title") == "Konten"
+
+      assert Enum.all?(
+               ~w(flex-row flex-nowrap),
+               &(&1 in classes(doc, "#{sidebar} li.menu-title"))
+             )
+    end
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert length(String.split(css, "--color-sidebar-negative: oklch(74.93% 0.151 21.82);")) == 3
+    assert css =~ "--color-sidebar-negative: oklch(81.00% 0.095 22.00);"
+  end
+
+  test "a section without section_amount shows no total" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:g} label="Giro" amount={100} section="Konten" navigate="/g" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "aside.lg\\:flex li.menu-title span.tabular-nums") == 0
+  end
+
+  test "a count next to an amount is a badge, named in words" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:g} label="Giro" amount={-500} count={3} count_label="offen" navigate="/g" />
+        <:nav key={:t} label="Tagesgeld" amount={500} count={0} navigate="/t" />
+        <:nav key={:b} label="Buchungen" count={4} navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    sidebar = "aside.lg\\:flex"
+    badge = classes(doc, "#{sidebar} a[href='/g'] .badge")
+    assert Enum.all?(~w(badge badge-sm bg-sidebar-accent text-sidebar), &(&1 in badge))
+    assert text(doc, "#{sidebar} a[href='/g'] .badge") == "3"
+    assert attr(doc, "#{sidebar} a[href='/g']", "aria-label") == "Giro, 3 offen, −5,00\u00A0€"
+    assert count(doc, "#{sidebar} a[href='/t'] .badge") == 0
+    assert text(doc, "#{sidebar} a[href='/t']") =~ "5,00"
+    refute text(doc, "#{sidebar} a[href='/t']") =~ "0 "
+    # Without an amount the count stays a quiet number.
+    assert count(doc, "#{sidebar} a[href='/b'] .badge") == 0
+    assert text(doc, "#{sidebar} a[href='/b'] span.tabular-nums") == "4"
+  end
+
+  test "a glyph takes the icon's place, hidden from screen readers" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:g} label="Giro" glyph="🏦" navigate="/g" />
+        <:nav key={:i} label="Icon" glyph="I" icon="list" navigate="/i" /> x
+      </.app_shell>
+      """)
+
+    for place <- ["aside.lg\\:flex", "aside.md\\:flex", "nav.dock"] do
+      assert text(doc, "#{place} a[href='/g'] span[aria-hidden]") == "🏦"
+    end
+
+    assert count(doc, "aside.lg\\:flex a[href='/i'] span[aria-hidden]") == 0
+    assert count(doc, "aside.lg\\:flex a[href='/i'] svg.lucide") == 1
+  end
+
+  test "an entry with on_click is a quiet button, out of the rail and the dock" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:g} label="Giro" icon="wallet" section="Konten" navigate="/g" />
+        <:nav
+          key={:add}
+          label="Konto hinzufügen"
+          icon="plus"
+          section="Konten"
+          on_click="add_account"
+          phx-target="#accounts"
+        />
+        <:nav key={:js} label="Neu" icon="plus" on_click={JS.push("new")} rail dock /> x
+      </.app_shell>
+      """)
+
+    sidebar = "aside.lg\\:flex"
+    assert text(doc, "#{sidebar} li:nth-child(3) button") == "Konto hinzufügen"
+
+    assert [%{"event" => "add_account", "target" => "#accounts"}] =
+             pushes(attr(doc, "#{sidebar} li:nth-child(3) button", "phx-click"))
+
+    assert "text-sidebar-muted" in classes(doc, "#{sidebar} li:nth-child(3) button")
+    # Same section: no gap before it.
+    refute "mt-4" in classes(doc, "#{sidebar} li:nth-child(3)")
+    assert count(doc, "dialog#app-shell-sidebar li button") == 2
+
+    assert count(doc, "aside.md\\:flex button[aria-label='Konto hinzufügen']") == 0
+    entry = "nav.dock button:not([aria-haspopup])"
+    assert count(doc, entry) == 1
+    assert text(doc, "#{entry} .dock-label") == "Neu"
+    assert [%{"event" => "new"}] = pushes(attr(doc, entry, "phx-click"))
+    assert attr(doc, "aside.md\\:flex button[aria-label=Neu]", "data-tip") == "Neu"
+  end
+
+  test "button entries render as buttons in the topbar menu" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" icon="list" navigate="/a" />
+        <:nav key={:n} label="Neu" icon="plus" on_click="new" /> x
+      </.app_shell>
+      """)
+
+    assert text(doc, ".menu-horizontal li button") == "Neu"
+    assert count(doc, "nav.dock button") == 0
+    assert count(doc, "nav.dock a") == 1
+  end
+
   test "a long nav label does not widen the sidebar's other entries" do
     assigns = %{}
 
@@ -442,6 +607,37 @@ defmodule Setzkasten.ShellTest do
     # full width, past the sidebar's edge.
     assert "flex-nowrap" in classes(doc, "aside.lg\\:flex ul.menu")
     assert "flex-nowrap" in classes(doc, "aside.lg\\:flex li:has(> a[href='/a'])")
+  end
+
+  test "an entry's id is suffixed with each place it renders in" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav id="nav-giro" key={:g} label="Giro" icon="wallet" navigate="/g" />
+        <:nav id="nav-add" key={:add} label="Neu" icon="plus" on_click="add" rail /> x
+      </.app_shell>
+      """)
+
+    for place <- ~w(sidebar dialog rail dock) do
+      assert attr(doc, "#nav-giro-#{place}", "href") == "/g"
+    end
+
+    for place <- ~w(sidebar dialog rail), do: assert(count(doc, "button#nav-add-#{place}") == 1)
+    assert count(doc, "#nav-add-dock") == 0
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand>
+        <:nav id="nav-a" key={:a} label="A" icon="list" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    assert attr(doc, "#nav-a-menu", "href") == "/a"
+    assert attr(doc, "#nav-a-dock", "href") == "/a"
   end
 
   test "entries left out of the sidebar dock stay reachable through the more button" do
@@ -495,5 +691,126 @@ defmodule Setzkasten.ShellTest do
     # The truncation is visual only: the link keeps its full text as its name.
     assert text(doc, "nav.dock a[href='/i'] .dock-label") == "Import & Sync"
     assert attr(doc, "nav.dock a[href='/i']", "aria-label") == nil
+  end
+
+  test "sidebar pages start at the content edge whatever their width" do
+    for width <- [:narrow, :default, :wide] do
+      assigns = %{width: width}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={:sidebar} width={@width}>
+          <:brand>App</:brand>
+          <:nav key={:a} label="A" icon="list" navigate="/a" /> Inhalt
+        </.app_shell>
+        """)
+
+      refute "mx-auto" in classes(doc, "main#main")
+      refute "mx-auto" in classes(doc, "header .navbar")
+    end
+  end
+
+  test "a button entry in the sidebar dialog closes the dialog, then runs its action" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav id="add" key={:add} label="Neu" icon="plus" on_click="add" phx-target="#a" />
+        <:nav id="js" key={:js} label="JS" icon="plus" on_click={JS.push("js")} /> x
+      </.app_shell>
+      """)
+
+    for id <- ~w(add-dialog js-dialog) do
+      [hide, push] = attr(doc, "##{id}", "phx-click") |> Jason.decode!()
+
+      assert hide == [
+               "dispatch",
+               %{"event" => "setzkasten:hide-modal", "to" => "#app-shell-sidebar"}
+             ]
+
+      assert ["push", %{"event" => _}] = push
+    end
+
+    assert [%{"event" => "add", "target" => "#a"}] = pushes(attr(doc, "#add-dialog", "phx-click"))
+
+    refute attr(doc, "#add-sidebar", "phx-click") =~ "hide-modal"
+  end
+
+  test "dock and rail mark an entry's parent while the entry, left out there, is current" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={{:account, 1}}>
+        <:brand>App</:brand>
+        <:nav key={:budget} label="Budget" icon="wallet" navigate="/b" />
+        <:nav key={:accounts} label="Konten" icon="landmark" navigate="/k" />
+        <:nav
+          key={{:account, 1}}
+          label="Giro"
+          section="Konten"
+          rail={false}
+          dock={false}
+          parent={:accounts}
+          navigate="/k/1"
+        /> x
+      </.app_shell>
+      """)
+
+    assert attr(doc, "nav.dock a[href='/k']", "aria-current") == "true"
+    assert "dock-active" in classes(doc, "nav.dock a[href='/k']")
+    refute "dock-active" in classes(doc, "nav.dock button[aria-haspopup]")
+    assert attr(doc, "nav.dock button[aria-haspopup]", "aria-current") == nil
+    assert attr(doc, "nav.dock a[href='/b']", "aria-current") == nil
+
+    rail = "aside.md\\:flex"
+    assert attr(doc, "#{rail} a[href='/k']", "aria-current") == "true"
+    assert "bg-white/10" in classes(doc, "#{rail} a[href='/k']")
+
+    assert attr(doc, "aside.lg\\:flex a[href='/k/1']", "aria-current") == "page"
+    assert attr(doc, "aside.lg\\:flex a[href='/k']", "aria-current") == nil
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={{:account, 1}}>
+        <:brand>App</:brand>
+        <:nav key={:budget} label="Budget" icon="wallet" navigate="/b" />
+        <:nav key={{:account, 1}} label="Giro" rail={false} dock={false} navigate="/k/1" /> x
+      </.app_shell>
+      """)
+
+    assert "dock-active" in classes(doc, "nav.dock button[aria-haspopup]")
+  end
+
+  test "sidebar labels share one text column: entries without media keep the icon's place" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" icon="list" navigate="/a" />
+        <:nav key={:g} label="G" glyph="🐷" navigate="/g" />
+        <:nav key={:b} label="B" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    for place <- ["aside.lg\\:flex", "dialog#app-shell-sidebar"] do
+      assert count(doc, "#{place} a[href='/b'] > span.size-5[aria-hidden]:first-child") == 1
+      assert count(doc, "#{place} a[href='/a'] > span.size-5") == 0
+      assert count(doc, "#{place} a[href='/g'] > span.size-5") == 1
+    end
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="B" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "aside.lg\\:flex a[href='/b'] > span.size-5") == 0
   end
 end

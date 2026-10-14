@@ -30,7 +30,16 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
         nach einer Gruppe (Einstellungen in <code>/screens/holdings</code>) steht mit dem Abstand
         einer Gruppe abgesetzt, ohne Titel. Ein <code>plush</code>, für den die App kein Bild
         hat, fällt auf das <code>icon</code>
-        des Eintrags zurück. Die Vorschauen sind
+        des Eintrags zurück, ein <code>glyph</code>
+        (Emoji, Initiale) steht an Stelle des Icons.
+        Lange Namen enden mit Auslassungspunkten (voller Name als <code>title</code>);
+        <code>section_amount</code>
+        zeigt die Summe einer Gruppe, <code>amount_tone={"{:negative}"}</code>
+        negative Beträge in <code>sidebar-negative</code>, ein <code>count</code>
+        neben einem Betrag
+        wird ein Badge. Ein Eintrag mit <code>on_click</code>
+        ist ein leiser Knopf an seiner Stelle
+        („Konto hinzufügen“ in <code>/screens/budget</code>). Die Vorschauen sind
         die echten Screens in festen Breiten.
       </:intro>
       <.demo
@@ -40,7 +49,8 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
             {"post", ":sidebar, Detailseite mit :bar"},
             {"posts", ":topbar mit FAB"},
             {"settings", ":topbar ohne Dock"},
-            {"dashboard", ":topbar mit Plüsch-Dock"}
+            {"dashboard", ":topbar mit Plüsch-Dock"},
+            {"budget", ":sidebar mit Kontogruppen, Summen, negativen Salden und Knopf-Eintrag"}
           ]
         }
         title={"#{label} – /screens/#{slug}"}
@@ -74,6 +84,17 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
       <:nav key={:giro} label="Girokonto" icon="landmark" amount={248_310} section="Konten" rail={false} navigate={…} />
       <:nav key={:settings} label="Einstellungen" icon="settings" navigate={…} />
       <:nav key={:stats} label="Statistik" plush="stats" icon="chart-pie" navigate={…} />
+      {@inner_content}
+    </.app_shell>
+
+    <%!-- money in the sidebar: glyphs, section totals, negative balances, a button entry --%>
+    <.app_shell layout={:sidebar} current={{:account, @account.id}} amount_tone={:negative}>
+      <:nav :for={{account, i} <- Enum.with_index(@accounts)} key={{:account, account.id}}
+        label={account.name} glyph={account.emoji} amount={account.balance}
+        count={account.unapproved} count_label="offen" section="Budgetkonten"
+        section_amount={i == 0 && @accounts_total} rail={false} navigate={…} />
+      <:nav key={:add_account} label="Konto hinzufügen" icon="plus" section="Budgetkonten"
+        on_click="add_account" />
       <:account :let={place}>
         <.dropdown id={"account-#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …/>
       </:account>
