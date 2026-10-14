@@ -10,6 +10,7 @@
 - `popover` with `show_popover/1` and `hide_popover/1`: free content in the top layer, anchored to its trigger
   or an element elsewhere, a bottom sheet on phones.
 - `combobox`: searchable select with groups, an option slot and an optional create entry, as a form field.
+  A value the server sets while the field has focus shows when nothing was typed in it, so leaving the field keeps it.
 - `confirm` on `<.button type="submit">`: the confirmation submits the button's form, with the button as submitter.
 - `file_drop`: a drop zone around `live_file_input` with label, help and the upload's errors in German.
 - `selection_bar`: fixed bar for a multi-selection beside the shell's sidebar, with a live region for the count.
