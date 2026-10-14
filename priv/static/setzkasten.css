@@ -672,6 +672,12 @@
     --color-selected: var(--color-sidebar-content);
     --color-selected-content: var(--color-sidebar);
   }
+  /* Rail tooltips stay on one line; a long label ends in an ellipsis. */
+  .setzkasten-sidebar .tooltip[data-tip]::before {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* daisyUI misses the first item of a fieldset join, whose first child is the sr-only legend. */

@@ -55,6 +55,7 @@ defmodule Setzkasten.ShellTest do
     assert attr(doc, "nav.dock button", "phx-click") =~ "app-shell-sidebar"
     # The current page is behind "more", so the button is the active one.
     assert "dock-active" in classes(doc, "nav.dock button")
+    assert attr(doc, "nav.dock button", "aria-current") == "true"
   end
 
   test "brand, nav footer and account know where they render" do
@@ -398,5 +399,101 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "aside.lg\\:flex a[href='/k']") == 1
     assert count(doc, "dialog#app-shell-sidebar a[href='/k']") == 1
     assert count(doc, "nav.dock a[href='/k']") == 1
+  end
+
+  test "long nav labels end in an ellipsis, with the full label as title" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:a} label="Gemeinsames Haushaltskonto" icon="wallet" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    label = "aside.lg\\:flex a[href='/a'] span[title]"
+    assert attr(doc, label, "title") == "Gemeinsames Haushaltskonto"
+    assert Enum.all?(~w(min-w-0 flex-1 truncate), &(&1 in classes(doc, label)))
+    assert "flex" in classes(doc, "aside.lg\\:flex a[href='/a']")
+    assert attr(doc, "aside.lg\\:flex a[href='/a']", "aria-label") == nil
+
+    assert attr(doc, "dialog#app-shell-sidebar a[href='/a'] span[title]", "title") ==
+             "Gemeinsames Haushaltskonto"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-sidebar \.tooltip\[data-tip\]::before \{\s*white-space: nowrap;\s*overflow: hidden;\s*text-overflow: ellipsis;/
+  end
+
+  test "a long nav label does not widen the sidebar's other entries" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:a} label="Gemeinsames Haushaltskonto mit langem Namen" navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    # daisyUI's menu and items are wrapping flex columns: every line takes the widest item's
+    # full width, past the sidebar's edge.
+    assert "flex-nowrap" in classes(doc, "aside.lg\\:flex ul.menu")
+    assert "flex-nowrap" in classes(doc, "aside.lg\\:flex li:has(> a[href='/a'])")
+  end
+
+  test "entries left out of the sidebar dock stay reachable through the more button" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={:g}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" />
+        <:nav key={:g} label="Giro" icon="landmark" dock={false} navigate="/g" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 1
+    assert attr(doc, "nav.dock button", "phx-click") =~ "app-shell-sidebar"
+    assert "dock-active" in classes(doc, "nav.dock button")
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock button") == 0
+  end
+
+  test "dock labels stay on one line and end in an ellipsis" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:i} label="Import & Sync" icon="upload" navigate="/i" />
+        <:nav key={:a} label="A" icon="list" dock={false} navigate="/a" /> x
+      </.app_shell>
+      """)
+
+    for item <- ["nav.dock a[href='/i']", "nav.dock button"] do
+      assert "min-w-0" in classes(doc, item)
+
+      assert Enum.all?(
+               ~w(dock-label max-w-full truncate),
+               &(&1 in classes(doc, "#{item} .dock-label"))
+             )
+    end
+
+    # The truncation is visual only: the link keeps its full text as its name.
+    assert text(doc, "nav.dock a[href='/i'] .dock-label") == "Import & Sync"
+    assert attr(doc, "nav.dock a[href='/i']", "aria-label") == nil
   end
 end

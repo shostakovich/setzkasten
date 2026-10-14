@@ -35,9 +35,11 @@ defmodule Setzkasten.Components.Shell do
   true; `false` leaves the entry out of the icon rail, e.g. object lists
   such as accounts, which stay in the full sidebar, its dialog and the dock). The rail keeps a
   gap between sections, without their titles. With
-  `layout={:sidebar}` and more than five dock entries, the dock shows four and a `more_label`
-  button that opens the full sidebar.
+  `layout={:sidebar}` and more than five dock entries, or entries left out of the dock, the
+  dock shows at most four and a `more_label` button that opens the full sidebar.
   The entry whose `key` equals `current` is marked with `aria-current="page"`.
+
+  Long labels end in an ellipsis (the full label as `title`, the accessible name unchanged).
   `:fab` reserves space for a floating action above the dock.
 
   The brand shrinks before the account does, so the bar stays one row: give long brand
@@ -117,7 +119,11 @@ defmodule Setzkasten.Components.Shell do
     dock_entries = Enum.reject(assigns.nav, &(&1[:dock] == false))
     # Detail pages (a `:bar`) go back through the bar, so they keep the screen without the dock.
     dock? = assigns.dock and assigns.bar == []
-    more? = dock? and assigns.layout == :sidebar and length(dock_entries) > 5
+    # Entries left out of the dock stay reachable through the sidebar dialog behind "more".
+    more? =
+      dock? and assigns.layout == :sidebar and
+        (length(dock_entries) > 5 or length(dock_entries) < length(assigns.nav))
+
     dock_items = Enum.take(dock_entries, if(more?, do: 4, else: 5))
 
     assigns =
@@ -366,21 +372,23 @@ defmodule Setzkasten.Components.Shell do
           :for={item <- @dock_items}
           navigate={item[:navigate]}
           href={item[:href]}
-          class={current?(item, @current) && "dock-active"}
+          class={["min-w-0", current?(item, @current) && "dock-active"]}
           aria-label={nav_name(item)}
           aria-current={current?(item, @current) && "page"}
         >
           <.icon_count count={item[:count]} class="badge-primary">{nav_icon(item, :md)}</.icon_count>
-          <span class="dock-label">{item.label}</span>
+          <span class="dock-label max-w-full truncate">{item.label}</span>
         </.link>
         <button
           :if={@dock_more?}
           type="button"
-          class={more_current?(@nav, @dock_items, @current) && "dock-active"}
+          class={["min-w-0", more_current?(@nav, @dock_items, @current) && "dock-active"]}
+          aria-current={more_current?(@nav, @dock_items, @current) && "true"}
           aria-haspopup="dialog"
           phx-click={show_modal("#{@id}-sidebar")}
         >
-          <.icon name="ellipsis" class="size-5" /><span class="dock-label">{@more_label}</span>
+          <.icon name="ellipsis" class="size-5" />
+          <span class="dock-label max-w-full truncate">{@more_label}</span>
         </button>
       </nav>
     </div>
@@ -396,7 +404,7 @@ defmodule Setzkasten.Components.Shell do
       {render_slot(@brand, @place)}
     </div>
     <nav aria-label={@nav_label} class="flex-1">
-      <ul class="menu w-full gap-0.5">
+      <ul class="menu w-full flex-nowrap gap-0.5">
         <%= for {item, index} <- Enum.with_index(@nav) do %>
           <li
             :if={item[:section] && section_start?(@nav, index)}
@@ -404,21 +412,25 @@ defmodule Setzkasten.Components.Shell do
           >
             {item[:section]}
           </li>
-          <li class={section_end?(@nav, index) && "mt-4"}>
+          <li class={["flex-nowrap", section_end?(@nav, index) && "mt-4"]}>
             <.link
               navigate={item[:navigate]}
               href={item[:href]}
               class={[
-                "text-sidebar-content hover:bg-white/10 focus-visible:outline-sidebar-accent",
+                "flex text-sidebar-content hover:bg-white/10 focus-visible:outline-sidebar-accent",
                 current?(item, @current) &&
                   "relative bg-white/10 before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-sidebar-accent"
               ]}
               aria-label={nav_name(item)}
               aria-current={current?(item, @current) && "page"}
             >
-              {nav_icon(item)}<span class="flex-1">{item.label}</span>
+              {nav_icon(item)}
+              <span class="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>
               <span :if={item[:count]} class="tabular-nums text-sidebar-muted">{item[:count]}</span>
-              <span :if={item[:amount]} class="tabular-nums whitespace-nowrap text-sidebar-muted">
+              <span
+                :if={item[:amount]}
+                class="shrink-0 tabular-nums whitespace-nowrap text-sidebar-muted"
+              >
                 {Format.money(item[:amount])}
               </span>
             </.link>
