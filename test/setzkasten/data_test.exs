@@ -777,6 +777,7 @@ defmodule Setzkasten.DataTest do
     # The same separator as <.meta_sep />.
     assert join_meta(["2 Wertpapiere", "Konto"]) == "2 Wertpapiere\u2060\u00A0· Konto"
     assert join_meta(["Referenzkonto", nil]) == "Referenzkonto"
+    assert join_meta(["Referenzkonto", false && "geteilt"]) == "Referenzkonto"
   end
 
   test "description list emphasises strong items and the total" do

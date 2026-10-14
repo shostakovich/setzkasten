@@ -229,12 +229,13 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   Joins the parts of a meta line with the separator of `meta_sep/1`, so the dot never starts a
-  line. `nil` and `""` parts are left out, so an optional part leaves no dangling dot.
+  line. `nil`, `false` and `""` parts are left out, so an optional part (`cond && part`) leaves
+  no dangling dot.
 
       join_meta(["IE00BK5BQT80", nil, "Langfristig"]) #=> "IE00BK5BQT80\u2060\u00A0· Langfristig"
   """
   def join_meta(parts) when is_list(parts) do
-    parts |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(@meta_sep)
+    parts |> Enum.reject(&(&1 in [nil, false, ""])) |> Enum.join(@meta_sep)
   end
 
   @doc """

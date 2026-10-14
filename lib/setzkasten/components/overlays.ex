@@ -36,8 +36,22 @@ defmodule Setzkasten.Components.Overlays do
       <.button phx-click={show_confirm("confirm-delete", "Post löschen?", JS.push("delete", value: %{id: 1}))}>
         Löschen
       </.button>
+
+  Both call styles work: with options last, `show_confirm(id, question, action, text: "…")`,
+  and piped onto commands, `JS.push("x") |> show_confirm(id, question, action, opts)`. The first
+  argument tells them apart: an id string or a `%JS{}`.
   """
-  def show_confirm(js \\ %JS{}, id, question, %JS{} = action, opts \\ []) when is_binary(id) do
+  def show_confirm(id, question, %JS{} = action) when is_binary(id),
+    do: show_confirm(%JS{}, id, question, action, [])
+
+  def show_confirm(id, question, %JS{} = action, opts) when is_binary(id) and is_list(opts),
+    do: show_confirm(%JS{}, id, question, action, opts)
+
+  def show_confirm(%JS{} = js, id, question, %JS{} = action) when is_binary(id),
+    do: show_confirm(js, id, question, action, [])
+
+  def show_confirm(%JS{} = js, id, question, %JS{} = action, opts)
+      when is_binary(id) and is_list(opts) do
     label = opts[:label]
 
     js

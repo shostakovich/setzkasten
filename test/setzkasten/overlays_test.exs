@@ -133,4 +133,20 @@ defmodule Setzkasten.OverlaysTest do
     assert count(parse(~H|<.disclosure id="d" summary="Mehr">x</.disclosure>|), "summary span") ==
              0
   end
+
+  test "show_confirm takes options last without a JS, or a JS first" do
+    alias Setzkasten.Components.Overlays
+    action = JS.push("delete")
+    with_opts = Overlays.show_confirm("c", "Löschen?", action, text: "Weg ist weg.")
+    assert Jason.encode!(with_opts) =~ ~s("#c-text":"Weg ist weg.")
+
+    assert with_opts ==
+             Overlays.show_confirm(%JS{}, "c", "Löschen?", action, text: "Weg ist weg.")
+
+    assert Overlays.show_confirm("c", "Löschen?", action) ==
+             Overlays.show_confirm(%JS{}, "c", "Löschen?", action)
+
+    piped = JS.push("before") |> Overlays.show_confirm("c", "Löschen?", action)
+    assert [["push", %{"event" => "before"}] | _] = Jason.decode!(Jason.encode!(piped))
+  end
 end

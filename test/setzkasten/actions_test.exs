@@ -1,6 +1,22 @@
 defmodule Setzkasten.ActionsTest do
   use Setzkasten.ComponentCase, async: true
 
+  test "a button's phx-value-value also renders as its value, which LiveView's client sends" do
+    assigns = %{}
+    doc = parse(~H|<.button phx-click="pick" phx-value-value="a">A</.button>|)
+    assert attr(doc, "button", "value") == "a"
+    assert attr(doc, "button", "phx-value-value") == "a"
+
+    doc = parse(~H|<.button phx-click="pick" phx-value-value="a" value="b">A</.button>|)
+    assert attr(doc, "button", "value") == "b"
+
+    assert attr(parse(~H|<.button navigate="/a" phx-value-value="a">A</.button>|), "a", "value") ==
+             nil
+
+    doc = parse(~H|<.button phx-click="pick" phx-value-value="a" confirm="Sicher?">A</.button>|)
+    assert attr(doc, "button", "value") == nil
+  end
+
   test "default button is a neutral btn of type button" do
     assigns = %{}
     doc = parse(~H|<.button>Abbrechen</.button>|)
@@ -195,5 +211,32 @@ defmodule Setzkasten.ActionsTest do
     socket = push_saved(socket, "save")
 
     assert socket.private.live_temp.push_events == [["setzkasten:saved", %{id: "save"}]]
+  end
+
+  test "a confirmed click parks phx-value-* as a plain button sends them" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button
+        confirm="?"
+        phx-click="delete"
+        phx-value-id={7}
+        phx-value-reconciled={false}
+        phx-value-note={nil}
+        phx-value-all={true}
+      >x</.button>
+      """)
+
+    assert [%{"event" => "delete", "value" => value}] = pushes(attr(doc, "button", "phx-click"))
+    assert value == %{"id" => "7", "all" => ""}
+
+    plain =
+      parse(~H"""
+      <.button phx-click="delete" phx-value-reconciled={false} phx-value-all={true}>x</.button>
+      """)
+
+    assert attr(plain, "button", "phx-value-reconciled") == nil
+    assert attr(plain, "button", "phx-value-all") == ""
   end
 end

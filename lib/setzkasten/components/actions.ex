@@ -28,7 +28,8 @@ defmodule Setzkasten.Components.Actions do
   `confirm` asks in the shared `<.confirm_dialog>` before the button's
   `phx-click` runs: the click moves to the dialog's confirm button. A `%JS{}` click carries
   its own target (`JS.push("delete", target: @myself)`); only an event name takes the button's
-  `phx-value-*` and `phx-target` along. `confirm` with `href`, `navigate`, `patch` or `method`
+  `phx-value-*` and `phx-target` along. Without `confirm` a `phx-value-value` also renders as
+  the button's `value`: LiveView's client sends that property in its place. `confirm` with `href`, `navigate`, `patch` or `method`
   raises: the link would navigate without asking.
 
   `saved` (needs an `id`) confirms a save in place: after `push_saved(socket, id)` the button shows
@@ -101,6 +102,7 @@ defmodule Setzkasten.Components.Actions do
         assigns.class
       ])
       |> move_click_to_confirm()
+      |> mirror_phx_value()
 
     cond do
       link?(assigns.rest) ->
@@ -213,6 +215,14 @@ defmodule Setzkasten.Components.Actions do
 
   defp link?(rest), do: Enum.any?([:href, :navigate, :patch], &Map.has_key?(rest, &1))
 
+  # LiveView's client sends a button's value property in place of its phx-value-value.
+  defp mirror_phx_value(%{rest: %{"phx-value-value": value} = rest} = assigns)
+       when not is_map_key(rest, :value) do
+    if link?(rest), do: assigns, else: assign(assigns, :rest, Map.put(rest, :value, value))
+  end
+
+  defp mirror_phx_value(assigns), do: assigns
+
   defp move_click_to_confirm(%{confirm: nil} = assigns), do: assigns
 
   defp move_click_to_confirm(%{rest: rest} = assigns) do
@@ -236,11 +246,12 @@ defmodule Setzkasten.Components.Actions do
   end
 
   defp confirm_action(event, values, target) when is_binary(event) do
-    # phx-value-* attributes reach the server as strings; keep that for the parked push.
+    # As rendered attributes: nil and false are left out, true is an empty value, the rest strings.
     value =
-      Map.new(values, fn {key, v} ->
-        {String.replace_prefix(to_string(key), "phx-value-", ""), to_string(v)}
-      end)
+      for {key, v} <- values, v not in [nil, false], into: %{} do
+        {String.replace_prefix(to_string(key), "phx-value-", ""),
+         if(v == true, do: "", else: to_string(v))}
+      end
 
     click_js(event, target, value: value)
   end
