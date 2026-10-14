@@ -91,6 +91,9 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
 
+  def handle_event("booking_closed", _params, socket),
+    do: {:noreply, put_flash(socket, :info, "Dialog geschlossen (Demo).")}
+
   def handle_event("statement", _params, socket), do: {:noreply, socket}
 
   def handle_event("cancel_statement", %{"ref" => ref}, socket),

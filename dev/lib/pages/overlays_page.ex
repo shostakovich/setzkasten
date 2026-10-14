@@ -37,7 +37,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           Langes Formular (sticky action_bar)
         </.button>
       </.demo>
-      <.modal id="booking" title="Buchung bearbeiten">
+      <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
           <.input name="m[payee]" id="m-payee" label="Empfänger" value="Tankstelle Aral" />
           <.input
@@ -51,7 +51,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           />
         </div>
         <:actions>
-          <.button phx-click={hide_modal("booking")}>Abbrechen</.button>
+          <.button id="booking-cancel" phx-click={hide_modal("booking")}>Abbrechen</.button>
           <.button variant={:primary} phx-click={hide_modal("booking")}>Speichern</.button>
         </:actions>
       </.modal>
@@ -134,6 +134,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </:intro>
       <.demo title="Auslöser" class="flex flex-wrap gap-3">
         <.button
+          id="delete-demo"
           variant={:danger_outline}
           icon="trash-2"
           confirm="Ausgabe „Wocheneinkauf“ löschen?"

@@ -283,7 +283,9 @@ defmodule Setzkasten.Components.Overlays do
   @doc """
   The one confirmation dialog per layout for irreversible deletes.
 
-  Render it once in the app layout. Triggers (`<.button confirm>`, list row actions,
+  Render it once in the app layout, inside the LiveView (not the root layout): its confirm
+  button pushes the parked event, which needs a LiveView around it, and
+  `Setzkasten.Test.Confirm` finds it there. Triggers (`<.button confirm>`, list row actions,
   `show_confirm/4`) write their question into it and park their destructive command on its
   confirm button; Cancel, Escape and the backdrop only close. Focus starts on Cancel. On phones
   it is a bottom sheet with full-width buttons, the destructive one on top.
