@@ -3,6 +3,7 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
   use Phoenix.Component
   use Setzkasten
   import Setzkasten.Dev.Demo
+  alias Phoenix.LiveView.JS
 
   def title, do: "Navigation"
   def summary, do: "segmented, tabs, breadcrumbs, dropdown"
@@ -189,6 +190,17 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           <:item patch="/navigation" icon="settings">Einstellungen</:item>
           <:item patch="/navigation" icon="key-round">Passkeys</:item>
           <:item patch="/navigation" icon="log-out">Abmelden</:item>
+        </.dropdown>
+      </.demo>
+      <.demo title="Buttons mit aktivem Eintrag (Sortierung)" class="flex h-56 items-start">
+        <.dropdown id="sort" label="Sortierung" variant={:ghost} chevron>
+          <:trigger>Sortiert nach {if @sort == "amount", do: "Betrag", else: "Datum"}</:trigger>
+          <:item on_click={JS.push("sort", value: %{by: "date"})} active={@sort == "date"}>
+            Datum
+          </:item>
+          <:item on_click={JS.push("sort", value: %{by: "amount"})} active={@sort == "amount"}>
+            Betrag
+          </:item>
         </.dropdown>
       </.demo>
     </.showcase>

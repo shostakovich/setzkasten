@@ -25,7 +25,13 @@ defmodule Setzkasten.Dev.CatalogLive do
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
-     assign(socket, view: "list", deleted: 0, level: 0, form: Pages.FormsPage.build_form(%{}))}
+     assign(socket,
+       view: "list",
+       deleted: 0,
+       level: 0,
+       sort: "date",
+       form: Pages.FormsPage.build_form(%{})
+     )}
   end
 
   @impl true
@@ -46,6 +52,8 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   @impl true
   def handle_event("view", %{"value" => view}, socket), do: {:noreply, assign(socket, view: view)}
+
+  def handle_event("sort", %{"by" => by}, socket), do: {:noreply, assign(socket, sort: by)}
 
   def handle_event("delete", params, socket) do
     {:noreply,

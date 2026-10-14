@@ -22,7 +22,7 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "a[aria-current=page]", "data-phx-link") == "patch"
   end
 
-  test "segmented button mode uses aria-pressed and phx-value-value" do
+  test "segmented button mode uses aria-pressed and sends the option as value" do
     assigns = %{}
 
     doc =
@@ -38,7 +38,36 @@ defmodule Setzkasten.NavigationTest do
 
     assert attr(doc, "[role=group]", "aria-label") == "Ansicht"
     assert attr(doc, "button[aria-pressed=true]", "phx-value-value") == "list"
+    # LiveView's client sends a button's value property over phx-value-value.
+    assert attr(doc, "button[aria-pressed=true]", "value") == "list"
     assert attr(doc, "button[aria-pressed=false]", "phx-click") == "view"
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:button}
+        label="Netto"
+        value={false}
+        phx-click="net"
+        options={[{"Ja", true}, {"Nein", false}]}
+      />
+      """)
+
+    assert attr(doc, "button[aria-pressed=true]", "value") == "false"
+    assert attr(doc, "button[aria-pressed=true]", "phx-value-value") == "false"
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:radio}
+        name="net"
+        label="Netto"
+        value={false}
+        options={[{"Ja", true}, {"Nein", false}]}
+      />
+      """)
+
+    assert attr(doc, "input[checked]", "value") == "false"
   end
 
   test "segmented radio mode reads the form field" do
@@ -97,6 +126,15 @@ defmodule Setzkasten.NavigationTest do
 </.tabs>|) =~ "tab-active"
   end
 
+  test "the first tab's label lines up with the content edge, a tab's padding before it" do
+    assigns = %{}
+    doc = parse(~H|<.tabs label="x">
+  <:tab navigate="/a">A</:tab>
+</.tabs>|)
+    nav = classes(doc, "nav")
+    assert Enum.all?(~w(-ms-3 max-sm:-mx-4 max-sm:ps-1 max-sm:scroll-ps-1), &(&1 in nav))
+  end
+
   test "tabs scroll edge to edge on phones, snap, and reveal the active tab" do
     assigns = %{}
 
@@ -111,7 +149,7 @@ defmodule Setzkasten.NavigationTest do
     nav = classes(doc, "nav")
 
     assert Enum.all?(
-             ~w(setzkasten-scroller snap-x scroll-px-4 max-sm:-mx-4 max-sm:px-4),
+             ~w(setzkasten-scroller snap-x scroll-pe-4 max-sm:-mx-4 max-sm:pe-4),
              &(&1 in nav)
            )
 
@@ -379,5 +417,23 @@ defmodule Setzkasten.NavigationTest do
 
     assert coarse =~
              ~r/\.menu :where\(li > a, li > button, li > summary\) \{\s*align-content: center;/
+  end
+
+  test "an active button item is marked like an active link" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="sort">
+        <:trigger>Sortieren</:trigger>
+        <:item on_click="sort" active>Datum</:item>
+        <:item on_click="sort">Betrag</:item>
+      </.dropdown>
+      """)
+
+    assert attr(doc, "li:first-child button", "aria-current") == "true"
+    assert "menu-active" in classes(doc, "li:first-child button")
+    assert attr(doc, "li:last-child button", "aria-current") == nil
+    refute "menu-active" in classes(doc, "li:last-child button")
   end
 end
