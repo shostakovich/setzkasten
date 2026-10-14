@@ -222,6 +222,27 @@ defmodule Setzkasten.ActionsTest do
     assert count(doc, ".setzkasten-saved-stack") == 0
   end
 
+  test "a button with an icon keeps it while phx-disable-with shows its text" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button type="submit" icon="check" phx-disable-with="Speichert …">Speichern</.button>
+      """)
+
+    assert attr(doc, "button", "phx-disable-with") == nil
+    assert "setzkasten-pending" in classes(doc, "button")
+    assert count(doc, ".setzkasten-saved-idle svg.lucide") == 1
+    assert text(doc, ".setzkasten-saved-idle") == "Speichern"
+    assert text(doc, ".setzkasten-saved-pending") == "Speichert …"
+    assert count(doc, ".setzkasten-saved-done") == 0
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ":is(.setzkasten-saved, .setzkasten-pending):is(.phx-submit-loading, .phx-click-loading)"
+  end
+
   test "push_saved pushes the saved event for the button id" do
     socket = %Phoenix.LiveView.Socket{}
     socket = push_saved(socket, "save")

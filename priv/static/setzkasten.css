@@ -1238,20 +1238,24 @@
       visibility var(--setzkasten-duration);
   }
   .setzkasten-saved-stack > :not(.setzkasten-saved-idle),
-  .setzkasten-saved:is(.phx-submit-loading, .phx-click-loading) .setzkasten-saved-idle:has(+ .setzkasten-saved-pending),
+  :is(.setzkasten-saved, .setzkasten-pending):is(.phx-submit-loading, .phx-click-loading) .setzkasten-saved-idle:has(+ .setzkasten-saved-pending),
   .setzkasten-saved[data-saved] :is(.setzkasten-saved-idle, .setzkasten-saved-pending) {
     opacity: 0;
     visibility: hidden;
     transition-duration: var(--setzkasten-duration-exit);
     transition-timing-function: var(--setzkasten-ease-in);
   }
-  .setzkasten-saved:is(.phx-submit-loading, .phx-click-loading):not([data-saved]) .setzkasten-saved-pending,
+  :is(.setzkasten-saved, .setzkasten-pending):is(.phx-submit-loading, .phx-click-loading):not([data-saved]) .setzkasten-saved-pending,
   .setzkasten-saved[data-saved] .setzkasten-saved-done {
     opacity: 1;
     visibility: visible;
   }
   .setzkasten-saved-done path {
     stroke-dasharray: 23;
+  }
+  /* LiveView disables the buttons of a submitted form, not a clicked one without phx-disable-with. */
+  .setzkasten-pending.phx-click-loading {
+    pointer-events: none;
   }
   .setzkasten-saved[data-saved] .setzkasten-saved-done path {
     animation: setzkasten-draw var(--setzkasten-duration-overlay) var(--setzkasten-ease-out) both;

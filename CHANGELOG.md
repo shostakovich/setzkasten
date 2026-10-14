@@ -119,3 +119,5 @@
 - `list_row` takes `:meta` more than once, one truncated line each (who paid, then what it means for you); with
   `trailing_on_phone={:meta}` the trailing content ends the last line.
 - `stat` with `navigate`, `patch` or `href`: the tile links to the KPI's detail page.
+- `button` with an `icon` keeps it through `phx-disable-with`: the pending text stands in a stack beside the label
+  instead of LiveView replacing the content and restoring only its text.
