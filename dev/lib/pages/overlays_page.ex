@@ -314,6 +314,10 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.disclosure id="values-open" summary="Werte als Tabelle (offen)" open>
           Oktober 9,8&nbsp;kWh · September 212,4&nbsp;kWh · August 341,0&nbsp;kWh
         </.disclosure>
+        <.disclosure id="overspent">
+          <:title>Überzogen <.amount value={-4_210} tone class="ms-2 font-normal" /></:title>
+          Lebensmittel und Tanken haben mehr ausgegeben, als zugewiesen war.
+        </.disclosure>
         <.disclosure id="retired-funds" summary="Ausgemustert" count={2}>
           Zwei Fonds ohne Bestand.
         </.disclosure>

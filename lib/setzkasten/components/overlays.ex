@@ -679,9 +679,17 @@ defmodule Setzkasten.Components.Overlays do
 
       <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
       <.disclosure id="retired" summary="Ausgemustert" count={2}>…</.disclosure>
+
+  The `:title` slot takes the summary as markup instead of `summary` (e.g. with a toned
+  amount; an attribute and a slot cannot share the name):
+
+      <.disclosure id="overspent">
+        <:title>Überzogen <.amount value={-4_210} tone /></:title>
+        …
+      </.disclosure>
   """
   attr :id, :string, required: true
-  attr :summary, :string, required: true
+  attr :summary, :string, default: nil, doc: "the summary text; or the `:title` slot"
   attr :count, :integer, default: nil
   attr :open, :boolean, default: false
   attr :variant, :atom, default: :collapse, values: [:collapse, :button]
@@ -689,6 +697,11 @@ defmodule Setzkasten.Components.Overlays do
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
+  slot :title, doc: "the summary as markup, instead of `summary`"
+
+  def disclosure(%{summary: nil, title: []}) do
+    raise ArgumentError, "<.disclosure> needs a summary or a :title slot"
+  end
 
   def disclosure(%{variant: :button} = assigns) do
     ~H"""
@@ -700,7 +713,9 @@ defmodule Setzkasten.Components.Overlays do
       {@rest}
     >
       <summary class="btn">
-        <.icon :if={@icon} name={@icon} />{@summary}<.summary_count count={@count} />
+        <.icon :if={@icon} name={@icon} />{@summary}{render_slot(@title)}<.summary_count count={
+          @count
+        } />
       </summary>
       <div class="mt-3 text-sm">{render_slot(@inner_block)}</div>
     </details>
@@ -717,7 +732,7 @@ defmodule Setzkasten.Components.Overlays do
       {@rest}
     >
       <summary class="collapse-title font-semibold">
-        {@summary}<.summary_count count={@count} />
+        {@summary}{render_slot(@title)}<.summary_count count={@count} />
       </summary>
       <div class="collapse-content text-sm">{render_slot(@inner_block)}</div>
     </details>

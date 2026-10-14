@@ -150,7 +150,7 @@ defmodule Setzkasten.Dev.Holdings do
   defp row_link(_item), do: nil
 
   defp row_attrs(%{type: :account, marked: true}),
-    do: %{"aria-current": "true", class: "bg-selected/8"}
+    do: %{"aria-current": "true"}
 
   defp row_attrs(_item), do: %{}
 

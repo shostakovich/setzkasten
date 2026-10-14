@@ -36,4 +36,25 @@ defmodule Setzkasten.FormatTest do
     assert Format.money(-500, currency_display: :code) == "#{@minus}5,00#{@nbsp}EUR"
     assert Format.money(110, currency: "USD", currency_display: :symbol) == "1,10#{@nbsp}$"
   end
+
+  test "the minus sign comes from its own Figtree face, roman and italic" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    for {style, file} <- [
+          normal: "SetzkastenMinus-Variable",
+          italic: "SetzkastenMinus-Italic-Variable"
+        ] do
+      assert css =~
+               ~r/font-family: "Figtree";\s*font-style: #{style};\s*font-weight: 300 900;\s*font-display: swap;\s*src: url\("\/setzkasten\/fonts\/#{file}\.woff2"\) format\("woff2"\);\s*unicode-range: U\+2212;/
+
+      assert <<"wOF2", _::binary>> =
+               File.read!(Path.expand("../../priv/static/fonts/#{file}.woff2", __DIR__))
+    end
+
+    [main, minus] =
+      for name <- ["Figtree-Variable.woff2", "SetzkastenMinus-Variable.woff2"],
+          do: :binary.match(css, name) |> elem(0)
+
+    assert minus > main
+  end
 end

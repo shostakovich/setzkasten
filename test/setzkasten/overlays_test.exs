@@ -359,6 +359,36 @@ defmodule Setzkasten.OverlaysTest do
     assert [["push", %{"event" => "before"}] | _] = Jason.decode!(Jason.encode!(piped))
   end
 
+  test "a disclosure's summary may be markup in the :title slot" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.disclosure id="d" count={2}>
+        <:title>Überzogen <.amount value={-4_210} tone /></:title>
+        x
+      </.disclosure>
+      """)
+
+    assert text(doc, "summary data") == "−42,10\u00A0€"
+    assert "text-error-ink" in classes(doc, "summary data")
+    assert text(doc, "summary span.tabular-nums") == "2"
+
+    doc =
+      parse(~H"""
+      <.disclosure id="b" variant={:button}><:title><b>Mehr</b></:title>x</.disclosure>
+      """)
+
+    assert text(doc, "summary b") == "Mehr"
+
+    assert text(parse(~H|<.disclosure id="s" summary="Text">x</.disclosure>|), "summary") ==
+             "Text"
+
+    assert_raise ArgumentError, ~r/needs a summary/, fn ->
+      parse(~H|<.disclosure id="n">x</.disclosure>|)
+    end
+  end
+
   test "the page keeps its scrollbar's room, so an open modal shifts nothing" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/@layer utilities\.setzkasten \{\s*:root \{\s*scrollbar-gutter: stable;/

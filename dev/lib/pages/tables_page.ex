@@ -36,7 +36,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           <:col :let={e} label="Betrag" align={:end}><.amount value={e.amount} signed tone /></:col>
         </.table>
       </.demo>
-      <.demo title="row_attrs (aktuelle Zeile), Zeile ohne Ziel (row_link gibt nil)">
+      <.demo title="row_attrs (aktuelle Zeile: aria-current), Zeile ohne Ziel (row_link gibt nil)">
         <.table
           id="entries-attrs"
           rows={@entries}
@@ -59,6 +59,49 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
             <td class="text-end whitespace-nowrap">76&nbsp;€</td>
           </:foot>
         </.table>
+      </.demo>
+      <.demo title=":dense (Datenraster), eine Zeile in Bearbeitung">
+        <.table
+          id="entries-dense"
+          rows={@entries}
+          size={:dense}
+          row_attrs={&%{"aria-current": &1.id == 2 && "true"}}
+        >
+          <:col :let={e} label="Datum" class="whitespace-nowrap">{e.date}</:col>
+          <:col :let={e} label="Titel">
+            <.input
+              :if={e.id == 2}
+              id="dense-title"
+              name="title"
+              value={e.title}
+              label="Titel"
+              hide_label
+            />
+            <span :if={e.id != 2}>{e.title}</span>
+          </:col>
+          <:col :let={e} label="Betrag" align={:end}>
+            <.input
+              :if={e.id == 2}
+              id="dense-amount"
+              name="amount"
+              value="−112,00"
+              label="Betrag"
+              hide_label
+              numeric
+              suffix="€"
+              class="max-w-32 ms-auto"
+            />
+            <.amount :if={e.id != 2} value={e.amount} signed tone />
+          </:col>
+          <:col :let={e} label="" class="w-0">
+            <.button :if={e.id == 2} size={:sm} icon="check" icon_only label="Speichern" />
+          </:col>
+        </.table>
+        <:note>
+          36px-Zeilen mit der Feinzeigerhöhe, 44px mit dem Finger; Felder und Buttons in Zellen
+          sind 32px hoch, so bleibt die Zeile beim Bearbeiten gleich hoch. Die bearbeitete Zeile
+          trägt <code>aria-current</code>: Fläche <code>row-selected</code> und ein 3px-Balken vorn.
+        </:note>
       </.demo>
       <.demo title="Leer (:empty-Slot)">
         <.table id="empty-entries" rows={[]}>
@@ -193,7 +236,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
   defp entry_link(%{amount: amount}) when amount < 0, do: "/tables"
   defp entry_link(_entry), do: nil
 
-  defp entry_attrs(%{id: 1}), do: %{"aria-current": "true", class: "font-semibold"}
+  defp entry_attrs(%{id: 1}), do: %{"aria-current": "true"}
   defp entry_attrs(_entry), do: %{}
 
   defp code(0) do
@@ -209,6 +252,12 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
     <.table id="activity" rows={@entries}
       row_link={&if(&1.editable, do: ~p"/buchungen/#{&1}")}
       row_attrs={&%{"aria-current": &1.id == @current && "true", "data-kind": &1.kind}}>
+      …
+    </.table>
+
+    <%!-- data grid: 36px rows (44px on touch), 32px controls in cells --%>
+    <.table id="register" rows={@rows} size={:dense}>
+      <:col :let={r} label="Titel"><.input name="title" value={r.title} label="Titel" hide_label /></:col>
       …
     </.table>
     """

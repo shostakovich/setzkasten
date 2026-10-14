@@ -416,4 +416,16 @@ defmodule Setzkasten.ActionsTest do
     assert attr(plain, "button", "phx-value-reconciled") == nil
     assert attr(plain, "button", "phx-value-all") == ""
   end
+
+  test "small buttons set their label in 13px, segmented options too" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.btn-sm \{\s*--fontsize: 0.8125rem;/
+
+    assigns = %{}
+
+    doc =
+      parse(~H|<.segmented label="Zeitraum" size={:sm} options={[{"1M", "1m"}]} value="1m" />|)
+
+    assert "btn-sm" in classes(doc, ".join-item")
+  end
 end

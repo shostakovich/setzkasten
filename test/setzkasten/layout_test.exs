@@ -179,4 +179,27 @@ defmodule Setzkasten.LayoutTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     refute css =~ "section-heading"
   end
+
+  test "a small section heading fits a popover: 14px and a smaller gap" do
+    assigns = %{}
+    doc = parse(~H|<.section_heading size={:sm}>Zusammenfassung</.section_heading>|)
+    assert Enum.all?(~w(mt-4 first:mt-0), &(&1 in classes(doc, "div")))
+    assert "text-sm" in classes(doc, "h2")
+    refute "text-lg" in classes(doc, "h2")
+  end
+
+  test "the header's back link navigates, patches or loads the page" do
+    assigns = %{}
+    doc = parse(~H|<.header back="/a">T</.header>|)
+    assert attr(doc, "header a", "data-phx-link") == "redirect"
+
+    doc = parse(~H|<.header back_patch="/b" back_label="Liste">T</.header>|)
+    assert attr(doc, "header a", "data-phx-link") == "patch"
+    assert text(doc, "header a") == "Liste"
+
+    doc = parse(~H|<.header back_href="/settings">T</.header>|)
+    assert attr(doc, "header a", "href") == "/settings"
+    assert attr(doc, "header a", "data-phx-link") == nil
+    assert count(parse(~H|<.header>T</.header>|), "header a") == 0
+  end
 end

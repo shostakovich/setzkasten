@@ -46,6 +46,38 @@ defmodule Setzkasten.DataTest do
            ]
   end
 
+  test "dense tables: 36px rows on fine pointers, 44px on coarse, 32px controls in cells" do
+    assigns = %{rows: @rows}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows} size={:dense}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+
+    assert classes(doc, "table") == ~w(table tabular-nums setzkasten-table-dense)
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-table-dense :where\(th, td\) \{\s*height: 2.25rem;\s*padding-block: 0;/
+
+    assert css =~
+             ~r/\.setzkasten-table-dense :where\(th, td\) :is\(\.input, \.select, \.btn\) \{\s*--size: calc\(var\(--size-field, 0.25rem\) \* 8\);/
+
+    assert css =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-table-dense :where\(th, td\) \{\s*height: 2.75rem;/
+  end
+
+  test "a selected or current row takes the row-selected fill and a selected bar at its start" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert length(String.split(css, "--color-row-selected: oklch(")) == 5
+
+    assert css =~
+             ~r/\.table tbody tr:is\(\[aria-selected="true"\], \[aria-current\]:not\(\[aria-current="false"\]\)\) \{\s*background-color: var\(--color-row-selected\);\s*& > :first-child \{\s*box-shadow: inset 3px 0 0 var\(--color-selected\);/
+  end
+
   test "row link stretches over the row" do
     assigns = %{rows: @rows}
 
@@ -842,5 +874,26 @@ defmodule Setzkasten.DataTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ "--setzkasten-duration-count: 500ms"
     refute css =~ "glow"
+  end
+
+  test "amount tone={:negative} marks negative and zero, leaves positive plain" do
+    assigns = %{}
+
+    assert classes(parse(~H|<.amount value={-1} tone={:negative} />|), "data")
+           |> Enum.member?("text-error-ink")
+
+    assert "text-base-content/70" in classes(
+             parse(~H|<.amount value={0} tone={:negative} />|),
+             "data"
+           )
+
+    assert "text-base-content/70" in classes(
+             parse(~H|<.amount value={-0.4} decimals={0} tone={:negative} />|),
+             "data"
+           )
+
+    positive = classes(parse(~H|<.amount value={500} tone={:negative} />|), "data")
+    assert positive == ~w(tabular-nums whitespace-nowrap)
+    assert "text-success-ink" in classes(parse(~H|<.amount value={500} tone />|), "data")
   end
 end

@@ -31,6 +31,23 @@
   font-display: swap;
   src: url("/setzkasten/fonts/Figtree-Italic-Variable.woff2") format("woff2");
 }
+/* Figtree's minus is short and loosely spaced; this one is its plus minus the vertical bar. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/SetzkastenMinus-Variable.woff2") format("woff2");
+  unicode-range: U+2212;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/SetzkastenMinus-Italic-Variable.woff2") format("woff2");
+  unicode-range: U+2212;
+}
 /* Figtree's average letter width at 400 over Arial's, and its 950/250 ascent/descent. */
 @font-face {
   font-family: "Figtree Fallback";
@@ -80,6 +97,7 @@
     --color-selected: oklch(40.09% 0.030 254.17);
     --color-selected-content: oklch(98.07% 0.005 247.88);
     --color-popover: var(--color-base-100);
+    --color-row-selected: oklch(96.00% 0.021 240.00);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -146,6 +164,7 @@
       --color-selected: oklch(88.00% 0.010 262.00);
       --color-selected-content: oklch(25.50% 0.010 262.00);
       --color-popover: var(--color-base-200);
+      --color-row-selected: oklch(33.50% 0.030 248.00);
       --color-chart-1-fill: var(--color-primary);
       --color-chart-1: var(--color-primary);
       --color-chart-2-fill: var(--color-warning);
@@ -213,6 +232,7 @@
     --color-selected: oklch(88.00% 0.010 262.00);
     --color-selected-content: oklch(25.50% 0.010 262.00);
     --color-popover: var(--color-base-200);
+    --color-row-selected: oklch(33.50% 0.030 248.00);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -260,6 +280,7 @@
   --color-selected: oklch(40.09% 0.030 254.17);     /* #3d4958 */
   --color-selected-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-popover: oklch(100.00% 0 0);              /* #ffffff base-100 */
+  --color-row-selected: oklch(96.00% 0.021 240.00); /* #e6f4ff */
   --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
   --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
   --color-chart-2-fill: oklch(86.00% 0.154 85.00);  /* #ffc845 warning */
@@ -557,6 +578,9 @@
 
 /* Type scale: guides/design-system.md 2.5 (a card title never outranks its section heading). */
 @layer utilities.setzkasten {
+  .btn-sm {
+    --fontsize: 0.8125rem;
+  }
   .card-title {
     font-size: 1rem;
     line-height: 1.5rem;
@@ -744,6 +768,35 @@
 @layer utilities.setzkasten {
   :is(.fieldset-legend, .card-title) {
     overflow-wrap: anywhere;
+  }
+}
+
+/* Controls in dense cells are 32px, so an editable row keeps the 36px height. */
+@layer utilities.setzkasten {
+  .setzkasten-table-dense :where(th, td) {
+    height: 2.25rem;
+    padding-block: 0;
+  }
+  .setzkasten-table-dense :where(th, td) :is(.input, .select, .btn) {
+    --size: calc(var(--size-field, 0.25rem) * 8);
+  }
+  @media (pointer: coarse) {
+    .setzkasten-table-dense :where(th, td) {
+      height: 2.75rem;
+    }
+  }
+}
+
+/* The bar carries the 3:1 that the row-selected fill alone cannot. */
+@layer utilities.setzkasten {
+  .table tbody tr:is([aria-selected="true"], [aria-current]:not([aria-current="false"])) {
+    background-color: var(--color-row-selected);
+    & > :first-child {
+      box-shadow: inset 3px 0 0 var(--color-selected);
+    }
+    & > :first-child:dir(rtl) {
+      box-shadow: inset -3px 0 0 var(--color-selected);
+    }
   }
 }
 

@@ -32,6 +32,18 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
           </:actions>
         </.header>
       </.demo>
+      <.demo title="Zurück im selben LiveView (back_patch)">
+        <.header back_patch="/layout" back_label="Buchungen" level={3}>
+          Buchung vom 12. Oktober
+          <:subtitle>Liste und Detail teilen sich einen LiveView: der Link patcht.</:subtitle>
+        </.header>
+      </.demo>
+      <.demo title="Zurück mit vollem Seitenaufruf (back_href)">
+        <.header back_href="/layout" back_label="Einstellungen" level={3}>
+          Zugang und API
+          <:subtitle>Hinter einer erneuten Anmeldung: der Link lädt die Seite neu.</:subtitle>
+        </.header>
+      </.demo>
       <.demo title="Nur Titel und Untertitel">
         <.header level={3}>
           Bestand
@@ -78,6 +90,16 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
           Eine Überschrift als erstes Kind hat keinen Abstand nach oben, auch wenn sie ihren
           section öffnet; die Abschnitte stapelt das Elternelement mit gap-8.
         </:note>
+      </.demo>
+      <.demo title="Klein (size={:sm}) in einem Popover">
+        <.popover id="heading-sm" title="Überzug decken">
+          <:trigger>Decken</:trigger>
+          <.section_heading size={:sm} level={3}>Aus Kategorien</.section_heading>
+          <p>Urlaub · Geschenke</p>
+          <.section_heading size={:sm} level={3}>Aus Rücklagen</.section_heading>
+          <p>Notgroschen</p>
+        </.popover>
+        <:note>14px statt text-lg: die Abschnitte bleiben unter dem Titel des Popovers.</:note>
       </.demo>
     </.showcase>
 

@@ -25,6 +25,10 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           <:item label="tone, negativ"><.amount value={-7420} tone /></:item>
           <:item label="signed tone, positiv"><.amount value={35_020} signed tone /></:item>
           <:item label="tone, null"><.amount value={0} tone /></:item>
+          <:item label="tone={:negative}, Salden">
+            <.amount value={248_310} tone={:negative} /> ·
+            <.amount value={-48_230} tone={:negative} />
+          </:item>
           <:item label="andere Währung"><.amount value={4200} currency="USD" /></:item>
           <:item label="currency_display={:code}">
             <.amount value={110} currency="USD" currency_display={:code} />
