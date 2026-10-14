@@ -112,7 +112,12 @@ defmodule Setzkasten.OverlaysTest do
     assert css =~ "--setzkasten-popover-control: var(--color-base-200);"
     # Both ways into dark (system and explicit choice).
     assert length(String.split(css, "--setzkasten-popover-control: var(--color-base-300);")) == 3
-    assert css =~ ~r/\.modal-box:not\(\.setzkasten-sidebar\), \.dropdown-content\)\s+\.btn:not\(/
+
+    assert css =~
+             ~r/\.modal-box:not\(\.setzkasten-sidebar\), \.dropdown-content\) & \{\s*--btn-bg: var\(--setzkasten-popover-control\);/
+
+    # One plain-button selector for every surface that lifts it.
+    assert length(String.split(css, ".btn:not(.btn-ghost, .btn-link, .btn-outline,")) == 2
 
     assert css =~
              ".file-input::file-selector-button {\n    --btn-bg: var(--setzkasten-popover-control);"
@@ -148,5 +153,10 @@ defmodule Setzkasten.OverlaysTest do
 
     piped = JS.push("before") |> Overlays.show_confirm("c", "Löschen?", action)
     assert [["push", %{"event" => "before"}] | _] = Jason.decode!(Jason.encode!(piped))
+  end
+
+  test "the page keeps its scrollbar's room, so an open modal shifts nothing" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/@layer utilities\.setzkasten \{\s*:root \{\s*scrollbar-gutter: stable;/
   end
 end

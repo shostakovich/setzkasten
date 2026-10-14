@@ -107,6 +107,7 @@
     --setzkasten-alert-tint: 25%;
     --setzkasten-alert-neutral-tint: 5%;
     --setzkasten-alert-border: 10%;
+    --setzkasten-alert-control: var(--color-base-100);
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
     --setzkasten-popover-border: none;
@@ -172,6 +173,7 @@
       --setzkasten-alert-tint: 8%;
       --setzkasten-alert-neutral-tint: 8%;
       --setzkasten-alert-border: 40%;
+      --setzkasten-alert-control: var(--color-base-300);
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
       --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
@@ -238,6 +240,7 @@
     --setzkasten-alert-tint: 8%;
     --setzkasten-alert-neutral-tint: 8%;
     --setzkasten-alert-border: 40%;
+    --setzkasten-alert-control: var(--color-base-300);
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
     --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
@@ -318,6 +321,13 @@
   }
 }
 
+/* daisyUI reserves the gutter under a modal only where CSS if() works. */
+@layer utilities.setzkasten {
+  :root {
+    scrollbar-gutter: stable;
+  }
+}
+
 /* app_shell's collapsed sidebar; the attribute sits on <html> so <.theme_script> sets it before paint. */
 @custom-variant sidebar-collapsed (:root[data-sidebar="collapsed"] &);
 
@@ -335,10 +345,17 @@
  *                                 loses to plain Tailwind utilities written in markup.
  * ------------------------------------------------------------------------------------------ */
 
-/* Field boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1. */
+/* Field, checkbox and radio boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1;
+   colour variants (checkbox-primary …) set --input-color and keep their border. */
 @layer utilities.daisyui.l1.l2.l3 {
   :is(.input, .select, .textarea):not(:focus, :focus-within) {
     --input-color: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+  }
+  .checkbox {
+    border-color: var(--input-color, color-mix(in oklab, var(--color-base-content) 50%, #0000));
+  }
+  .radio {
+    border-color: var(--input-color, color-mix(in oklab, currentColor 50%, #0000));
   }
 }
 
@@ -623,19 +640,29 @@
   }
 }
 
-/* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
-   unselected segmented option and the file input's button are base-200, which is the dark popover
-   surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
-   in dark, the same one-step lift as base-200 on the dark page; the label carries the contrast. */
+/* A plain button (no colour variant) is base-200, which vanishes on an alert's tint and is the dark
+   popover surface itself. */
 @layer utilities.setzkasten {
-  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
-    --btn-bg: var(--setzkasten-popover-control);
-  }
-  @media (hover: hover) {
-    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
-      --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+  .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    /* On the tint the border carries the 3:1. */
+    .alert-soft & {
+      --btn-bg: var(--setzkasten-alert-control);
+      --btn-border: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+      @media (hover: hover) {
+        &:hover {
+          --btn-bg: color-mix(in oklab, var(--setzkasten-alert-control), var(--color-base-content) 7%);
+        }
+      }
+    }
+    /* On modal boxes and menus one step lifted, as base-200 on the dark page; the label
+       carries the contrast. */
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) & {
+      --btn-bg: var(--setzkasten-popover-control);
+      @media (hover: hover) {
+        &:hover {
+          --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+        }
+      }
     }
   }
   :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) .file-input::file-selector-button {

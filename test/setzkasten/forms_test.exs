@@ -131,6 +131,13 @@ defmodule Setzkasten.FormsTest do
     assert classes(doc, "input[type=checkbox]") == ~w(toggle toggle-primary)
   end
 
+  test "checkbox and radio without a colour variant take the 50 % field border" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@layer utilities\.daisyui\.l1\.l2\.l3 \{[^@]*\.checkbox \{\s*border-color: var\(--input-color, color-mix\(in oklab, var\(--color-base-content\) 50%, #0000\)\);\s*\}\s*\.radio \{\s*border-color: var\(--input-color, color-mix\(in oklab, currentColor 50%, #0000\)\);/
+  end
+
   test "checkbox hidden input follows the form attribute" do
     assigns = %{}
     doc = parse(~H|<.input name="r" id="r" type="checkbox" label="R" form="other" />|)
