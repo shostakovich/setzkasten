@@ -22,9 +22,11 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
       <.demo title="Töne" class="space-y-3">
         <.alert tone={:info} title="Abruf läuft täglich um 18:00">
           Kurse und Fondsdaten kommen vom Kursanbieter.
+          <:actions><.button size={:sm}>Jetzt abrufen</.button></:actions>
         </.alert>
         <.alert tone={:success} title="Alles ausgeglichen">
           Niemand schuldet gerade jemandem etwas.
+          <:actions><.button size={:sm}>Verlauf</.button></:actions>
         </.alert>
         <.alert tone={:warning} title="API-Key fehlt">
           Für Regionen und Sektoren braucht die App einen API-Key des Kursanbieters in <code>QUOTES_API_KEY</code>.
@@ -32,15 +34,31 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
         </.alert>
         <.alert tone={:error} title="2 Felder sind noch nicht richtig">
           Bitte prüfe Titel und Betrag.
+          <:actions><.button size={:sm}>Zum ersten Feld</.button></:actions>
         </.alert>
         <.alert tone={:neutral} title="Neutral">
           Archivierte Gruppen erscheinen nicht in der Übersicht.
+          <:actions>
+            <.button size={:sm}>Archiv</.button>
+            <.button size={:sm} variant={:primary}>Wiederherstellen</.button>
+          </:actions>
         </.alert>
         <.alert tone={:info} title="Wird geladen (busy)" busy>
           Wechselrichter wird abgefragt …
         </.alert>
         <.alert tone={:warning}>Nur ein Satz, ohne Titel.</.alert>
-        <:note>Mit Aktionen: ab sm rechts, auf dem Handy unter dem Text.</:note>
+        <:note>
+          Mit Aktionen: rechts, solange der Hinweis mindestens 32rem breit ist, sonst unter dem Text.
+          Neutrale Buttons bekommen auf der Tönung eine hellere Fläche und den Feldrand (50 %).
+        </:note>
+      </.demo>
+      <.demo title="In einer schmalen Seitenspalte (18rem)">
+        <div class="w-72">
+          <.alert tone={:warning} title="Konto nicht abgeglichen" on_close="noop">
+            Der Saldo weicht 12,40 € von der Bank ab.
+            <:actions><.button size={:sm}>Abgleichen</.button></:actions>
+          </.alert>
+        </div>
       </.demo>
     </.showcase>
 

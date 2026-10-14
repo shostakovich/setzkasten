@@ -25,7 +25,18 @@ defmodule Setzkasten.Dev.CatalogLive do
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
-     assign(socket, view: "list", deleted: 0, level: 0, form: Pages.FormsPage.build_form(%{}))}
+     socket
+     |> allow_upload(:statement, accept: ~w(.csv .pdf), max_entries: 1, max_file_size: 5_000_000)
+     |> assign(
+       view: "list",
+       deleted: 0,
+       level: 0,
+       cover: nil,
+       picked: [],
+       sort: "date",
+       combo: to_form(%{"category" => "groceries"}, as: :booking),
+       form: Pages.FormsPage.build_form(%{})
+     )}
   end
 
   @impl true
@@ -46,6 +57,8 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   @impl true
   def handle_event("view", %{"value" => view}, socket), do: {:noreply, assign(socket, view: view)}
+
+  def handle_event("sort", %{"by" => by}, socket), do: {:noreply, assign(socket, sort: by)}
 
   def handle_event("delete", params, socket) do
     {:noreply,
@@ -68,6 +81,49 @@ defmodule Setzkasten.Dev.CatalogLive do
     do: {:noreply, update(socket, :level, &(&1 - 1))}
 
   def handle_event("save-demo", _params, socket), do: {:noreply, push_saved(socket, "demo-save")}
+
+  def handle_event("combo", %{"booking" => params}, socket),
+    do: {:noreply, assign(socket, combo: to_form(params, as: :booking))}
+
+  def handle_event("pick", %{"id" => id}, socket) do
+    {:noreply, update(socket, :picked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
+
+  def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
+
+  def handle_event("booking_closed", _params, socket),
+    do: {:noreply, put_flash(socket, :info, "Dialog geschlossen (Demo).")}
+
+  def handle_event("statement", _params, socket), do: {:noreply, socket}
+
+  def handle_event("cancel_statement", %{"ref" => ref}, socket),
+    do: {:noreply, cancel_upload(socket, :statement, ref)}
+
+  def handle_event("open_cover", %{"cell" => cell}, socket),
+    do: {:noreply, assign(socket, cover: cell)}
+
+  def handle_event("cover_closed", _params, socket), do: {:noreply, assign(socket, cover: nil)}
+
+  def handle_event("cover", %{"from" => from}, socket) do
+    {:noreply,
+     socket
+     |> assign(cover: nil)
+     |> put_flash(:info, "Gedeckt (Demo) aus „#{from}“.")}
+  end
+
+  def handle_event("import", %{"import" => %{"file" => file}} = params, socket) do
+    mode = if params["mode"] == "replace", do: "ersetzt", else: "ergänzt"
+    {:noreply, put_flash(socket, :info, "Buchungen aus „#{file}“ #{mode} (Demo).")}
+  end
+
+  def handle_event("close_account", params, socket) do
+    target = get_in(params, ["close", "target"])
+    to = if target in [nil, ""], do: "", else: ", Rest auf „#{target}“"
+    {:noreply, put_flash(socket, :info, "Konto geschlossen (Demo)#{to}.")}
+  end
+
+  def handle_event("rename", %{"name" => name}, socket),
+    do: {:noreply, put_flash(socket, :info, "Umbenannt (Demo) in „#{name}“.")}
 
   def handle_event("flash", %{"kind" => kind}, socket) do
     {kind, msg} =

@@ -143,6 +143,21 @@ defmodule Setzkasten.Dev.Pages.Foundations do
           <dd class="text-xs font-semibold">Betrag</dd>
         </div>
       </dl>
+      <.demo title="Rechenzeichen in Zahlen (tabular-nums)">
+        <div id="signs" class="grid gap-x-8 gap-y-2 tabular-nums sm:grid-cols-2">
+          <p :for={size <- ["text-sm", "text-2xl font-semibold"]} class={["flex flex-col", size]}>
+            <span>+1.150,00&nbsp;€</span>
+            <span>−1.150,00&nbsp;€</span>
+            <span>–1.150,00&nbsp;€
+            <span class="text-sm font-normal text-base-content/70">(Halbgeviertstrich)</span></span>
+            <span>−0,88 · −7.420 · −2,5&nbsp;%</span>
+          </p>
+        </div>
+        <:note>
+          Das Minus (U+2212) ist Figtrees Plus ohne senkrechten Balken: gleiche Breite, Höhe,
+          Strichstärke und Vor- und Nachbreite wie das Plus, in jeder Strichstärke.
+        </:note>
+      </.demo>
     </section>
     """
   end

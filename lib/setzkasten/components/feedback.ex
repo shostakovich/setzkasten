@@ -33,8 +33,11 @@ defmodule Setzkasten.Components.Feedback do
   the tone's line colour (`chart-6`, `success-ink`, `chart-2`, `error-ink`; ≥ 3:1 on the tint).
 
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
-  the end from `sm` and move under the text on phones. `on_close` (event name or `%JS{}`) adds
-  a close button (`close_label`) that stays at the end on every screen size. `busy` swaps the
+  the end while the alert's content box is at least 32rem wide (about 34rem with its padding)
+  and move under the text when it is narrower
+  (a container query, so also in a narrow side column; an alert with actions takes its width
+  from its parent, not from its content). `on_close` (event name or `%JS{}`) adds
+  a close button (`close_label`) that stays at the end at every width. `busy` swaps the
   icon for a spinner, a still ellipsis with reduced motion.
 
       <.alert tone={:warning} title="API-Key fehlt">
@@ -57,6 +60,7 @@ defmodule Setzkasten.Components.Feedback do
     assigns =
       assign(assigns,
         icon_name: if(assigns.icon == nil, do: @tone_icons[assigns.tone], else: assigns.icon),
+        icon?: assigns.busy or assigns.icon != false,
         tone_class: @tone_classes[assigns.tone],
         icon_color: @icon_colors[assigns.tone],
         role: if(assigns.tone == :error, do: "alert", else: "status")
@@ -69,48 +73,73 @@ defmodule Setzkasten.Components.Feedback do
       class={[
         "alert alert-soft text-base-content",
         @tone_class,
-        grid_classes(@actions != [], @on_close != nil),
+        "block justify-items-stretch",
+        @actions != [] && "@container",
         @class
       ]}
       {@rest}
     >
-      <span
-        :if={@busy}
-        class={["loading loading-spinner loading-sm motion-reduce:hidden", @icon_color]}
-      ></span>
-      <.icon :if={@busy} name="ellipsis" class={["size-5 motion-safe:hidden", @icon_color]} />
-      <.icon :if={@icon_name && !@busy} name={@icon_name} class={["size-5", @icon_color]} />
-      <div class="min-w-0 wrap-anywhere">
-        <p :if={@title} class="font-semibold">{@title}</p>
-        <div :if={@inner_block != []}>{render_slot(@inner_block)}</div>
+      <div class={[
+        "grid grid-flow-col items-center justify-start justify-items-start gap-4",
+        grid_classes(@actions != [], @on_close != nil, @icon?)
+      ]}>
+        <span
+          :if={@busy}
+          class={["loading loading-spinner loading-sm motion-reduce:hidden", @icon_color]}
+        ></span>
+        <.icon :if={@busy} name="ellipsis" class={["size-5 motion-safe:hidden", @icon_color]} />
+        <.icon :if={@icon_name && !@busy} name={@icon_name} class={["size-5", @icon_color]} />
+        <div class="min-w-0 wrap-anywhere">
+          <p :if={@title} class="font-semibold">{@title}</p>
+          <div :if={@inner_block != []}>{render_slot(@inner_block)}</div>
+        </div>
+        <div
+          :if={@actions != []}
+          class={[
+            "flex flex-wrap gap-2 @max-lg:row-start-2",
+            if(@icon?, do: "@max-lg:col-start-2", else: "@max-lg:col-start-1")
+          ]}
+        >
+          {render_slot(@actions)}
+        </div>
+        <button
+          :if={@on_close}
+          type="button"
+          class={[
+            "btn btn-ghost btn-sm btn-square self-start",
+            @actions != [] && "@max-lg:row-start-1",
+            @actions != [] && if(@icon?, do: "@max-lg:col-start-3", else: "@max-lg:col-start-2")
+          ]}
+          aria-label={@close_label}
+          phx-click={close_click(@on_close)}
+        >
+          <.icon name="x" />
+        </button>
       </div>
-      <div :if={@actions != []} class="flex flex-wrap gap-2 max-sm:col-start-2 max-sm:row-start-2">
-        {render_slot(@actions)}
-      </div>
-      <button
-        :if={@on_close}
-        type="button"
-        class="btn btn-ghost btn-sm btn-square self-start max-sm:col-start-3 max-sm:row-start-1"
-        aria-label={@close_label}
-        phx-click={close_click(@on_close)}
-      >
-        <.icon name="x" />
-      </button>
     </div>
     """
   end
 
-  defp grid_classes(false, false), do: nil
+  # Literal per case, so Tailwind finds every class; `icon?` adds the leading icon column.
+  defp grid_classes(false, false, _icon?), do: nil
+  defp grid_classes(false, true, true), do: "grid-cols-[auto_minmax(0,1fr)_auto]"
+  defp grid_classes(false, true, false), do: "grid-cols-[minmax(0,1fr)_auto]"
 
-  defp grid_classes(true, false),
+  defp grid_classes(true, false, true),
     do:
-      "max-sm:grid-flow-row max-sm:grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+      "@max-lg:grid-flow-row @max-lg:grid-cols-[auto_minmax(0,1fr)] @lg:grid-cols-[auto_minmax(0,1fr)_auto]"
 
-  defp grid_classes(false, true), do: "grid-cols-[auto_minmax(0,1fr)_auto] max-sm:grid-flow-col"
-
-  defp grid_classes(true, true),
+  defp grid_classes(true, false, false),
     do:
-      "max-sm:grid-flow-row max-sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+      "@max-lg:grid-flow-row @max-lg:grid-cols-[minmax(0,1fr)] @lg:grid-cols-[minmax(0,1fr)_auto]"
+
+  defp grid_classes(true, true, true),
+    do:
+      "@max-lg:grid-flow-row @max-lg:grid-cols-[auto_minmax(0,1fr)_auto] @lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+
+  defp grid_classes(true, true, false),
+    do:
+      "@max-lg:grid-flow-row @max-lg:grid-cols-[minmax(0,1fr)_auto] @lg:grid-cols-[minmax(0,1fr)_auto_auto]"
 
   defp close_click(%JS{} = js), do: js
   defp close_click(event) when is_binary(event), do: JS.push(event)

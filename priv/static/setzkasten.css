@@ -31,6 +31,23 @@
   font-display: swap;
   src: url("/setzkasten/fonts/Figtree-Italic-Variable.woff2") format("woff2");
 }
+/* Figtree's minus is short and loosely spaced; this one is its plus minus the vertical bar. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/SetzkastenMinus-Variable.woff2") format("woff2");
+  unicode-range: U+2212;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/setzkasten/fonts/SetzkastenMinus-Italic-Variable.woff2") format("woff2");
+  unicode-range: U+2212;
+}
 /* Figtree's average letter width at 400 over Arial's, and its 950/250 ascent/descent. */
 @font-face {
   font-family: "Figtree Fallback";
@@ -77,9 +94,11 @@
     --color-sidebar-content: oklch(98.07% 0.005 247.88);
     --color-sidebar-muted: oklch(83.02% 0.024 250.11);
     --color-sidebar-accent: oklch(79.98% 0.108 245.09);
+    --color-sidebar-negative: oklch(81.00% 0.095 22.00);
     --color-selected: oklch(40.09% 0.030 254.17);
     --color-selected-content: oklch(98.07% 0.005 247.88);
     --color-popover: var(--color-base-100);
+    --color-row-selected: oklch(96.00% 0.021 240.00);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -107,6 +126,7 @@
     --setzkasten-alert-tint: 25%;
     --setzkasten-alert-neutral-tint: 5%;
     --setzkasten-alert-border: 10%;
+    --setzkasten-alert-control: var(--color-base-100);
     --setzkasten-danger-fill: var(--color-error-ink);
     --setzkasten-danger-fg: oklch(100.00% 0 0);
     --setzkasten-popover-border: none;
@@ -142,9 +162,11 @@
       --color-sidebar-content: oklch(95.07% 0.005 247.88);
       --color-sidebar-muted: oklch(79.07% 0.010 258.34);
       --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+      --color-sidebar-negative: oklch(74.93% 0.151 21.82);
       --color-selected: oklch(88.00% 0.010 262.00);
       --color-selected-content: oklch(25.50% 0.010 262.00);
       --color-popover: var(--color-base-200);
+      --color-row-selected: oklch(33.50% 0.030 248.00);
       --color-chart-1-fill: var(--color-primary);
       --color-chart-1: var(--color-primary);
       --color-chart-2-fill: var(--color-warning);
@@ -172,6 +194,7 @@
       --setzkasten-alert-tint: 8%;
       --setzkasten-alert-neutral-tint: 8%;
       --setzkasten-alert-border: 40%;
+      --setzkasten-alert-control: var(--color-base-300);
       --setzkasten-danger-fill: var(--color-error);
       --setzkasten-danger-fg: var(--color-error-content);
       --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
@@ -208,9 +231,11 @@
     --color-sidebar-content: oklch(95.07% 0.005 247.88);
     --color-sidebar-muted: oklch(79.07% 0.010 258.34);
     --color-sidebar-accent: oklch(75.90% 0.128 250.16);
+    --color-sidebar-negative: oklch(74.93% 0.151 21.82);
     --color-selected: oklch(88.00% 0.010 262.00);
     --color-selected-content: oklch(25.50% 0.010 262.00);
     --color-popover: var(--color-base-200);
+    --color-row-selected: oklch(33.50% 0.030 248.00);
     --color-chart-1-fill: var(--color-primary);
     --color-chart-1: var(--color-primary);
     --color-chart-2-fill: var(--color-warning);
@@ -238,6 +263,7 @@
     --setzkasten-alert-tint: 8%;
     --setzkasten-alert-neutral-tint: 8%;
     --setzkasten-alert-border: 40%;
+    --setzkasten-alert-control: var(--color-base-300);
     --setzkasten-danger-fill: var(--color-error);
     --setzkasten-danger-fg: var(--color-error-content);
     --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
@@ -254,9 +280,11 @@
   --color-sidebar-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-sidebar-muted: oklch(83.02% 0.024 250.11); /* #bcc9d7 */
   --color-sidebar-accent: oklch(79.98% 0.108 245.09); /* #80c5ff */
+  --color-sidebar-negative: oklch(81.00% 0.095 22.00); /* #f8a9a5 */
   --color-selected: oklch(40.09% 0.030 254.17);     /* #3d4958 */
   --color-selected-content: oklch(98.07% 0.005 247.88); /* #f6f9fc */
   --color-popover: oklch(100.00% 0 0);              /* #ffffff base-100 */
+  --color-row-selected: oklch(96.00% 0.021 240.00); /* #e6f4ff */
   --color-chart-1-fill: oklch(54.52% 0.129 241.86); /* #0077b4 primary */
   --color-chart-1: oklch(54.52% 0.129 241.86);      /* #0077b4 */
   --color-chart-2-fill: oklch(86.00% 0.154 85.00);  /* #ffc845 warning */
@@ -318,6 +346,13 @@
   }
 }
 
+/* daisyUI reserves the gutter under a modal only where CSS if() works. */
+@layer utilities.setzkasten {
+  :root {
+    scrollbar-gutter: stable;
+  }
+}
+
 /* app_shell's collapsed sidebar; the attribute sits on <html> so <.theme_script> sets it before paint. */
 @custom-variant sidebar-collapsed (:root[data-sidebar="collapsed"] &);
 
@@ -335,10 +370,17 @@
  *                                 loses to plain Tailwind utilities written in markup.
  * ------------------------------------------------------------------------------------------ */
 
-/* Field boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1. */
+/* Field, checkbox and radio boundaries 3:1 (WCAG 1.4.11). daisyUI draws them in base-content 20 % = 1.5:1;
+   colour variants (checkbox-primary …) set --input-color and keep their border. */
 @layer utilities.daisyui.l1.l2.l3 {
   :is(.input, .select, .textarea):not(:focus, :focus-within) {
     --input-color: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+  }
+  .checkbox {
+    border-color: var(--input-color, color-mix(in oklab, var(--color-base-content) 50%, #0000));
+  }
+  .radio {
+    border-color: var(--input-color, color-mix(in oklab, currentColor 50%, #0000));
   }
 }
 
@@ -540,6 +582,9 @@
 
 /* Type scale: guides/design-system.md 2.5 (a card title never outranks its section heading). */
 @layer utilities.setzkasten {
+  .btn-sm {
+    --fontsize: 0.8125rem;
+  }
   .card-title {
     font-size: 1rem;
     line-height: 1.5rem;
@@ -623,19 +668,29 @@
   }
 }
 
-/* Neutral controls on the popover surface (modal boxes, dropdown menus): a neutral button, an
-   unselected segmented option and the file input's button are base-200, which is the dark popover
-   surface itself. They take --setzkasten-popover-control: base-200 in light (unchanged), base-300
-   in dark, the same one-step lift as base-200 on the dark page; the label carries the contrast. */
+/* A plain button (no colour variant) is base-200, which vanishes on an alert's tint and is the dark
+   popover surface itself. */
 @layer utilities.setzkasten {
-  :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-    .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
-    --btn-bg: var(--setzkasten-popover-control);
-  }
-  @media (hover: hover) {
-    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content)
-      .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled):hover {
-      --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+  .btn:not(.btn-ghost, .btn-link, .btn-outline, .btn-dash, .btn-soft, .btn-active, .btn-primary, .setzkasten-selected, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral, :has(:checked), :disabled, .btn-disabled) {
+    /* On the tint the border carries the 3:1. */
+    .alert-soft & {
+      --btn-bg: var(--setzkasten-alert-control);
+      --btn-border: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+      @media (hover: hover) {
+        &:hover {
+          --btn-bg: color-mix(in oklab, var(--setzkasten-alert-control), var(--color-base-content) 7%);
+        }
+      }
+    }
+    /* On modal boxes, menus and popovers one step lifted, as base-200 on the dark page; the label
+       carries the contrast. */
+    :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content, .setzkasten-popover, .setzkasten-selection-bar) & {
+      --btn-bg: var(--setzkasten-popover-control);
+      @media (hover: hover) {
+        &:hover {
+          --btn-bg: color-mix(in oklab, var(--setzkasten-popover-control), #000 7%);
+        }
+      }
     }
   }
   :is(.modal-box:not(.setzkasten-sidebar), .dropdown-content) .file-input::file-selector-button {
@@ -672,6 +727,30 @@
     --color-selected: var(--color-sidebar-content);
     --color-selected-content: var(--color-sidebar);
   }
+  /* Rail tooltips stay on one line; a long label ends in an ellipsis. */
+  .setzkasten-sidebar .tooltip[data-tip]::before {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .setzkasten-sidebar .tooltip {
+    --tt-bg: var(--color-sidebar-content);
+  }
+  .setzkasten-sidebar .tooltip > .tooltip-content,
+  .setzkasten-sidebar .tooltip[data-tip]::before {
+    color: var(--color-sidebar);
+  }
+}
+
+/* Tooltips take the selection fill: daisyUI's neutral is nearly the dark page itself (1.2:1). */
+@layer utilities.setzkasten {
+  .tooltip {
+    --tt-bg: var(--color-selected);
+  }
+  .tooltip > .tooltip-content,
+  .tooltip[data-tip]::before {
+    color: var(--color-selected-content);
+  }
 }
 
 /* daisyUI misses the first item of a fieldset join, whose first child is the sr-only legend. */
@@ -693,6 +772,35 @@
 @layer utilities.setzkasten {
   :is(.fieldset-legend, .card-title) {
     overflow-wrap: anywhere;
+  }
+}
+
+/* Controls in dense cells are 32px, so an editable row keeps the 36px height. */
+@layer utilities.setzkasten {
+  .setzkasten-table-dense :where(th, td) {
+    height: 2.25rem;
+    padding-block: 0;
+  }
+  .setzkasten-table-dense :where(th, td) :is(.input, .select, .btn) {
+    --size: calc(var(--size-field, 0.25rem) * 8);
+  }
+  @media (pointer: coarse) {
+    .setzkasten-table-dense :where(th, td) {
+      height: 2.75rem;
+    }
+  }
+}
+
+/* The bar carries the 3:1 that the row-selected fill alone cannot. */
+@layer utilities.setzkasten {
+  .table tbody tr:is([aria-selected="true"], [aria-current]:not([aria-current="false"])) {
+    background-color: var(--color-row-selected);
+    & > :first-child {
+      box-shadow: inset 3px 0 0 var(--color-selected);
+    }
+    & > :first-child:dir(rtl) {
+      box-shadow: inset -3px 0 0 var(--color-selected);
+    }
   }
 }
 
@@ -824,7 +932,7 @@
     transition-property: color, background-color, border-color, box-shadow, scale, opacity, visibility;
     transition-behavior: allow-discrete;
   }
-  :root:has(.modal[open]) .setzkasten-fab {
+  :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab {
     opacity: 0;
     scale: 0.8;
     visibility: hidden;
@@ -871,6 +979,85 @@
   }
   .dropdown:is(details)::details-content {
     transition: content-visibility var(--setzkasten-duration-exit) allow-discrete;
+  }
+
+  /* A popover unfolds like a dropdown; display and overlay keep it in the top layer for its exit. */
+  .setzkasten-popover {
+    --setzkasten-enter-from: 0 -0.25rem;
+    --setzkasten-enter-scale: 0.96;
+    --setzkasten-enter-opacity: 0;
+    transform-origin: top left;
+    opacity: var(--setzkasten-enter-opacity);
+    translate: var(--setzkasten-enter-from);
+    scale: var(--setzkasten-enter-scale);
+    transition:
+      opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      translate var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      scale var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+      overlay var(--setzkasten-duration-exit) allow-discrete,
+      display var(--setzkasten-duration-exit) allow-discrete;
+  }
+  .setzkasten-popover-end {
+    transform-origin: top right;
+  }
+  .setzkasten-popover-top {
+    --setzkasten-enter-from: 0 0.25rem;
+    transform-origin: bottom left;
+  }
+  .setzkasten-popover-top.setzkasten-popover-end {
+    transform-origin: bottom right;
+  }
+  @media (width < 40rem) {
+    .setzkasten-popover[popover] {
+      --setzkasten-enter-from: 0 100%;
+      --setzkasten-enter-scale: 1;
+      --setzkasten-enter-opacity: 1;
+    }
+    .setzkasten-popover[popover]::backdrop {
+      transition:
+        background-color var(--setzkasten-duration-exit) var(--setzkasten-ease-in),
+        overlay var(--setzkasten-duration-exit) allow-discrete,
+        display var(--setzkasten-duration-exit) allow-discrete;
+    }
+    @starting-style {
+      .setzkasten-popover[popover]:popover-open::backdrop {
+        background-color: transparent;
+      }
+    }
+  }
+  .setzkasten-popover:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    transition-duration: var(--setzkasten-duration);
+    transition-timing-function: var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .setzkasten-popover:popover-open {
+      opacity: var(--setzkasten-enter-opacity);
+      translate: var(--setzkasten-enter-from);
+      scale: var(--setzkasten-enter-scale);
+    }
+  }
+
+  /* The selection bar rises 8px into place; it leaves at once with the selection. */
+  .setzkasten-selection-bar {
+    transition:
+      opacity var(--setzkasten-duration) var(--setzkasten-ease-out),
+      translate var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  @starting-style {
+    .setzkasten-selection-bar {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    @starting-style {
+      .setzkasten-selection-bar {
+        translate: none;
+      }
+    }
   }
 
   /* daisyUI drops the open arrow under reduced motion; the rotation is state, so it stays. */
@@ -982,6 +1169,7 @@
       mask-image: none;
     }
     .modal .modal-box,
+    .setzkasten-popover[popover],
     .dropdown:is(details) > .dropdown-content,
     .collapse:is(details) > .collapse-content,
     .toast > *,
@@ -990,7 +1178,7 @@
       --setzkasten-enter-scale: 1;
       --setzkasten-enter-opacity: 0;
     }
-    :root:has(.modal[open]) .setzkasten-fab,
+    :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab,
     .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
       scale: none;
       translate: none;
@@ -1006,6 +1194,210 @@
     }
     .toggle {
       transition: color var(--setzkasten-duration);
+    }
+  }
+}
+
+/* <.popover>: a top-layer panel on the popover surface. anchor-scope keeps every trigger's anchor
+   name to its own popover; browsers without it get the hook's placement. Below sm a bottom sheet. */
+@layer utilities.setzkasten {
+  .setzkasten-popover-root {
+    anchor-scope: --setzkasten-popover;
+  }
+  .setzkasten-popover-root > [popovertarget] {
+    anchor-name: --setzkasten-popover;
+  }
+  .setzkasten-popover {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    min-width: min(16rem, calc(100vw - 1rem));
+    max-width: min(22rem, calc(100vw - 1rem));
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+    padding: 1rem;
+    color: var(--color-base-content);
+    background-color: var(--color-popover);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: var(--radius-box);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    --setzkasten-dock-offset: 0px;
+  }
+  @supports (anchor-scope: all) and (position-area: block-end) {
+    .setzkasten-popover:not([data-anchor]) {
+      position-anchor: --setzkasten-popover;
+      position-area: block-end span-inline-end;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+      margin-block: 0.25rem;
+    }
+    .setzkasten-popover-end:not([data-anchor]) {
+      position-area: block-end span-inline-start;
+    }
+    .setzkasten-popover-top:not([data-anchor]) {
+      position-area: block-start span-inline-end;
+    }
+    .setzkasten-popover-top.setzkasten-popover-end:not([data-anchor]) {
+      position-area: block-start span-inline-start;
+    }
+  }
+  .setzkasten-popover::backdrop {
+    background-color: transparent;
+  }
+  @media (width < 40rem) {
+    .setzkasten-popover[popover] {
+      position-area: none;
+      inset: auto 0 0 0;
+      margin: 0;
+      width: 100%;
+      max-width: none;
+      max-height: 85dvh;
+      border-width: 1px 0 0;
+      border-radius: var(--radius-box) var(--radius-box) 0 0;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+    .setzkasten-popover[popover]:popover-open::backdrop {
+      background-color: oklch(0% 0 0 / 0.4);
+    }
+  }
+}
+
+/* <.combobox>: the listbox is a manual popover in the top layer, anchored below the field box. */
+@layer utilities.setzkasten {
+  .setzkasten-combobox {
+    anchor-scope: --setzkasten-combobox;
+  }
+  .setzkasten-combobox > .input {
+    anchor-name: --setzkasten-combobox;
+  }
+  .setzkasten-listbox {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    min-width: 16rem;
+    max-width: calc(100vw - 1rem);
+    max-height: min(19rem, calc(100dvh - 1rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem;
+    color: var(--color-base-content);
+    background-color: var(--color-popover);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: var(--radius-box);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    opacity: 0;
+    transition:
+      opacity var(--setzkasten-duration-press) linear,
+      overlay var(--setzkasten-duration-press) allow-discrete,
+      display var(--setzkasten-duration-press) allow-discrete;
+  }
+  .setzkasten-listbox:popover-open {
+    opacity: 1;
+  }
+  @starting-style {
+    .setzkasten-listbox:popover-open {
+      opacity: 0;
+    }
+  }
+  @supports (anchor-scope: all) and (position-area: block-end) {
+    .setzkasten-listbox {
+      position-anchor: --setzkasten-combobox;
+      position-area: block-end span-inline-end;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+      margin-block: 0.25rem;
+      min-width: max(16rem, anchor-size(width));
+    }
+  }
+  .setzkasten-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-field);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .setzkasten-option:hover {
+    background-color: var(--setzkasten-popover-control);
+  }
+  /* The highlighted option is the field's visual focus: a primary ring as on focused menu items. */
+  .setzkasten-option[aria-selected="true"] {
+    background-color: var(--setzkasten-popover-control);
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+  .setzkasten-option:not([data-current]) > .setzkasten-option-check {
+    visibility: hidden;
+  }
+  .setzkasten-option-group {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  .setzkasten-listbox-empty {
+    padding: 0.375rem 0.75rem;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  @media (pointer: coarse) {
+    .setzkasten-option {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* <.file_drop>: a dashed area around the file input, primary while a file is dragged over it. */
+@layer utilities.setzkasten {
+  .setzkasten-file-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border: 1px dashed color-mix(in oklab, var(--color-base-content) 50%, transparent);
+    border-radius: var(--radius-box);
+    cursor: pointer;
+    transition:
+      background-color var(--setzkasten-duration) var(--setzkasten-ease-out),
+      border-color var(--setzkasten-duration) var(--setzkasten-ease-out);
+  }
+  .setzkasten-file-drop-error {
+    border-color: var(--color-error-ink);
+  }
+  .setzkasten-file-drop:has(> input:focus-visible) .setzkasten-file-drop-button {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  .setzkasten-file-drop:has(> input:disabled) {
+    cursor: not-allowed;
+  }
+  .setzkasten-file-drop.phx-drop-target-active {
+    border-style: solid;
+    border-color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 8%, var(--color-base-100));
+  }
+}
+
+@layer utilities.setzkasten {
+  .setzkasten-selection-bar .dropdown > .dropdown-content {
+    top: auto;
+    bottom: 100%;
+    margin-bottom: 0.25rem;
+    transform-origin: bottom left;
+  }
+  .setzkasten-selection-bar .dropdown-end > .dropdown-content {
+    transform-origin: bottom right;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .setzkasten-selection-bar .dropdown > .dropdown-content {
+      --setzkasten-enter-from: 0 0.25rem;
     }
   }
 }

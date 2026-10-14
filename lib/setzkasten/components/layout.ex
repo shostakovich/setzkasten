@@ -18,6 +18,8 @@ defmodule Setzkasten.Components.Layout do
 
   @doc """
   The page header: optional back link, title (`text-2xl`), badge, subtitle and actions.
+  The back link navigates within the live session (`back`), patches (`back_patch`) or loads
+  the page (`back_href`, e.g. into or out of a live session behind a re-authentication plug).
   The title block grows from a 10rem basis, so a short title keeps its action on the same row
   on phones and long ones push the actions below; it is at least as tall as a button, so the
   title sits at the same height with or without actions. A `block` segmented control in
@@ -31,6 +33,12 @@ defmodule Setzkasten.Components.Layout do
       </.header>
   """
   attr :back, :string, default: nil, doc: "path of the back link (navigate)"
+  attr :back_patch, :string, default: nil, doc: "path of the back link (patch), instead of `back`"
+
+  attr :back_href, :string,
+    default: nil,
+    doc: "URL of the back link as a full page load, instead of `back`"
+
   attr :back_label, :string, default: "Zurück"
   attr :level, :integer, default: 1
   attr :class, :any, default: nil
@@ -43,8 +51,13 @@ defmodule Setzkasten.Components.Layout do
   def header(assigns) do
     ~H"""
     <header class={["flex flex-wrap items-center gap-x-4 gap-y-2 pb-6", @class]} {@rest}>
-      <div :if={@back} class="basis-full">
-        <.link navigate={@back} class="btn btn-ghost btn-sm -ms-3">
+      <div :if={@back || @back_patch || @back_href} class="basis-full">
+        <.link
+          navigate={@back}
+          patch={@back_patch}
+          href={@back_href}
+          class="btn btn-ghost btn-sm -ms-3"
+        >
           <.icon name="chevron-left" />{@back_label}
         </.link>
       </div>
@@ -77,7 +90,8 @@ defmodule Setzkasten.Components.Layout do
   and actions. `mt-8` above it, none when it is the first child (`first:mt-0`): at the top of a
   page, card or dialog, and as the first child of its own `<section aria-labelledby>`. Sections
   wrapped like that are stacked by their parent with a gap (`flex flex-col gap-8`, `space-y-8`
-  or the grid's gap).
+  or the grid's gap). `size={:sm}` for compact surfaces such as a popover: 14px 600 with `mt-4`,
+  so it stays below the surface's own title.
 
       <.section_heading count={2}>Depots
         <:actions><.button size={:sm} icon="plus">Depot</.button></:actions>
@@ -85,6 +99,7 @@ defmodule Setzkasten.Components.Layout do
   """
   attr :count, :integer, default: nil
   attr :level, :integer, default: 2
+  attr :size, :atom, default: :md, values: [:md, :sm]
   attr :id, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global
@@ -93,11 +108,22 @@ defmodule Setzkasten.Components.Layout do
 
   def section_heading(assigns) do
     ~H"""
-    <div class={["mt-8 mb-3 first:mt-0 flex items-center justify-between gap-2", @class]} {@rest}>
+    <div
+      class={[
+        "first:mt-0 flex items-center justify-between gap-2",
+        if(@size == :sm, do: "mt-4 mb-2", else: "mt-8 mb-3"),
+        @class
+      ]}
+      {@rest}
+    >
       <.dynamic_tag
         tag_name={"h#{@level}"}
         id={@id}
-        class="flex min-w-0 items-center gap-2 text-lg font-semibold wrap-anywhere"
+        class={[
+          "flex min-w-0 items-center gap-2",
+          if(@size == :sm, do: "text-sm", else: "text-lg"),
+          "font-semibold wrap-anywhere"
+        ]}
       >
         {render_slot(@inner_block)}
         <span :if={@count} class="font-normal text-base-content/70 tabular-nums">{@count}</span>

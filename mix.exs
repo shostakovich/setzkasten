@@ -86,7 +86,8 @@ defmodule Setzkasten.MixProject do
       source_ref: "v#{@version}",
       extras: ["README.md", "guides/design-system.md", "CHANGELOG.md"],
       groups_for_modules: [
-        Components: ~r/Setzkasten\.Components\./
+        Components: ~r/Setzkasten\.Components\./,
+        Testing: [Setzkasten.Test.Confirm]
       ]
     ]
   end

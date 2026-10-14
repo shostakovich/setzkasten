@@ -20,13 +20,28 @@ defmodule Setzkasten.FeedbackTest do
     assert "text-error-ink" in classes(doc, "svg")
   end
 
-  test "alert actions move below the text on phones" do
+  test "alert actions move below the text when the alert itself is narrow" do
     assigns = %{}
     doc = parse(~H|<.alert>
   x<:actions><.button size={:sm}>Los</.button></:actions>
 </.alert>|)
-    assert "max-sm:grid-flow-row" in classes(doc, ".alert")
-    assert "max-sm:col-start-2" in classes(doc, ".alert > div:last-child")
+    # A container query: also in a narrow side column on a wide screen.
+    assert Enum.all?(~w(@container block), &(&1 in classes(doc, ".alert")))
+
+    # Containment only where a query needs it: it would collapse an alert in a shrink-to-fit parent.
+    refute "@container" in classes(parse(~H|<.alert>Text</.alert>|), ".alert")
+    assert "@max-lg:grid-flow-row" in classes(doc, ".alert > div")
+    refute Enum.any?(classes(doc, ".alert > div"), &String.starts_with?(&1, "max-sm:"))
+    assert "@max-lg:col-start-2" in classes(doc, ".alert > div > div:last-child")
+  end
+
+  test "alert content spans the full width, so actions end at the alert's edge" do
+    assigns = %{}
+    doc = parse(~H|<.alert>
+  x<:actions><.button size={:sm}>Los</.button></:actions>
+</.alert>|)
+    # daisyUI's justify-items: start shrinks the block's inner grid to its content.
+    assert "justify-items-stretch" in classes(doc, ".alert")
   end
 
   test "busy alert shows a spinner and can hide the icon" do
@@ -66,9 +81,9 @@ defmodule Setzkasten.FeedbackTest do
       </.alert>
       """)
 
-    assert attr(doc, ".alert > button", "aria-label") == "Close"
-    assert attr(doc, ".alert > button", "phx-click") =~ "dismiss"
-    assert "grid-cols-[auto_minmax(0,1fr)_auto]" in classes(doc, ".alert")
+    assert attr(doc, ".alert > div > button", "aria-label") == "Close"
+    assert attr(doc, ".alert > div > button", "phx-click") =~ "dismiss"
+    assert "grid-cols-[auto_minmax(0,1fr)_auto]" in classes(doc, ".alert > div")
 
     doc =
       parse(~H"""
@@ -77,8 +92,28 @@ defmodule Setzkasten.FeedbackTest do
       </.alert>
       """)
 
-    assert "sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]" in classes(doc, ".alert")
-    assert "max-sm:col-start-3" in classes(doc, ".alert > button")
+    assert "@lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]" in classes(doc, ".alert > div")
+    assert "@max-lg:col-start-3" in classes(doc, ".alert > div > button")
+  end
+
+  test "an alert without icon drops the icon's column" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.alert icon={false} on_close="dismiss">
+        Text<:actions><.button size={:sm}>Ok</.button></:actions>
+      </.alert>
+      """)
+
+    assert "@max-lg:grid-cols-[minmax(0,1fr)_auto]" in classes(doc, ".alert > div")
+    assert "@lg:grid-cols-[minmax(0,1fr)_auto_auto]" in classes(doc, ".alert > div")
+    assert "@max-lg:col-start-1" in classes(doc, ".alert > div > div:has(.btn)")
+    assert "@max-lg:col-start-2" in classes(doc, ".alert > div > button")
+
+    doc = parse(~H|<.alert icon={false} on_close="dismiss">Text</.alert>|)
+    assert "grid-cols-[minmax(0,1fr)_auto]" in classes(doc, ".alert > div")
+    refute Enum.any?(classes(doc, ".alert > div > button"), &String.starts_with?(&1, "@"))
   end
 
   test "flash renders nothing without a message" do
@@ -195,7 +230,7 @@ defmodule Setzkasten.FeedbackTest do
   test "alert, flash and empty state text break long strings" do
     assigns = %{}
     alert = parse(~H|<.alert title="T">x</.alert>|)
-    assert "wrap-anywhere" in classes(alert, ".alert > div")
+    assert "wrap-anywhere" in classes(alert, ".alert > div > div")
 
     flash = parse(~H|<.flash kind={:info} flash={%{"info" => "x"}} />|)
     assert "wrap-anywhere" in classes(flash, ".alert > div")
@@ -206,5 +241,14 @@ defmodule Setzkasten.FeedbackTest do
     page = parse(~H|<.empty_state layout={:page} title="T">x</.empty_state>|)
     assert "wrap-anywhere" in classes(page, "h2")
     assert "wrap-anywhere" in classes(page, "p")
+  end
+
+  test "neutral buttons in a soft alert get a fill and a border that hold on its tint" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "--setzkasten-alert-control: var(--color-base-100);"
+    assert length(String.split(css, "--setzkasten-alert-control: var(--color-base-300);")) == 3
+
+    assert css =~
+             ~r/\.alert-soft & \{\s*--btn-bg: var\(--setzkasten-alert-control\);\s*--btn-border: color-mix\(in oklab, var\(--color-base-content\) 50%, transparent\);/
   end
 end

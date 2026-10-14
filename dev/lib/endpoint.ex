@@ -11,6 +11,11 @@ defmodule Setzkasten.Dev.Endpoint do
   plug Plug.Static, at: "/setzkasten", from: {:setzkasten, "priv/static"}, only: ~w(fonts)
   plug Plug.Static, at: "/", from: Path.expand("../static", __DIR__), gzip: false
 
+  plug :strict_styles
   plug Plug.Session, @session_options
   plug Setzkasten.Dev.Router
+
+  # The components must work without inline styles; the browser reports any as a violation.
+  defp strict_styles(conn, _opts),
+    do: Plug.Conn.put_resp_header(conn, "content-security-policy", "style-src 'self'")
 end

@@ -131,6 +131,13 @@ defmodule Setzkasten.FormsTest do
     assert classes(doc, "input[type=checkbox]") == ~w(toggle toggle-primary)
   end
 
+  test "checkbox and radio without a colour variant take the 50 % field border" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@layer utilities\.daisyui\.l1\.l2\.l3 \{[^@]*\.checkbox \{\s*border-color: var\(--input-color, color-mix\(in oklab, var\(--color-base-content\) 50%, #0000\)\);\s*\}\s*\.radio \{\s*border-color: var\(--input-color, color-mix\(in oklab, currentColor 50%, #0000\)\);/
+  end
+
   test "checkbox hidden input follows the form attribute" do
     assigns = %{}
     doc = parse(~H|<.input name="r" id="r" type="checkbox" label="R" form="other" />|)
@@ -401,5 +408,356 @@ defmodule Setzkasten.FormsTest do
              ~w(sm:justify-end [.modal-box_&]:-mb-6 [.modal-box_&]:py-4),
              &(&1 in classes(doc, "div"))
            )
+  end
+
+  test "combobox: a labelled combobox field, a hidden field with the value, a listbox popover" do
+    assigns = %{form: to_form(%{"category" => "food"}, as: :tx)}
+
+    doc =
+      parse(~H"""
+      <.combobox
+        field={@form[:category]}
+        label="Kategorie"
+        placeholder="Suchen"
+        required
+        options={[{"Miete", "rent"}, {"Lebensmittel", "food"}]}
+      />
+      """)
+
+    assert attr(doc, "label[for=tx_category]", "class") == "fieldset-legend"
+    input = "input#tx_category"
+    assert attr(doc, input, "role") == "combobox"
+    assert attr(doc, input, "aria-autocomplete") == "list"
+    assert attr(doc, input, "aria-expanded") == "false"
+    assert attr(doc, input, "aria-controls") == "tx_category-listbox"
+    assert attr(doc, input, "autocomplete") == "off"
+    assert attr(doc, input, "name") == nil
+    assert attr(doc, input, "required") != nil
+    assert attr(doc, input, "value") == "Lebensmittel"
+    assert attr(doc, input, "placeholder") == "Suchen"
+    value = "input[data-value-input]"
+    assert attr(doc, value, "name") == "tx[category]"
+    assert attr(doc, value, "value") == "food"
+    assert attr(doc, value, "hidden") != nil
+    assert attr(doc, value, "autocomplete") == "off"
+
+    assert attr(doc, "#tx_category-combobox", "phx-hook") ==
+             "Setzkasten.Components.Forms.Combobox"
+
+    assert attr(doc, "#tx_category-combobox", "data-text") == "Lebensmittel"
+    assert "setzkasten-combobox" in classes(doc, "#tx_category-combobox")
+    assert "input" in classes(doc, "#tx_category-combobox > label")
+
+    listbox = "#tx_category-listbox"
+    assert attr(doc, listbox, "role") == "listbox"
+    assert attr(doc, listbox, "popover") == "manual"
+    assert attr(doc, listbox, "phx-mounted") == nil
+    assert attr(doc, listbox, "aria-label") == "Kategorie"
+    assert attr(doc, "#tx_category-option-0", "role") == "option"
+    assert attr(doc, "#tx_category-option-0", "aria-selected") == "false"
+    assert attr(doc, "#tx_category-option-0", "data-value") == "rent"
+    assert attr(doc, "#tx_category-option-0", "data-label") == "Miete"
+    # The chosen option carries a check.
+    assert attr(doc, "#tx_category-option-1", "data-current") == "true"
+    assert attr(doc, "#tx_category-option-0", "data-current") == nil
+    # Every option keeps the check's room; CSS shows it on the chosen one only.
+    assert count(doc, "[role=option] svg.setzkasten-option-check") == 2
+    assert text(doc, "#{listbox} [data-empty]") == "Keine Treffer"
+    assert attr(doc, "#{listbox} [data-empty]", "hidden") != nil
+    assert count(doc, "[data-create]") == 0
+  end
+
+  test "combobox groups, extra search text and the option slot" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.combobox
+        id="c"
+        name="c"
+        label="Kategorie"
+        options={[
+          {"Fixkosten", [%{label: "Miete", value: 1, key: "Wohnung", note: "fix"}]},
+          {"Alltag", [{"Lebensmittel", 2}, {"Drogerie", 3}]}
+        ]}
+      >
+        <:option :let={option}><b>{option.label}</b><i>{option[:note]}</i></:option>
+      </.combobox>
+      """)
+
+    assert attr(doc, "[role=group]:first-child", "aria-labelledby") == "c-group-0"
+    assert text(doc, "#c-group-0") == "Fixkosten"
+    assert attr(doc, "#c-group-0", "role") == "presentation"
+    assert count(doc, "[role=group]:has(#c-group-1) [role=option]") == 2
+    assert attr(doc, "#c-option-0", "data-key") == "Miete Wohnung"
+    assert text(doc, "#c-option-0 i") == "fix"
+    assert attr(doc, "#c-option-2", "data-value") == "3"
+    assert attr(doc, "input#c", "value") == ""
+
+    # As the form sends them: nil empty, false as "false", never a missing data-value.
+    doc =
+      parse(~H"""
+      <.combobox id="n" name="n" label="K" options={[{"Keine", nil}, {"Nein", false}]} />
+      """)
+
+    assert attr(doc, "#n-option-0", "data-value") == ""
+    assert attr(doc, "#n-option-1", "data-value") == "false"
+  end
+
+  test "combobox create entry: German default, the text as value or in create_field" do
+    assigns = %{form: to_form(%{"payee" => "Neu GmbH", "new" => "Bargeld"}, as: :tx)}
+
+    doc =
+      parse(~H"""
+      <.combobox field={@form[:payee]} label="Empfänger" options={[{"Bäcker", "Bäcker"}]} allow_create />
+      """)
+
+    assert attr(doc, "[data-create]", "role") == "option"
+    assert attr(doc, "[data-create]", "hidden") != nil
+    assert text(doc, "[data-create] span") == "„“ anlegen"
+    assert count(doc, "[data-create] [data-create-text]") == 1
+    # A name field: a value that matches no option is its own text.
+    assert attr(doc, "input#tx_payee", "value") == "Neu GmbH"
+    assert count(doc, "[data-create-input]") == 0
+
+    doc =
+      parse(~H"""
+      <.combobox
+        field={@form[:account]}
+        label="Konto"
+        options={[{"Giro", "1"}]}
+        allow_create
+        create_label="Konto %{text} hinzufügen"
+        create_field={@form[:new]}
+        form="other"
+      />
+      """)
+
+    assert text(doc, "[data-create] span") == "Konto  hinzufügen"
+    assert attr(doc, "[data-create-input]", "name") == "tx[new]"
+    assert attr(doc, "[data-create-input]", "form") == "other"
+    assert attr(doc, "[data-value-input]", "form") == "other"
+    # The text field belongs to the form too, so Enter in it submits (implicit submission).
+    assert attr(doc, "input#tx_account", "form") == "other"
+    assert attr(doc, "input#tx_account", "name") == nil
+    assert attr(doc, "input#tx_account", "value") == "Bargeld"
+  end
+
+  test "combobox errors wait until the value field was used, as LiveView's client reports it" do
+    # LiveView sends _unused_ only for a field that is not type="hidden" and not yet changed.
+    assigns = %{}
+    doc = parse(~H|<.combobox id="c" name="c" label="K" options={[]} />|)
+    assert attr(doc, "input[data-value-input]", "type") == "text"
+
+    live_view = Application.app_dir(:phoenix_live_view, "priv/static/phoenix_live_view.esm.js")
+    assert File.read!(live_view) =~ ~s|const isHidden = input.type === "hidden";|
+
+    params = %{"category" => "", "_unused_category" => ""}
+    errors = [category: {"can't be blank", []}]
+    assigns = %{form: to_form(params, as: :tx, errors: errors, action: :validate)}
+    doc = parse(~H|<.combobox field={@form[:category]} label="K" options={[]} />|)
+    assert count(doc, "#tx_category-error-0") == 0
+
+    assigns = %{form: to_form(%{"category" => ""}, as: :tx, errors: errors, action: :validate)}
+    doc = parse(~H|<.combobox field={@form[:category]} label="K" options={[]} />|)
+    assert count(doc, "#tx_category-error-0") == 1
+  end
+
+  test "combobox without field or id raises" do
+    assigns = %{}
+
+    assert_raise ArgumentError, ~r/needs a field or an id/, fn ->
+      parse(~H|<.combobox name="c" label="K" options={[]} />|)
+    end
+  end
+
+  test "combobox errors and help as input shows them" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.combobox id="c" name="c" label="K" options={[]} errors={["muss gewählt sein"]} help="Hilfe" />
+      """)
+
+    assert attr(doc, "input#c", "aria-invalid") == "true"
+    assert attr(doc, "input#c", "aria-describedby") == "c-error-0 c-help"
+    assert "input-error" in classes(doc, "#c-combobox > label")
+    assert text(doc, "#c-error-0") == "Muss gewählt sein"
+  end
+
+  test "the combobox hook filters loosely, keeps typing out of phx-change and fires a choice" do
+    hook = colocated_js("Setzkasten.Components.Forms")
+    assert hook =~ ~s|.normalize("NFKD").replace(/\\p{M}/gu, "")|
+    assert hook =~ ~s|.replace(/ß/g, "ss")|
+    assert hook =~ "if (e.target === this.input) e.stopPropagation()"
+    assert hook =~ ~s|this.value.dispatchEvent(new Event("input", { bubbles: true }))|
+    # Placed after filtering, at the list's final height; at least 16rem wide as in CSS.
+    assert hook =~ ~r/visible\[0\]\)\s*if \(this.isOpen\(\)\) this.place\(\)\s*\},/
+    # A patch while the list is open keeps the arrow-key highlight on an option still shown.
+    assert hook =~
+             ~r/if \(!this.isOpen\(\)\) return\s*const active = this.active && this.active.id\s*this.filter\(/
+
+    assert hook =~
+             ~r/const kept = active && this.options\(\).find\(\(option\) => option.id === active\)\s*if \(kept\) this.highlight\(kept\)/
+
+    assert hook =~ "style.minWidth = `max(16rem, ${box.width}px)`"
+    # Escape closes the list only, not a popover or dialog around it.
+    assert hook =~ ~r/case "Escape":\s*e.preventDefault\(\)\s*e.stopPropagation\(\)/
+    assert hook =~ ~r/case "Tab":\s*if \(this.active\) this.pick\(this.active\)/
+    # Enter on a text that matches nothing does not submit the old value under it.
+    assert hook =~ "else if (this.input.value !== this.text) e.preventDefault()"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-combobox \{\s*anchor-scope: --setzkasten-combobox;/
+    assert css =~ "min-width: max(16rem, anchor-size(width));"
+
+    assert css =~
+             ~r/\.setzkasten-option\[aria-selected="true"\] \{[^}]*outline: 2px solid var\(--color-primary\);/
+
+    assert css =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-option \{\s*min-height: 2.75rem;/
+  end
+
+  defp upload(errors \\ []) do
+    conf =
+      Phoenix.LiveView.UploadConfig.build(:statement, "phx-up", accept: ~w(.csv), max_entries: 1)
+
+    %{conf | errors: Enum.map(errors, &{"phx-up", &1})}
+  end
+
+  test "file_drop: a labelled drop target around the file input" do
+    assigns = %{upload: upload()}
+
+    doc =
+      parse(~H"""
+      <.file_drop upload={@upload} label="Kontoauszug" help="OFX, höchstens 5 MB" required />
+      """)
+
+    assert text(doc, "label.fieldset-legend[for=phx-up]") == "Kontoauszug"
+    zone = "label.setzkasten-file-drop"
+    assert attr(doc, zone, "for") == "phx-up"
+    assert attr(doc, zone, "phx-drop-target") == "phx-up"
+    assert text(doc, "#{zone} > span.text-sm[aria-hidden]") == "Hierher ziehen oder auswählen"
+    assert count(doc, "#{zone} svg.lucide") == 1
+    input = "#{zone} input[type=file]#phx-up"
+    assert attr(doc, input, "accept") == ".csv"
+    assert attr(doc, input, "required") != nil
+    assert attr(doc, input, "aria-describedby") == "phx-up-help"
+    assert attr(doc, input, "aria-invalid") == nil
+    assert text(doc, "#phx-up-help") == "OFX, höchstens 5 MB"
+    assert count(doc, "[id^=phx-up-error]") == 0
+  end
+
+  test "file_drop hides the browser's own file text behind a German button and the chosen name" do
+    assigns = %{upload: upload()}
+
+    doc = parse(~H|<.file_drop upload={@upload} label="Kontoauszug" />|)
+    zone = "label.setzkasten-file-drop"
+    assert classes(doc, "#{zone} > input[type=file]#phx-up") == ["sr-only"]
+    assert count(doc, "#{zone} > span:not([aria-hidden=true])") == 0
+    assert text(doc, "#{zone} .setzkasten-file-drop-button") == "Datei auswählen"
+    assert "btn" in classes(doc, "#{zone} .setzkasten-file-drop-button")
+    assert text(doc, "#{zone} .setzkasten-file-drop-button + span") == "Keine Datei ausgewählt"
+
+    entry = %Phoenix.LiveView.UploadEntry{ref: "0", upload_ref: "phx-up", client_name: "okt.csv"}
+    assigns = %{upload: %{upload() | entries: [entry]}}
+
+    doc =
+      parse(~H"""
+      <.file_drop upload={@upload} label="Datei" button_label="Wählen" no_file_label="Nichts" disabled />
+      """)
+
+    assert text(doc, ".setzkasten-file-drop-button") == "Wählen"
+    assert text(doc, ".setzkasten-file-drop-button + span") == "okt.csv"
+    assert "btn-disabled" in classes(doc, ".setzkasten-file-drop-button")
+
+    several = %{upload() | max_entries: 3}
+    assigns = %{upload: several}
+    doc = parse(~H|<.file_drop upload={@upload} label="Belege" />|)
+    assert text(doc, ".setzkasten-file-drop-button") == "Dateien auswählen"
+    assert text(doc, ".setzkasten-file-drop-button + span") == "Keine Dateien ausgewählt"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-file-drop:has\(> input:focus-visible\) \.setzkasten-file-drop-button \{\s*outline: 2px solid var\(--color-primary\);/
+  end
+
+  test "file_drop names the upload's errors in German, overridable" do
+    assigns = %{upload: upload([:too_large, :too_many_files, :mystery])}
+
+    doc = parse(~H|<.file_drop upload={@upload} label="Datei" />|)
+    assert text(doc, "#phx-up-error-0") == "Die Datei ist zu groß."
+    assert text(doc, "#phx-up-error-1") == "Zu viele Dateien."
+    assert text(doc, "#phx-up-error-2") == "Die Datei ließ sich nicht hochladen."
+    input = "input[type=file]"
+    assert attr(doc, input, "aria-invalid") == "true"
+    assert attr(doc, input, "aria-describedby") == "phx-up-error-0 phx-up-error-1 phx-up-error-2"
+    assert "setzkasten-file-drop-error" in classes(doc, "label.setzkasten-file-drop")
+
+    doc =
+      parse(~H"""
+      <.file_drop upload={@upload} label="Datei" error_labels={%{too_large: "Größer als 5 MB."}} />
+      """)
+
+    assert text(doc, "#phx-up-error-0") == "Größer als 5 MB."
+    assert text(doc, "#phx-up-error-1") == "Zu viele Dateien."
+
+    doc =
+      parse(
+        ~H|<.file_drop upload={@upload} label="Datei" errors={["Bitte erst ein Konto wählen"]} />|
+      )
+
+    assert count(doc, "[id^=phx-up-error]") == 1
+    assert text(doc, "#phx-up-error-0") == "Bitte erst ein Konto wählen"
+  end
+
+  test "file_drop turns primary while a file is dragged over it" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-file-drop\.phx-drop-target-active \{\s*border-style: solid;\s*border-color: var\(--color-primary\);/
+  end
+
+  test "comboboxes share one option list rendered once" do
+    assigns = %{options: [{"Alltag", [{"Lebensmittel", "food"}, {"Drogerie", "drug"}]}]}
+
+    doc =
+      parse(~H"""
+      <.combobox_options id="cats" options={@options} />
+      <.combobox
+        :for={i <- 1..2}
+        id={"part-#{i}"}
+        name={"part[#{i}]"}
+        label="Kategorie"
+        value="drug"
+        options_from="cats"
+        options={[{"Drogerie", "drug"}]}
+      />
+      """)
+
+    # A hidden div, not a <template>: LiveView patches its options like any other markup.
+    assert count(doc, "template") == 0
+    assert attr(doc, "div#cats", "hidden") != nil
+    assert count(doc, "[role=option]") == 2
+    assert count(doc, "#cats [role=option]") == 2
+    assert count(doc, "#part-1-listbox [data-options][phx-update=ignore]#part-1-options") == 1
+    assert attr(doc, "#part-1-combobox", "data-options-from") == "cats"
+    assert attr(doc, "input#part-2", "value") == "Drogerie"
+
+    assert attr(doc, "#cats [role=group] #cats-option-0", "data-value") == "food"
+
+    hook = colocated_js("Setzkasten.Components.Forms")
+
+    assert hook =~
+             "this.shared.replaceChildren(...[...source.children].map((child) => child.cloneNode(true)))"
+
+    assert hook =~ "option.id = `${prefix}-option-${i}`"
+    assert hook =~ ~s|if (this.shared) this.shared.replaceChildren()|
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-option:not\(\[data-current\]\) > \.setzkasten-option-check \{\s*visibility: hidden;/
   end
 end

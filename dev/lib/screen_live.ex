@@ -3,7 +3,7 @@ defmodule Setzkasten.Dev.ScreenLive do
   use Phoenix.LiveView
   use Setzkasten
   alias Phoenix.LiveView.JS
-  alias Setzkasten.Dev.{Dashboard, Data, Holdings}
+  alias Setzkasten.Dev.{Budget, Dashboard, Data, Holdings}
 
   @screens [
     {"posts", "Beiträge (CMS)",
@@ -15,7 +15,9 @@ defmodule Setzkasten.Dev.ScreenLive do
     {"holdings", "Bestand (Depot)",
      "Seitenleiste mit Depots und Konten, Depot-Menü, Zahlentabelle mit Gruppen, Aufteilung, Kosten."},
     {"dashboard", "Startseite (Hausautomation)",
-     "Live-Kacheln, Raumluft, Energiefluss, Steckdosen und Diagramme, Plüsch-Dock."}
+     "Live-Kacheln, Raumluft, Energiefluss, Steckdosen und Diagramme, Plüsch-Dock."},
+    {"budget", "Konto (Haushaltsbuch)",
+     "Seitenleiste mit Kontogruppen, Summen und negativen Salden; Auswahlleiste mit Kategorisieren."}
   ]
 
   # Allocation tab, its URL parameter and label; the first is the default.
@@ -38,7 +40,9 @@ defmodule Setzkasten.Dev.ScreenLive do
        holdings: Data.holdings(),
        allocation: Data.allocation(),
        live_step: 0,
-       ticking: false
+       ticking: false,
+       transactions: Budget.transactions(),
+       selected: []
      )}
   end
 
@@ -57,6 +61,14 @@ defmodule Setzkasten.Dev.ScreenLive do
        allocation_tab: Map.get(@allocation_params, params["a"], :regions)
      )
      |> start_ticking()}
+  end
+
+  defp update_selected(socket, fun) do
+    selected = socket.assigns.selected
+
+    update(socket, :transactions, fn txs ->
+      Enum.map(txs, &if(&1.id in selected, do: fun.(&1), else: &1))
+    end)
   end
 
   # The dashboard's live values change every 10 s, slow enough for the change animation.
@@ -85,6 +97,44 @@ defmodule Setzkasten.Dev.ScreenLive do
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Buchung erfassen“.")}
 
   def handle_event("save", _params, socket), do: {:noreply, push_saved(socket, "settings-save")}
+
+  def handle_event("toggle_tx", %{"id" => id}, socket) do
+    {:noreply,
+     update(socket, :selected, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
+
+  def handle_event("clear_selection", _params, socket),
+    do: {:noreply, assign(socket, selected: [])}
+
+  def handle_event("approve_selected", _params, socket) do
+    {:noreply,
+     socket
+     |> update_selected(&%{&1 | approved: true})
+     |> assign(selected: [])}
+  end
+
+  def handle_event("categorise_selected", %{"category" => category}, socket)
+      when category != "" do
+    {:noreply,
+     socket
+     |> update_selected(&%{&1 | category: category})
+     |> assign(selected: [])}
+  end
+
+  def handle_event("categorise_selected", _params, socket), do: {:noreply, socket}
+
+  def handle_event("delete_selected", _params, socket) do
+    selected = socket.assigns.selected
+
+    {:noreply,
+     socket
+     |> update(:transactions, fn txs -> Enum.reject(txs, &(&1.id in selected)) end)
+     |> assign(selected: [])
+     |> put_flash(:info, "Buchungen gelöscht (Demo).")}
+  end
+
+  def handle_event("add_account", _params, socket),
+    do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Konto hinzufügen“.")}
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
@@ -184,6 +234,7 @@ defmodule Setzkasten.Dev.ScreenLive do
           </:trailing>
           <:action label="Bearbeiten" icon="pencil" navigate="/screens/posts" />
           <:action
+            id={"post-#{post.id}-delete"}
             label="Löschen"
             icon="trash-2"
             danger
@@ -534,6 +585,153 @@ defmodule Setzkasten.Dev.ScreenLive do
       </div>
     </.app_shell>
     <.flash_group flash={@flash} />
+    """
+  end
+
+  def render(%{screen: "budget"} = assigns) do
+    assigns = assign(assigns, groups: Budget.groups(), account: Budget.account(assigns.marked))
+
+    ~H"""
+    <.app_shell
+      layout={:sidebar}
+      current={{:account, @account.id}}
+      width={:wide}
+      amount_tone={:negative}
+    >
+      <:brand><.icon name="coins" class="size-5 text-sidebar-accent" />Haushaltsbuch</:brand>
+      <:nav key={:budget} label="Budget" icon="wallet" navigate="/screens/budget" />
+      <:nav key={:accounts} label="Alle Konten" icon="landmark" navigate="/screens/budget" />
+      <:nav
+        :for={{group, account, first?} <- Budget.nav_accounts()}
+        key={{:account, account.id}}
+        label={account.name}
+        glyph={account.glyph || String.first(account.name)}
+        amount={account.balance}
+        count={account.open}
+        count_label="offen"
+        section={group.label}
+        section_amount={first? && Budget.total(group)}
+        rail={false}
+        dock={false}
+        parent={:accounts}
+        navigate={"/screens/budget?k=#{account.id}"}
+      />
+      <:nav
+        key={:add_account}
+        label="Konto hinzufügen"
+        icon="plus"
+        section={List.last(@groups).label}
+        on_click="add_account"
+      />
+      <:nav key={:import} label="Import" icon="upload" navigate="/screens/budget" />
+      <:nav key={:reports} label="Berichte" navigate="/screens/budget" rail={false} dock={false} />
+      <:nav key={:settings} label="Einstellungen" icon="settings" navigate="/screens/budget" />
+      <:account :let={place}>
+        <.dropdown
+          id={"budget-account-#{place}"}
+          label="Konto"
+          align={if place == :bar, do: :end, else: :start}
+          position={if place == :sidebar, do: :top, else: :bottom}
+          variant={:ghost}
+          chevron={false}
+          class={place == :sidebar && "w-full"}
+          trigger_class={if place == :sidebar, do: "w-full justify-start", else: "btn-square"}
+        >
+          <:trigger>
+            <.avatar initials="M" size={:sm} shape={:round} />
+            <span :if={place == :sidebar} class="truncate">mira@example.com</span>
+          </:trigger>
+          <:item navigate="/screens/budget" icon="settings">Einstellungen</:item>
+          <:item navigate="/" icon="log-out">Abmelden</:item>
+        </.dropdown>
+      </:account>
+      <.header>
+        {@account.name}
+        <:subtitle>
+          Saldo <.amount value={@account.balance} tone={:negative} />
+        </:subtitle>
+      </.header>
+      <.table id="budget-transactions" rows={@transactions} row_id={&"tx-#{&1.id}"}>
+        <:col :let={tx}>
+          <input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            checked={tx.id in @selected}
+            aria-label={"Auswählen: #{tx.payee}"}
+            phx-click="toggle_tx"
+            phx-value-id={tx.id}
+          />
+        </:col>
+        <:col :let={tx} label="Datum">{tx.date}</:col>
+        <:col :let={tx} label="Empfänger">
+          {tx.payee}
+          <.badge :if={!tx.approved} tone={:info} class="ms-1">offen</.badge>
+        </:col>
+        <:col :let={tx} label="Kategorie" show_from={:md}>
+          {Budget.category_label(tx.category) || "–"}
+        </:col>
+        <:col :let={tx} label="Betrag" align={:end}><.amount value={tx.amount} tone /></:col>
+      </.table>
+      <.selection_bar
+        id="tx-selection"
+        count={length(@selected)}
+        on_clear="clear_selection"
+        label={if length(@selected) == 1, do: "1 Buchung", else: "%{count} Buchungen"}
+      >
+        <.popover
+          id="categorise"
+          title="Kategorisieren"
+          position={:top}
+          variant={:ghost}
+          trigger_class="btn-sm"
+        >
+          <:trigger><.icon name="tag" />Kategorisieren</:trigger>
+          <form id="categorise-form" phx-submit="categorise_selected" class="grid gap-3">
+            <.combobox
+              id="categorise-category"
+              name="category"
+              label="Kategorie"
+              hide_label
+              placeholder="Kategorie suchen"
+              options={Budget.categories()}
+              autofocus
+            />
+            <.button type="submit" size={:sm} variant={:primary} class="justify-self-end">
+              Zuweisen
+            </.button>
+          </form>
+        </.popover>
+        <.button
+          :if={Enum.any?(@transactions, &(&1.id in @selected and !&1.approved))}
+          size={:sm}
+          variant={:ghost}
+          icon="check"
+          phx-click="approve_selected"
+        >
+          Bestätigen
+        </.button>
+        <.dropdown
+          id="tx-selection-more"
+          label="Weitere Aktionen"
+          variant={:ghost}
+          align={:end}
+          chevron={false}
+          trigger_class="btn-sm btn-square"
+        >
+          <:trigger><.icon name="ellipsis-vertical" /></:trigger>
+          <:item
+            on_click="delete_selected"
+            icon="trash-2"
+            danger
+            confirm={"#{length(@selected)} Buchungen löschen?"}
+          >
+            Löschen
+          </:item>
+        </.dropdown>
+      </.selection_bar>
+    </.app_shell>
+    <.flash_group flash={@flash} />
+    <.confirm_dialog />
     """
   end
 

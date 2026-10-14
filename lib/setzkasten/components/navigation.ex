@@ -15,8 +15,12 @@ defmodule Setzkasten.Components.Navigation do
     * `:patch` – links (`patch`), the selected one has `aria-current="page"`. Options are
       `{label, path}` (selected when `value` equals the path) or `{label, value, path}`.
     * `:button` – buttons with `aria-pressed`; each sends the button's `phx-click` (from
-      `rest`) with `phx-value-value`. Options are `{label, value}`.
+      `rest`) with the option as `value` (the button's `value`, which LiveView sends over a
+      `phx-value-value`; both are rendered). Options are `{label, value}`.
     * `:radio` – a form field: sr-only radios in `label.btn`, from `field` or `name`.
+
+  Option values are sent as strings (`to_string/1`): `false` arrives as `"false"`, `nil` as
+  `""`.
 
   Options may also be maps with `:label`, `:value`, `:path`, `:icon` and `:long_label`, the
   accessible name of a short label (`aria-label`, no tooltip): "1 M" reads "1 Monat". Let it
@@ -113,7 +117,8 @@ defmodule Setzkasten.Components.Navigation do
         class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-pressed={to_string(selected?(option, @value))}
         aria-label={option[:long_label]}
-        phx-value-value={option.value}
+        value={to_string(option.value)}
+        phx-value-value={to_string(option.value)}
         {@rest}
       >
         <.icon :if={option[:icon]} name={option[:icon]} />{option.label}
@@ -137,7 +142,7 @@ defmodule Setzkasten.Components.Navigation do
         <input
           type="radio"
           name={@name}
-          value={option.value}
+          value={to_string(option.value)}
           class="sr-only"
           checked={selected?(option, @value)}
           aria-label={option[:long_label]}
@@ -154,6 +159,9 @@ defmodule Setzkasten.Components.Navigation do
   Navigation between sibling views of one object (`tabs tabs-border`). Links only,
   server-rendered: the active tab carries `aria-current="page"` (daisyUI styles it, no
   `tab-active`). 44px on touch screens.
+
+  The first tab's label lines up with the content edge (the page title above): the strip
+  starts a tab's padding (12px) before it, so each tab keeps its full hit area.
 
   Tabs that do not fit scroll sideways: on phones the strip runs into `main`'s 16px gutters,
   tabs snap to the start, the end edge fades while more tabs follow, and an active tab out of
@@ -188,8 +196,8 @@ defmodule Setzkasten.Components.Navigation do
       aria-label={@label}
       phx-hook=".ScrollActive"
       class={[
-        "setzkasten-scroller tabs tabs-border flex-nowrap overflow-x-auto snap-x scroll-px-4",
-        "max-sm:-mx-4 max-sm:px-4",
+        "setzkasten-scroller tabs tabs-border flex-nowrap overflow-x-auto snap-x scroll-pe-4",
+        "-ms-3 max-sm:-mx-4 max-sm:ps-1 max-sm:pe-4 max-sm:scroll-ps-1",
         @class
       ]}
       {@rest}
@@ -299,7 +307,8 @@ defmodule Setzkasten.Components.Navigation do
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (an event name with
   `phx-target`, e.g. `@myself`, or a `%JS{}` that carries its own target:
   `JS.push("undo", target: @myself)`),
-  `icon`, `active` (selected, `aria-current="page"`), `danger`, `divider` (a line above the
+  `icon`, `active` (selected: `aria-current="page"` on a link, `"true"` on a button, e.g. the
+  current sort order), `danger`, `divider` (a line above the
   item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
   `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
@@ -405,7 +414,8 @@ defmodule Setzkasten.Components.Navigation do
             :if={!(item[:navigate] || item[:patch] || item[:href])}
             type="button"
             id={item[:id]}
-            class={item[:danger] && "text-error-ink"}
+            class={[item[:active] && "menu-active", item[:danger] && "text-error-ink"]}
+            aria-current={item[:active] && "true"}
             disabled={item[:disabled]}
             aria-haspopup={item[:confirm] && "dialog"}
             phx-click={close_menu("##{@id}") |> JS.concat(entry_click(item, @confirm_id))}

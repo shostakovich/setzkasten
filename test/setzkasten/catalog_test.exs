@@ -11,7 +11,9 @@ defmodule Setzkasten.CatalogTest do
 
   for path <- paths do
     test "catalog page #{path} renders" do
-      {:ok, view, html} = live(build_conn(), unquote(path))
+      conn = get(build_conn(), unquote(path))
+      assert Plug.Conn.get_resp_header(conn, "content-security-policy") == ["style-src 'self'"]
+      {:ok, view, html} = live(conn)
       assert html =~ ~s(id="main")
       refute html =~ ~s(style=")
       assert render(view) =~ "</main>"
@@ -39,6 +41,18 @@ defmodule Setzkasten.CatalogTest do
     assert render(view) =~ "Bisher gelöscht (Demo): 0"
     render_hook(view, "delete", %{"title" => "X"})
     assert render(view) =~ "Bisher gelöscht (Demo): 1"
+  end
+
+  test "a confirmed submit button sends its form with its name and value" do
+    {:ok, view, _} = live(build_conn(), "/overlays")
+
+    html =
+      view
+      |> form("#import-form")
+      |> put_submitter("#import-replace")
+      |> render_submit()
+
+    assert html =~ "ersetzt (Demo)"
   end
 
   test "a confirm inside a live component parks a push that targets the component's cid" do

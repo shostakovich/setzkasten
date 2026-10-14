@@ -48,9 +48,16 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   A data table (`table tabular-nums`), as Phoenix's `<.table>` with streams, plus column
-  priorities, group rows, a total row and an empty row. `size={:sm}` tightens the rows only
-  (8px instead of 12px above and below); text stays 14px and the cell padding at the sides
-  stays as in `:md`, so the edges line up.
+  priorities, group rows, a total row and an empty row. Text is 14px and the cell padding at
+  the sides the same in every `size`, so the edges line up:
+
+    * `:md` (default): 45px rows.
+    * `:sm`: 8px instead of 12px above and below a cell, about 37px rows, for read-only data
+      next to other content; rows grow with their content and are no touch targets.
+    * `:dense`: data grids (a register, a budget). Rows are 36px on fine pointers and 44px on
+      coarse ones; inputs, selects and buttons in cells are 32px high (44px on coarse
+      pointers), so an editable row keeps the row height. Use it for rows that are targets
+      (`row_link`, controls) or many rows to scan.
 
   Flat by default: the table sits on the page between `border-y` hairlines and
   runs edge to edge on phones. `flush` drops both for a card's `:list` slot or a modal.
@@ -60,7 +67,10 @@ defmodule Setzkasten.Components.Data do
   link stretched over the row; a row for which it returns `nil` has no link and no hover.
   `row_attrs` returns extra attributes for a row's `<tr>` (`aria-current`, `data-*`,
   `hidden`, …) as a map or keyword list, or `nil` for none; its `class` is added to the row's
-  own classes, an `id` is dropped (`row_id` and streams own the row ids).
+  own classes, an `id` is dropped (`row_id` and streams own the row ids). A row with
+  `aria-current` (the current row, e.g. the one open in a side panel or in edit) or
+  `aria-selected="true"` (in a `role="grid"`) takes the `row-selected` fill and a 3px bar at
+  its start. The bar belongs to the first cell, so such a table keeps its first column visible.
   Both get the row item, also with streams and `groups`. `groups` is a list of
   `%{id, label, rows}`, one `<tbody>` each. `:foot` holds the cells of the total row (use
   `show_from/1` on hidden columns).
@@ -82,7 +92,7 @@ defmodule Setzkasten.Components.Data do
     default: nil,
     doc: "fn row -> map or keyword list of `<tr>` attributes, or nil"
 
-  attr :size, :atom, default: :md, values: [:md, :sm]
+  attr :size, :atom, default: :md, values: [:md, :sm, :dense]
   attr :zebra, :boolean, default: false
   attr :flush, :boolean, default: false
   attr :class, :any, default: nil
@@ -103,7 +113,7 @@ defmodule Setzkasten.Components.Data do
 
     ~H"""
     <div class={["overflow-x-auto", !@flush && flat(), @class]} {@rest}>
-      <table class={["table tabular-nums", @size == :sm && sm_rows(), @zebra && "table-zebra"]}>
+      <table class={["table tabular-nums", size_class(@size), @zebra && "table-zebra"]}>
         <thead>
           <tr>
             <th :for={col <- @col} scope="col" class={col_class(col)}>{col[:label]}</th>
@@ -204,9 +214,10 @@ defmodule Setzkasten.Components.Data do
 
   defp flat, do: @flat
 
-  # Tighter rows, not daisyUI's table-sm: that drops body text to 12px under a 14px head and
-  # narrows the cell padding, so a small table's edges would not line up with a :md one.
-  defp sm_rows, do: "[&_:is(th,td)]:py-2"
+  # Not daisyUI's table-sm: its 12px text and narrower padding would not line up with :md.
+  defp size_class(:md), do: nil
+  defp size_class(:sm), do: "[&_:is(th,td)]:py-2"
+  defp size_class(:dense), do: "setzkasten-table-dense"
 
   defp col_class(col) do
     [
@@ -229,12 +240,13 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   Joins the parts of a meta line with the separator of `meta_sep/1`, so the dot never starts a
-  line. `nil` and `""` parts are left out, so an optional part leaves no dangling dot.
+  line. `nil`, `false` and `""` parts are left out, so an optional part (`cond && part`) leaves
+  no dangling dot.
 
       join_meta(["IE00BK5BQT80", nil, "Langfristig"]) #=> "IE00BK5BQT80\u2060\u00A0· Langfristig"
   """
   def join_meta(parts) when is_list(parts) do
-    parts |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(@meta_sep)
+    parts |> Enum.reject(&(&1 in [nil, false, ""])) |> Enum.join(@meta_sep)
   end
 
   @doc """
@@ -610,12 +622,15 @@ defmodule Setzkasten.Components.Data do
   @doc """
   Money in de-DE (`Setzkasten.Format.money/2`) inside `<data value>`, `tabular-nums`, no wrap.
   `tone` colours negative values `error-ink`, positive `success-ink`, zero 70 % (as shown, so
-  a value that rounds to zero is zero). `decimals` (default 2; `0` for whole-currency KPIs)
+  a value that rounds to zero is zero). `tone={:negative}` colours only what needs attention:
+  negative `error-ink`, zero 70 %, positive plain text, for balances in lists where green on
+  every positive value would be noise. `decimals` (default 2; `0` for whole-currency KPIs)
   rounds half away from zero; `<data value>` keeps the exact value.
   `size={:lg}` for totals; inside `<.stat>` the stat sets the size. `currency_display={:code}`
   shows the ISO code instead of the symbol ("1,10 USD"), e.g. where several currencies meet.
 
       <.amount value={-7420} signed tone />
+      <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
       <.amount value={110} currency="USD" currency_display={:code} />
 
@@ -629,7 +644,12 @@ defmodule Setzkasten.Components.Data do
   attr :currency_display, :atom, default: :symbol, values: [:symbol, :code]
   attr :decimals, :integer, default: 2
   attr :signed, :boolean, default: false
-  attr :tone, :boolean, default: false
+
+  attr :tone, :any,
+    default: false,
+    values: [false, true, :negative],
+    doc: "`true`: by sign; `:negative`: only negative and zero"
+
   attr :size, :atom, default: :inherit, values: [:inherit, :lg]
   attr :animate, :boolean, default: false, doc: "count on change; needs `id`"
   attr :class, :any, default: nil
@@ -646,7 +666,7 @@ defmodule Setzkasten.Components.Data do
       phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
-        @tone && tone_class(Format.shown_sign(@value, @decimals)),
+        @tone && tone_class(Format.shown_sign(@value, @decimals), @tone),
         @size == :lg && "text-lg font-semibold",
         @class
       ]}
@@ -660,9 +680,10 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
-  defp tone_class(-1), do: "text-error-ink"
-  defp tone_class(1), do: "text-success-ink"
-  defp tone_class(0), do: "text-base-content/70"
+  defp tone_class(-1, _tone), do: "text-error-ink"
+  defp tone_class(1, true), do: "text-success-ink"
+  defp tone_class(1, :negative), do: nil
+  defp tone_class(0, _tone), do: "text-base-content/70"
 
   @doc """
   A KPI tile: daisyUI `stat` on base-100 with a hairline and `tabular-nums`.

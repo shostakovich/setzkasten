@@ -3,9 +3,10 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
   use Phoenix.Component
   use Setzkasten
   import Setzkasten.Dev.Demo
+  alias Phoenix.LiveView.JS
 
   def title, do: "Dialoge"
-  def summary, do: "modal, confirm_dialog, disclosure"
+  def summary, do: "modal, confirm_dialog, popover, disclosure, tooltip"
 
   def render(assigns) do
     ~H"""
@@ -36,7 +37,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           Langes Formular (sticky action_bar)
         </.button>
       </.demo>
-      <.modal id="booking" title="Buchung bearbeiten">
+      <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
           <.input name="m[payee]" id="m-payee" label="Empfänger" value="Tankstelle Aral" />
           <.input
@@ -50,7 +51,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           />
         </div>
         <:actions>
-          <.button phx-click={hide_modal("booking")}>Abbrechen</.button>
+          <.button id="booking-cancel" phx-click={hide_modal("booking")}>Abbrechen</.button>
           <.button variant={:primary} phx-click={hide_modal("booking")}>Speichern</.button>
         </:actions>
       </.modal>
@@ -133,6 +134,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </:intro>
       <.demo title="Auslöser" class="flex flex-wrap gap-3">
         <.button
+          id="delete-demo"
           variant={:danger_outline}
           icon="trash-2"
           confirm="Ausgabe „Wocheneinkauf“ löschen?"
@@ -145,11 +147,153 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button icon="archive">Archivieren (ohne Frage)</.button>
         <:note>Bisher gelöscht (Demo): {@deleted}</:note>
       </.demo>
+      <.demo title="Formular absenden (type=&quot;submit&quot;)">
+        <form id="import-form" phx-submit="import" class="flex flex-wrap items-end gap-3">
+          <.input
+            name="import[file]"
+            id="import-file"
+            type="select"
+            label="Datei"
+            options={["umsaetze-oktober.ofx", "umsaetze-september.ofx"]}
+          />
+          <.button type="submit" id="import-add" name="mode" value="add" variant={:primary}>
+            Ergänzen
+          </.button>
+        </form>
+        <.button
+          type="submit"
+          id="import-replace"
+          form="import-form"
+          name="mode"
+          value="replace"
+          variant={:danger_outline}
+          confirm="Alle Buchungen des Kontos ersetzen?"
+          confirm_text="Buchungen, die nicht in der Datei stehen, werden gelöscht."
+          confirm_label="Ersetzen"
+          class="mt-3"
+        >
+          Ersetzen
+        </.button>
+        <form id="close-account-form" phx-submit="close_account" class="mt-3 grid max-w-sm gap-3">
+          <.combobox
+            id="close-target"
+            name="close[target]"
+            label="Restbetrag überweisen auf"
+            options={[{"Girokonto", "giro"}, {"Sparkonto", "savings"}]}
+          />
+          <.button
+            type="submit"
+            id="close-account"
+            confirm="Konto „Tagesgeld“ schließen?"
+            confirm_label="Schließen"
+          >
+            Konto schließen
+          </.button>
+        </form>
+        <:note>
+          „Ersetzen“ steht außerhalb des Formulars (<code>form</code>-Attribut) und fragt erst;
+          die Bestätigung sendet das Formular mit <code>mode=replace</code>. Enter im Feld sendet
+          über den ersten Submit-Button, „Ergänzen“.
+        </:note>
+      </.demo>
       <.demo title="In einer LiveComponent, phx-target">
         <.live_component module={Setzkasten.Dev.TargetDemo} id="target-demo" />
         <:note>
           Das Ereignis geht mit <code>phx-target</code>
           an die Komponente, nicht an die Seite; der Zähler oben bleibt stehen.
+        </:note>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="popover" name="<.popover>" title="Popover" code={code(4)}>
+      <:intro>
+        Freier Inhalt an seinem Auslöser, meist ein kleines Formular; kein Menü. Liegt in der
+        obersten Ebene (Popover-API) und entkommt so scrollenden Tabellen. Schließt bei Klick
+        daneben, mit Escape und <code>hide_popover/1</code>; Escape gibt den Fokus zurück. Platziert
+        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Unter <code>sm</code>
+        ein Blatt von unten.
+      </:intro>
+      <.demo title="Formular, align={:end}, position={:top}" class="flex flex-wrap gap-3">
+        <.popover id="pop-rename" title="Kategorie umbenennen">
+          <:trigger><.icon name="pencil" />Umbenennen</:trigger>
+          <form
+            id="pop-rename-form"
+            class="grid gap-3"
+            phx-submit={JS.push("rename") |> hide_popover("pop-rename")}
+          >
+            <.input name="name" id="pop-rename-name" label="Name" value="Lebensmittel" autofocus />
+            <div class="flex justify-end gap-2">
+              <.button
+                id="pop-rename-delete"
+                size={:sm}
+                variant={:danger_outline}
+                class="me-auto"
+                confirm="Kategorie „Lebensmittel“ löschen?"
+                phx-click={JS.push("delete") |> hide_popover("pop-rename")}
+              >
+                Löschen
+              </.button>
+              <.button size={:sm} phx-click={hide_popover("pop-rename")}>Abbrechen</.button>
+              <.button type="submit" size={:sm} variant={:primary}>Speichern</.button>
+            </div>
+          </form>
+        </.popover>
+        <.popover id="pop-end" title="Farbe" align={:end} variant={:ghost} chevron>
+          <:trigger>Markierung</:trigger>
+          <p>Rechtsbündig am Auslöser, mit Pfeil.</p>
+        </.popover>
+        <.popover id="pop-top" position={:top} label="Hinweis" trigger_class="btn-square">
+          <:trigger><.icon name="info" /></:trigger>
+          <p class="max-w-60">Öffnet nach oben, für Auslöser am unteren Rand.</p>
+        </.popover>
+      </.demo>
+      <.demo title="In einer scrollenden Tabelle, vom Server geöffnet (anchor, show, on_cancel)">
+        <div class="max-h-40 overflow-auto rounded-box border border-base-content/10">
+          <table class="table">
+            <tbody>
+              <tr :for={{cell, label, amount} <- cover_cells()}>
+                <td>{label}</td>
+                <td class="text-end">
+                  <button
+                    id={"cover-#{cell}"}
+                    type="button"
+                    class="btn btn-ghost btn-sm tabular-nums"
+                    aria-haspopup="dialog"
+                    phx-click="open_cover"
+                    phx-value-cell={cell}
+                  >
+                    <.amount value={amount} tone />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <.popover
+          :if={@cover}
+          id="pop-cover"
+          title="Überzug decken"
+          anchor={"cover-#{@cover}"}
+          align={:end}
+          show
+          on_cancel={JS.push("cover_closed")}
+        >
+          <form id="pop-cover-form" class="grid gap-3" phx-submit="cover">
+            <.input
+              name="from"
+              id="pop-cover-from"
+              type="select"
+              label="Decken aus"
+              options={["Zu verteilen", "Urlaub", "Geschenke"]}
+              autofocus
+            />
+            <.button type="submit" size={:sm} variant={:primary} class="justify-self-end">
+              Decken
+            </.button>
+          </form>
+        </.popover>
+        <:note>
+          Der Betrag öffnet das Popover über den Server; es entkommt dem Rahmen der Tabelle.
         </:note>
       </.demo>
     </.showcase>
@@ -171,12 +315,40 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.disclosure id="values-open" summary="Werte als Tabelle (offen)" open>
           Oktober 9,8&nbsp;kWh · September 212,4&nbsp;kWh · August 341,0&nbsp;kWh
         </.disclosure>
+        <.disclosure id="overspent">
+          <:title>Überzogen <.amount value={-4_210} tone class="ms-2 font-normal" /></:title>
+          Lebensmittel und Tanken haben mehr ausgegeben, als zugewiesen war.
+        </.disclosure>
         <.disclosure id="retired-funds" summary="Ausgemustert" count={2}>
           Zwei Fonds ohne Bestand.
         </.disclosure>
         <.disclosure id="more-options" variant={:button} icon="settings" summary="Weitere Optionen">
           <.input name="o[notify]" id="o-notify" type="toggle" label="Beteiligte benachrichtigen" />
         </.disclosure>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="tooltip" name="<.tooltip>" title="Tooltip" code={code(3)}>
+      <:intro>
+        Ein kurzer Hinweis bei Zeiger und Tastaturfokus. Screenreader bekommen den Text als
+        Beschreibung des ersten fokussierbaren Elements, außer er wiederholt nur dessen Namen. Auf
+        Touch-Geräten erscheint er höchstens beim Tippen: nie für etwas, das man wissen muss.
+      </:intro>
+      <.demo title="Oben, unten, links, rechts" class="flex flex-wrap items-center gap-6 py-8">
+        <.tooltip id="tip-sync" text="Zuletzt vor 5 Minuten abgeglichen">
+          <.button icon="refresh-cw">Abgleichen</.button>
+        </.tooltip>
+        <.tooltip id="tip-edit" text="Bearbeiten" placement={:bottom}>
+          <.button variant={:ghost} icon="pencil" icon_only label="Bearbeiten" />
+        </.tooltip>
+        <.tooltip id="tip-left" text="Wird am Monatsende gebucht" placement={:left}>
+          <.badge tone={:info} tabindex="0">Geplant</.badge>
+        </.tooltip>
+        <.tooltip id="tip-right" text="Gemeinsames Haushaltskonto" placement={:right}>
+          <span class="inline-block max-w-32 truncate text-sm" tabindex="0">
+            Gemeinsames Haushaltskonto
+          </span>
+        </.tooltip>
       </.demo>
     </.showcase>
     """
@@ -214,8 +386,40 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <.button variant={:danger_outline} icon="trash-2" confirm="Ausgabe löschen?"
              phx-click="delete" phx-value-id={@expense.id}>Löschen</.button>
 
+    <%!-- a submit button: the confirmation sends its form, with name and value --%>
+    <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger_outline}
+             confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
+
     <%!-- inside a live component --%>
     <.button confirm="Eintrag löschen?" phx-click="delete" phx-target={@myself}>Löschen</.button>
+    """
+  end
+
+  defp code(4) do
+    ~S"""
+    <.popover id="rename" title="Kategorie umbenennen">
+      <:trigger><.icon name="pencil" /> Umbenennen</:trigger>
+      <form phx-submit={JS.push("rename") |> hide_popover("rename")} class="grid gap-3">
+        <.input name="name" id="rename-name" label="Name" value={@category.name} autofocus />
+        <.button type="submit" variant={:primary} size={:sm}>Speichern</.button>
+      </form>
+    </.popover>
+
+    <%!-- opened by the server at a cell elsewhere --%>
+    <.popover :if={@cover} id="cover" title="Überzug decken" anchor={"cover-#{@cover}"}
+              align={:end} show on_cancel={JS.push("cover_closed")}>…</.popover>
+    """
+  end
+
+  defp code(3) do
+    ~S"""
+    <.tooltip id="sync-hint" text="Zuletzt vor 5 Minuten abgeglichen">
+      <.button icon="refresh-cw">Abgleichen</.button>
+    </.tooltip>
+    <%!-- the text repeats the button's name: no description --%>
+    <.tooltip id="edit-hint" text="Bearbeiten" placement={:bottom}>
+      <.button variant={:ghost} icon="pencil" icon_only label="Bearbeiten" />
+    </.tooltip>
     """
   end
 
@@ -224,5 +428,16 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
     """
+  end
+
+  defp cover_cells do
+    for {label, amount, i} <- [
+          {"Lebensmittel", -4_210, 1},
+          {"Tanken", -1_890, 2},
+          {"Drogerie", -560, 3},
+          {"Geschenke", -2_500, 4},
+          {"Urlaub", -12_000, 5}
+        ],
+        do: {"cell-#{i}", label, amount}
   end
 end
