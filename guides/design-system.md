@@ -579,8 +579,8 @@ Visible and accessible default strings are German; each has an attr:
   `size={:lg}` for totals; `animate` (needs `id`) for a rolling number (2.10).
 - **`Setzkasten.Format`** – the components' German formats for the app's own text: `money/2`, `number/2`,
   `machine/2`, and dates and times: `date/2` ("14.10.2026"; `weekday: :short` "Mi, 14.10.2026", `year: false`
-  "14.10."), `datetime/2` ("14.10.2026, 18:05") and `time/2` ("18:05"). They take the app's local time and do no
-  time zone math; a `DateTime` passed to `date/2` gives the date it carries.
+  "14.10."), `datetime/2` ("14.10.2026, 18:05") and `time/2` ("18:05"). They take the app's local time as `Date`,
+  `Time` or `NaiveDateTime` and do no time zone math: convert a `DateTime` to local time first.
 - **`stat`** – KPI tile: `label`, `value`, `unit`, `desc` (or the `:note` slot for markup, e.g. a toned
   `amount`; the slot wins), `tone` (`:success | :warning | :error`, the value in that ink), `size` `:md` (32px) |
   `:sm` (24px, tile grids), `stale` (badge, never faded text), `loading` (skeleton); with `id`, a rolling

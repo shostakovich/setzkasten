@@ -54,11 +54,21 @@ defmodule Setzkasten.FormatTest do
     for {day, name} <- Enum.zip(12..18, ~w(Mo Di Mi Do Fr Sa So)) do
       assert Format.date(Date.new!(2026, 10, day), weekday: :short) =~ ~r/\A#{name}, /
     end
+
+    assert Format.date(~D[2026-10-12], weekday: false) == "12.10.2026"
+    assert Format.date(~D[2026-10-12], weekday: nil) == "12.10.2026"
+
+    assert_raise ArgumentError, ~r/unknown :weekday :long/, fn ->
+      Format.date(~D[2026-10-12], weekday: :long)
+    end
   end
 
-  test "the date of a moment is its date part, without time zone math" do
+  test "the date of a local moment is its date part; a DateTime is no local time" do
     assert Format.date(~N[2026-10-14 23:59:59]) == "14.10.2026"
-    assert Format.date(~U[2026-10-14 23:30:00Z]) == "14.10.2026"
+
+    for format <- [&Format.date/1, &Format.datetime/1, &Format.time/1] do
+      assert_raise FunctionClauseError, fn -> format.(~U[2026-10-14 23:30:00Z]) end
+    end
   end
 
   test "date and time of a local moment, times in hours and minutes" do

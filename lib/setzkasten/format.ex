@@ -121,7 +121,7 @@ defmodule Setzkasten.Format do
   def sign(value) when is_float(value), do: 0
 
   @doc """
-  Formats a calendar date; a `NaiveDateTime` or `DateTime` gives its date part as it is.
+  Formats a calendar date; a local `NaiveDateTime` gives its date part.
 
       iex> Setzkasten.Format.date(~D[2026-10-14])
       "14.10.2026"
@@ -130,8 +130,8 @@ defmodule Setzkasten.Format do
       iex> Setzkasten.Format.date(~N[2026-10-14 18:05:00], year: false)
       "14.10."
 
-  Options: `:weekday` (`:short` puts the German short name in front), `:year` (`false` leaves
-  it out).
+  Options: `:weekday` (`:short` puts the German short name in front; `nil` or `false`, the
+  default, leaves it out), `:year` (`false` leaves it out).
   """
   def date(value, opts \\ [])
 
@@ -140,13 +140,18 @@ defmodule Setzkasten.Format do
     day = if Keyword.get(opts, :year, true), do: day <> Integer.to_string(date.year), else: day
 
     case Keyword.get(opts, :weekday) do
-      nil -> day
-      :short -> elem(@weekdays, Date.day_of_week(date) - 1) <> ", " <> day
+      weekday when weekday in [nil, false] ->
+        day
+
+      :short ->
+        elem(@weekdays, Date.day_of_week(date) - 1) <> ", " <> day
+
+      other ->
+        raise ArgumentError, "unknown :weekday #{inspect(other)}, expected :short, nil or false"
     end
   end
 
   def date(%NaiveDateTime{} = moment, opts), do: moment |> NaiveDateTime.to_date() |> date(opts)
-  def date(%DateTime{} = moment, opts), do: moment |> DateTime.to_date() |> date(opts)
 
   @doc """
   Formats a local date and time. No time zone math: the app passes its local time.
