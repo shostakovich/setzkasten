@@ -28,7 +28,8 @@ defmodule Setzkasten.Components.Actions do
   `confirm` asks in the shared `<.confirm_dialog>` before the button's
   `phx-click` runs: the click moves to the dialog's confirm button. A `%JS{}` click carries
   its own target (`JS.push("delete", target: @myself)`); only an event name takes the button's
-  `phx-value-*` and `phx-target` along. Without `confirm` a `phx-value-value` also renders as
+  `phx-value-*`, its `value` (as `"value"`, as LiveView's client sends it) and `phx-target`
+  along. Without `confirm` a `phx-value-value` also renders as
   the button's `value`: LiveView's client sends that property in its place. `confirm` with `href`, `navigate`, `patch` or `method`
   raises: the link would navigate without asking; so does `confirm` without `phx-click` on a
   button that does not submit.
@@ -273,6 +274,7 @@ defmodule Setzkasten.Components.Actions do
     {values, rest} =
       Enum.split_with(rest, fn {key, _} -> String.starts_with?(to_string(key), "phx-value-") end)
 
+    values = values ++ client_value(assigns.type, assigns.rest)
     {click, rest} = rest |> Map.new() |> Map.pop(:"phx-click")
     # An event name pushes from the dialog, outside a live component: it needs the target.
     {target, rest} =
@@ -295,6 +297,11 @@ defmodule Setzkasten.Components.Actions do
 
     assign(assigns, :rest, rest)
   end
+
+  # LiveView's client sends a button's value property as "value", over any phx-value-value.
+  defp client_value("submit", _rest), do: []
+  defp client_value(_type, %{value: value}), do: [{:"phx-value-value", value}]
+  defp client_value(_type, _rest), do: []
 
   # A confirmed submit button sends its form from the dialog; its own click only asks.
   defp confirm_submit(js, %{type: "submit", rest: %{id: id}}),

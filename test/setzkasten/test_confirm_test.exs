@@ -71,11 +71,11 @@ defmodule Setzkasten.Test.ConfirmTest do
     assert confirm_click(view, "#pop-rename-delete") =~ "Bisher gelöscht (Demo): 1"
   end
 
-  test "confirm_click sends the value the browser sends from the confirm button" do
+  test "confirm_click sends a button's value as the browser does after confirming" do
     {:ok, view, _} = live_isolated(build_conn(), ValueLive)
 
     confirm_click(view, "#plain")
-    assert view |> element("#params") |> render() =~ ~r/>value=<\/p>/
+    assert view |> element("#params") |> render() =~ ~r/>value=x<\/p>/
 
     confirm_click(view, "#mirrored")
     assert view |> element("#params") |> render() =~ ~r/>value=y<\/p>/
