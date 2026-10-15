@@ -6,6 +6,9 @@ defmodule Setzkasten.Components.Navigation do
   import Setzkasten.Components.Icons
   import Setzkasten.Click, only: [entry_click: 2]
 
+  import Setzkasten.Components.Forms,
+    only: [field_error: 1, field_help: 1, field_describedby: 3, translate_error: 1]
+
   @doc """
   One choice out of a few (time range, view): a `join` of buttons, the selected one in the
   selection fill (`setzkasten-selected`, `bg-selected`).
@@ -13,11 +16,26 @@ defmodule Setzkasten.Components.Navigation do
   Modes:
 
     * `:patch` – links (`patch`), the selected one has `aria-current="page"`. Options are
-      `{label, path}` (selected when `value` equals the path) or `{label, value, path}`.
+      `{label, path}` (selected when `value` equals the path) or `{label, value, path}`. They
+      replace the history entry (`replace`, default `true`): the choice filters the page, so
+      Back leaves the page instead of stepping through every period; the URL still keeps it.
     * `:button` – buttons with `aria-pressed`; each sends the button's `phx-click` (from
       `rest`) with the option as `value` (the button's `value`, which LiveView sends over a
       `phx-value-value`; both are rendered). Options are `{label, value}`.
     * `:radio` – a form field: sr-only radios in `label.btn`, from `field` or `name`.
+    * `:checkbox` – a form field with any number chosen (weekdays): sr-only checkboxes in
+      `label.btn`, a group named by `label`, sent as `name[]` (from `field`, or `name` with
+      `[]` added). `value` is a list. A hidden empty value goes along, so clearing every option
+      still sends the field; Ecto's `cast/4` drops the empty string from an array.
+
+  The form modes (`:radio`, `:checkbox`) are fields like `input`: `fieldset.fieldset` > legend
+  (`label`, visible; `hide_label` keeps it for screen readers) > the options > errors > help.
+  Errors come from `field` after `used_input?/1` (which then replaces `errors`, as in `input`)
+  or from `errors`; `help` adds a help line;
+  both are linked from the group by `aria-describedby`. With errors a radio group (`role`
+  `radiogroup`) carries `aria-invalid`, in a checkbox group each checkbox does (ARIA has no
+  invalid state for a plain group). `id` comes from `field`, else from `name` as Phoenix forms
+  a field's id (`expense[days][]` gives `expense_days`), and names the error and help lines.
 
   Option values are sent as strings (`to_string/1`): `false` arrives as `"false"`, `nil` as
   `""`.
@@ -39,11 +57,13 @@ defmodule Setzkasten.Components.Navigation do
         options={[%{label: "Liste", value: "list", icon: "list"}, {"Anteile", "shares"}]} />
       <.segmented mode={:radio} field={@form[:split]} label="Aufteilung"
         options={[{"Gleich", "equal"}, {"Anteile", "shares"}]} />
+      <.segmented mode={:checkbox} field={@form[:weekdays]} label="Wochentage"
+        options={[%{label: "Mo", long_label: "Montag", value: "mon"}, …]} />
       <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block options={…} />
       <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block={:phone} options={…} />
   """
   attr :id, :string, default: nil
-  attr :mode, :atom, default: :patch, values: [:patch, :button, :radio]
+  attr :mode, :atom, default: :patch, values: [:patch, :button, :radio, :checkbox]
   attr :options, :list, required: true
   attr :value, :any, default: nil
   attr :label, :string, required: true, doc: "accessible name of the group"
@@ -54,8 +74,15 @@ defmodule Setzkasten.Components.Navigation do
     values: [false, true, :phone],
     doc: "full width, options of equal width; `:phone` only below `sm`"
 
+  attr :replace, :boolean,
+    default: true,
+    doc: "`:patch`: replace the history entry; `false` adds one per choice"
+
   attr :field, Phoenix.HTML.FormField, default: nil
   attr :name, :string, default: nil
+  attr :hide_label, :boolean, default: false, doc: "form modes: the label for screen readers only"
+  attr :errors, :list, default: [], doc: "form modes: messages or Ecto error tuples"
+  attr :help, :string, default: nil, doc: "form modes: a help line under the options"
   attr :class, :any, default: nil
   attr :rest, :global
 
@@ -67,26 +94,58 @@ defmodule Setzkasten.Components.Navigation do
         assigns.size == :sm && "btn-sm pointer-coarse:min-w-11",
         block_option(assigns.block)
       ])
-      |> assign(:join_class, ["join", block_join(assigns.block)])
+      |> assign(:join_class, ["join", block_flex(assigns.block), block_marker(assigns.block)])
       |> assign_field()
+      |> array_name()
+      |> id_from_name()
 
     render_segmented(assigns)
   end
 
+  defp block_flex(true), do: "flex w-full"
+  defp block_flex(:phone), do: "max-sm:flex max-sm:w-full"
+  defp block_flex(false), do: nil
+
   # The marker class lets a container (the header's actions) make room for the full width.
-  defp block_join(true), do: "flex w-full setzkasten-segmented-block"
-  defp block_join(:phone), do: "max-sm:flex max-sm:w-full setzkasten-segmented-block"
-  defp block_join(false), do: nil
+  defp block_marker(false), do: nil
+  defp block_marker(_block), do: "setzkasten-segmented-block"
 
   defp block_option(true), do: "min-w-0 flex-1 max-sm:px-2"
   defp block_option(:phone), do: "max-sm:min-w-0 max-sm:flex-1 max-sm:px-2"
   defp block_option(false), do: nil
 
   defp assign_field(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
-    assign(assigns, name: assigns.name || field.name, value: assigns.value || field.value)
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assign(assigns,
+      id: assigns.id || field.id,
+      name: assigns.name || field.name,
+      value: assigns.value || field.value,
+      errors: errors
+    )
   end
 
   defp assign_field(assigns), do: assigns
+
+  defp array_name(%{mode: :checkbox, name: name} = assigns) when is_binary(name) do
+    if String.ends_with?(name, "[]"), do: assigns, else: assign(assigns, :name, name <> "[]")
+  end
+
+  defp array_name(assigns), do: assigns
+
+  # As Phoenix forms a field's id, so the error and help lines of two groups never share one.
+  defp id_from_name(%{mode: mode, id: nil, name: name} = assigns)
+       when mode in [:radio, :checkbox] and is_binary(name) do
+    id =
+      name
+      |> String.trim_trailing("[]")
+      |> String.replace(~r/[\[\]]+/, "_")
+      |> String.trim_trailing("_")
+
+    assign(assigns, :id, id)
+  end
+
+  defp id_from_name(assigns), do: assigns
 
   defp normalize_option({label, value}), do: %{label: label, value: value, path: value}
   defp normalize_option({label, value, path}), do: %{label: label, value: value, path: path}
@@ -98,6 +157,7 @@ defmodule Setzkasten.Components.Navigation do
       <.link
         :for={option <- @options}
         patch={option.path}
+        replace={@replace}
         class={["join-item btn", @option_class, selected?(option, @value) && "setzkasten-selected"]}
         aria-current={selected?(option, @value) && "page"}
         aria-label={option[:long_label]}
@@ -127,33 +187,64 @@ defmodule Setzkasten.Components.Navigation do
     """
   end
 
-  defp render_segmented(%{mode: :radio} = assigns) do
+  defp render_segmented(%{mode: mode} = assigns) when mode in [:radio, :checkbox] do
+    errors = Enum.map(assigns.errors, &translate_error/1)
+
+    assigns =
+      assign(assigns,
+        errors: errors,
+        invalid: errors != [] && "true",
+        describedby: field_describedby(assigns.id, errors, assigns.help)
+      )
+
     ~H"""
-    <fieldset id={@id} class={[@join_class, @class]} {@rest}>
-      <legend class="sr-only">{@label}</legend>
-      <label
-        :for={option <- @options}
-        class={[
-          "join-item btn has-checked:setzkasten-selected",
-          "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
-          @option_class
-        ]}
-      >
-        <input
-          type="radio"
-          name={@name}
-          value={to_string(option.value)}
-          class="sr-only"
-          checked={selected?(option, @value)}
-          aria-label={option[:long_label]}
-        />
-        <.icon :if={option[:icon]} name={option[:icon]} />{option.label}
-      </label>
+    <fieldset
+      id={@id}
+      class={["fieldset min-w-0", block_field(@block), block_marker(@block), @class]}
+      role={@mode == :radio && "radiogroup"}
+      aria-invalid={@mode == :radio && @invalid}
+      aria-describedby={@describedby}
+      {@rest}
+    >
+      <legend class={if @hide_label, do: "sr-only", else: "fieldset-legend"}>{@label}</legend>
+      <input :if={@mode == :checkbox} type="hidden" name={@name} value="" />
+      <div class={["join", block_flex(@block)]}>
+        <label
+          :for={option <- @options}
+          class={[
+            "join-item btn has-checked:setzkasten-selected",
+            "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+            @option_class
+          ]}
+        >
+          <input
+            type={to_string(@mode)}
+            name={@name}
+            value={to_string(option.value)}
+            class="sr-only"
+            checked={checked?(@mode, option, @value)}
+            aria-label={option[:long_label]}
+            aria-invalid={@mode == :checkbox && @invalid}
+          />
+          <.icon :if={option[:icon]} name={option[:icon]} />{option.label}
+        </label>
+      </div>
+      <.field_error id={@id} errors={@errors} />
+      <.field_help :if={@help} id={@id}>{@help}</.field_help>
     </fieldset>
     """
   end
 
+  defp block_field(true), do: "w-full"
+  defp block_field(:phone), do: "max-sm:w-full"
+  defp block_field(false), do: nil
+
   defp selected?(%{value: value}, current), do: to_string(value) == to_string(current)
+
+  defp checked?(:checkbox, option, values),
+    do: values |> List.wrap() |> Enum.any?(&selected?(option, &1))
+
+  defp checked?(:radio, option, value), do: selected?(option, value)
 
   @doc """
   Navigation between sibling views of one object (`tabs tabs-border`). Links only,

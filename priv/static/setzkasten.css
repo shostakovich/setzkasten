@@ -714,6 +714,12 @@
     background-color: var(--color-popover);
     border: var(--setzkasten-popover-border, none);
   }
+  /* A border, not padding: scrolled content and a sticky action bar stay above the safe area. */
+  @media (width < 40rem) {
+    .modal-bottom > .modal-box {
+      border-bottom: env(safe-area-inset-bottom) solid transparent;
+    }
+  }
   :is(.modal-start, .modal-end) > .modal-box {
     border-top: env(safe-area-inset-top) solid transparent;
   }
