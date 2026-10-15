@@ -773,8 +773,8 @@ defmodule Setzkasten.Components.Data do
   value does not (a gauge's verdict), and it becomes an image with that name.
 
   `navigate`, `patch` or `href` makes the tile a link to the KPI's detail page: the label is the
-  link and covers the tile, which takes a light fill under the pointer and on tap; keyboard
-  focus rings the tile.
+  link and covers the tile, `:meter` and `:figure` included, which takes a light fill under the
+  pointer and on tap; keyboard focus rings the tile.
 
   With an `id`, a value that a LiveView update changes counts from the old to the new number
   (500 ms, `tabular-nums`); never on first render or a reconnect that brings the same value.
@@ -852,7 +852,7 @@ defmodule Setzkasten.Components.Data do
           navigate={@navigate}
           patch={@patch}
           href={@href}
-          class="after:absolute after:inset-0 after:rounded-box focus-visible:outline-none"
+          class="after:absolute after:inset-0 after:z-1 after:rounded-box focus-visible:outline-none"
         >
           {@label}
         </.link>

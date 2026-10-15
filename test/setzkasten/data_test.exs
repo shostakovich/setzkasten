@@ -559,6 +559,21 @@ defmodule Setzkasten.DataTest do
     refute "relative" in classes(plain, ".stat")
   end
 
+  test "a linked stat's link lies above a positioned meter and figure" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.stat label="Akku" value="82" unit="%" navigate="/akku">
+        <:meter><.bar label="Ladestand" value={82} hide_label /></:meter>
+        <:figure><.plush name="sunny" /></:figure>
+      </.stat>
+      """)
+
+    assert "after:z-1" in classes(doc, ".stat-title a")
+    assert count(doc, ".stat-desc .relative") >= 1
+  end
+
   test "stat tones colour the value with the inks, warning included" do
     for {tone, ink} <- [
           success: "text-success-ink",
