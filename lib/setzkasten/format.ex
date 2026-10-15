@@ -51,6 +51,12 @@ defmodule Setzkasten.Format do
       "1.234"
       iex> Setzkasten.Format.number(-20.49, decimals: 1)
       "−20,5"
+      iex> Setzkasten.Format.number(1234, minor_units: true, minor_digits: 3)
+      "1,234"
+
+  Options: `:decimals` (default 0, with `minor_units: true` the `:minor_digits`), `:signed`
+  (prefix `+` for positive values), `:minor_units` (`true` reads an integer in minor units),
+  `:minor_digits` (their decimal places, default 2).
   """
   def number(value, opts \\ []) do
     minor = if opts[:minor_units], do: Keyword.get(opts, :minor_digits, 2)
