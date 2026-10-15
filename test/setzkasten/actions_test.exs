@@ -68,6 +68,32 @@ defmodule Setzkasten.ActionsTest do
     assert classes(doc, "a") == ["btn", "btn-sm"]
   end
 
+  test "a disabled link keeps its look but neither navigates nor takes focus" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button href="/export.csv" download target="_blank" icon="download" disabled>Export</.button>
+      """)
+
+    for name <- ~w(href download target) do
+      assert attr(doc, "a", name) == nil
+    end
+
+    assert attr(doc, "a", "role") == "link"
+    assert attr(doc, "a", "aria-disabled") == "true"
+    assert "btn-disabled" in classes(doc, "a")
+    assert count(doc, "a svg.lucide") == 1
+    assert text(doc, "a") == "Export"
+
+    doc = parse(~H|<.button navigate="/depots" disabled>Alle</.button>|)
+    assert attr(doc, "a", "href") == nil
+    assert attr(doc, "a", "data-phx-link") == nil
+
+    doc = parse(~H|<.button navigate="/depots">Alle</.button>|)
+    assert attr(doc, "a", "aria-disabled") == nil
+  end
+
   test "confirm on a link raises instead of navigating without asking" do
     assigns = %{}
 

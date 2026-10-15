@@ -125,3 +125,5 @@
   `icon_only` with a `phx-disable-with` text raises.
 - `radio_group` options may be maps with a `:description`: a quieter line under the label, the radio's
   accessible description.
+- `button` with `href`, `navigate` or `patch` and `disabled`: an `<a>` without its target, `aria-disabled` and in the
+  disabled look, instead of a link that still navigates.

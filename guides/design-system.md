@@ -369,7 +369,8 @@ Visible and accessible default strings are German; each has an attr:
 - **`button`** – `variant` `:primary` · `:neutral` (default; cancel/secondary) · `:ghost` · `:danger` ·
   `:danger_outline` · `:link`; `size` `:sm | :md | :lg`; `icon` (Lucide, before the label); `icon_only` (needs
   `label`, raises without); `loading` (spinner, a still ellipsis with reduced motion; `aria-busy`, disabled);
-  `href`/`navigate`/`patch` render a link; `confirm` (+ `confirm_text`, `confirm_label`, `confirm_id`) asks in the
+  `href`/`navigate`/`patch` render a link (with `disabled` an `<a>` without `href`, `aria-disabled`, in the disabled
+  look); `confirm` (+ `confirm_text`, `confirm_label`, `confirm_id`) asks in the
   shared confirmation dialog, see Overlays; an event name keeps its `phx-value-*`, its `value` (as `"value"`, over
   a `phx-value-value`, as LiveView's client sends it) and `phx-target`, a `%JS{}`
   carries its own target (`JS.push("delete", target: @myself)`). Without `confirm` a `phx-value-value` also renders

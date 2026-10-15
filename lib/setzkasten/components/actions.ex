@@ -18,8 +18,12 @@ defmodule Setzkasten.Components.Actions do
 
   @sizes %{sm: "btn-sm", md: nil, lg: "btn-lg"}
 
+  @link_attrs ~w(href navigate patch method download replace target rel)a
+
   @doc """
-  A button, or a link styled as one when `href`, `navigate` or `patch` is set.
+  A button, or a link styled as one when `href`, `navigate` or `patch` is set. `disabled` on a
+  link drops its target: an `<a>` without `href` that neither navigates nor takes focus, with
+  `role="link"`, `aria-disabled` and daisyUI's disabled look.
 
   Variants are fixed: `:primary`, `:neutral` (default; also cancel/secondary), `:ghost`,
   `:danger`, `:danger_outline`, `:link`. `class` is appended to the base classes.
@@ -152,6 +156,9 @@ defmodule Setzkasten.Components.Actions do
       |> mirror_phx_value()
 
     cond do
+      link?(assigns.rest) and assigns.disabled ->
+        disabled_link(assigns)
+
       link?(assigns.rest) ->
         ~H"""
         <.link class={@classes} aria-label={@icon_only && @label} {@rest}>
@@ -168,6 +175,22 @@ defmodule Setzkasten.Components.Actions do
       true ->
         plain_button(assigns)
     end
+  end
+
+  defp disabled_link(assigns) do
+    assigns = assign(assigns, :rest, Map.drop(assigns.rest, @link_attrs))
+
+    ~H"""
+    <a
+      role="link"
+      aria-disabled="true"
+      class={[@classes, "btn-disabled"]}
+      aria-label={@icon_only && @label}
+      {@rest}
+    >
+      <.icon :if={@icon} name={@icon} />{render_slot(@inner_block)}
+    </a>
+    """
   end
 
   defp plain_button(assigns) do
