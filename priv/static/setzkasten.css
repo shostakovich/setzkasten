@@ -633,6 +633,22 @@
     font-weight: 600;
     letter-spacing: -0.02em;
   }
+  /* daisyUI's stat grid spreads its rows when a taller neighbour stretches it. */
+  .stat {
+    align-content: start;
+  }
+  /* The stats of a stat grid share its rows, so a label on two lines keeps every value of the row
+     level; a third row only when a stat has a note, as an empty one would add the parent's gap. */
+  @supports (grid-template-rows: subgrid) {
+    .setzkasten-stat-grid > .stat {
+      grid-row: span 2;
+      grid-template-rows: subgrid;
+      row-gap: 0;
+    }
+    .setzkasten-stat-grid:has(> .stat > .stat-desc) > .stat {
+      grid-row: span 3;
+    }
+  }
   .stat-title {
     font-size: 0.875rem;
     line-height: 1.25rem;
@@ -667,6 +683,14 @@
   }
 }
 
+/* A legend with values: up to three columns of at least 8rem, by its own width, so a half-width
+   card keeps its labels. */
+@layer utilities.setzkasten {
+  .setzkasten-legend-grid {
+    grid-template-columns: repeat(auto-fill, minmax(max(8rem, (100% - 3rem) / 3), 1fr));
+  }
+}
+
 /* A neutral bar (<.bar tone={:neutral}>): base-content 70 % on daisyUI's track (base-content
    20 %), above 3:1 against the track, so it stands alone. daisyUI's progress-neutral uses the
    neutral fill, which nearly vanishes on dark base-100. */
@@ -674,6 +698,16 @@
   .progress.setzkasten-progress-neutral {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
     background-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+  }
+}
+
+/* A chart-coloured bar (<.bar color={n}>): the series fill with its 1px line, as the chart draws it. */
+@layer utilities.setzkasten {
+  .progress.setzkasten-progress-chart::-webkit-progress-value {
+    box-shadow: inset 0 0 0 1px var(--setzkasten-bar-line);
+  }
+  .progress.setzkasten-progress-chart::-moz-progress-bar {
+    box-shadow: inset 0 0 0 1px var(--setzkasten-bar-line);
   }
 }
 
@@ -868,6 +902,18 @@
     & > :first-child:dir(rtl) {
       box-shadow: inset -3px 0 0 var(--color-selected);
     }
+  }
+}
+
+/* daisyUI's card centres every figure and grows every paragraph; a chart card holds the app's
+   own chart markup (an SVG in a figure, a legend of paragraphs), which keeps its layout. */
+@layer utilities.setzkasten {
+  .setzkasten-chart-card :where(figure) {
+    display: block;
+    overflow: visible;
+  }
+  .setzkasten-chart-card :where(p) {
+    flex-grow: 0;
   }
 }
 

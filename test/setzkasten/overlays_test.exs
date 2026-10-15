@@ -206,6 +206,16 @@ defmodule Setzkasten.OverlaysTest do
 
     assert classes(doc, "summary") == ~w(collapse-title font-semibold text-sm)
     assert attr(doc, "details", "phx-mounted") =~ "ignore_attrs"
+
+    chart =
+      parse(~H"""
+      <.chart_card id="c" title="t" summary="s">
+        <svg></svg><:data>Tabelle</:data>
+      </.chart_card>
+      """)
+
+    assert classes(chart, "details#c-data-toggle") == classes(doc, "details")
+    assert classes(chart, "details#c-data-toggle > summary") == classes(doc, "summary")
   end
 
   test "a disclosure's count is a quiet number after the summary" do

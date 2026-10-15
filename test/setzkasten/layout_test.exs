@@ -45,6 +45,8 @@ defmodule Setzkasten.LayoutTest do
 
     assert text(doc, ".card-body h2.card-title") == "Kosten"
     assert text(doc, "section > div.border-t") == "F"
+    # The footer follows a card's --card-p (tighter phone cards) as the body does.
+    assert "px-[var(--card-p,1.5rem)]" in classes(doc, "section > div.border-t")
 
     doc = parse(~H|<.card title="Liste" bleed={:phone}>
   <:list>
@@ -52,7 +54,10 @@ defmodule Setzkasten.LayoutTest do
   </:list>
 </.card>|)
     assert count(doc, ".card-body") == 0
-    assert classes(doc, "section > div:first-child") == ~w(px-6 pt-6 pb-2)
+
+    assert classes(doc, "section > div:first-child") ==
+             ~w|px-[var(--card-p,1.5rem)] pt-[var(--card-p,1.5rem)] pb-2|
+
     assert "max-sm:-mx-4" in classes(doc, "section")
   end
 

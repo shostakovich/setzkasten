@@ -140,7 +140,11 @@ defmodule Setzkasten.Components.Layout do
   The header holds `:leading` (a plush, icon or avatar before the title), `title`
   (`card-title`), `subtitle` and `:actions`. Content goes into
   `card-body`; a flush `<.list flush>` or `<.table flush>` goes into `:list` (the header then
-  uses `px-6 pt-6 pb-2` instead of the body padding). `:footer` adds a hairline note.
+  takes the body's inline and top padding, `pb-2` below). `:footer` adds a hairline note. The
+  header and the footer follow daisyUI's `--card-p` as the body does, so a card that sets it
+  on the card (`max-sm:[--card-p:1rem]` for tighter phone cards) keeps them lined up.
+  daisyUI's `card-sm` and `card-lg` set it on the body only, so the header and footer would
+  keep 24px.
   With `navigate`/`href` the title link covers the whole card. `bleed={:phone}` runs the
   card edge to edge below `sm` (page gutter `px-4`).
 
@@ -179,7 +183,7 @@ defmodule Setzkasten.Components.Layout do
       ]}
       {@rest}
     >
-      <div :if={@list != []} class="px-6 pt-6 pb-2">
+      <div :if={@list != []} class="px-[var(--card-p,1.5rem)] pt-[var(--card-p,1.5rem)] pb-2">
         {card_head(assigns)}
         {render_slot(@inner_block)}
       </div>
@@ -190,7 +194,7 @@ defmodule Setzkasten.Components.Layout do
       {render_slot(@list)}
       <div
         :if={@footer != []}
-        class="border-t border-base-content/10 px-6 py-3 text-sm text-base-content/70"
+        class="border-t border-base-content/10 px-[var(--card-p,1.5rem)] py-3 text-sm text-base-content/70"
       >
         {render_slot(@footer)}
       </div>
