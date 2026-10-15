@@ -9,6 +9,7 @@ defmodule Setzkasten.Components.Layout do
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
+  alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
 
   @bleed %{none: nil, phone: "max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0"}
@@ -140,7 +141,11 @@ defmodule Setzkasten.Components.Layout do
   The header holds `:leading` (a plush, icon or avatar before the title), `title`
   (`card-title`), `subtitle` and `:actions`. Content goes into
   `card-body`; a flush `<.list flush>` or `<.table flush>` goes into `:list` (the header then
-  uses `px-6 pt-6 pb-2` instead of the body padding). `:footer` adds a hairline note.
+  takes the body's inline and top padding, `pb-2` below). `:footer` adds a hairline note. The
+  header and the footer follow daisyUI's `--card-p` as the body does, so a card that sets it
+  on the card (`max-sm:[--card-p:1rem]` for tighter phone cards) keeps them lined up.
+  daisyUI's `card-sm` and `card-lg` set it on the body only, so the header and footer would
+  keep 24px.
   With `navigate`/`href` the title link covers the whole card. `bleed={:phone}` runs the
   card edge to edge below `sm` (page gutter `px-4`).
 
@@ -179,7 +184,7 @@ defmodule Setzkasten.Components.Layout do
       ]}
       {@rest}
     >
-      <div :if={@list != []} class="px-6 pt-6 pb-2">
+      <div :if={@list != []} class="px-[var(--card-p,1.5rem)] pt-[var(--card-p,1.5rem)] pb-2">
         {card_head(assigns)}
         {render_slot(@inner_block)}
       </div>
@@ -190,7 +195,7 @@ defmodule Setzkasten.Components.Layout do
       {render_slot(@list)}
       <div
         :if={@footer != []}
-        class="border-t border-base-content/10 px-6 py-3 text-sm text-base-content/70"
+        class="border-t border-base-content/10 px-[var(--card-p,1.5rem)] py-3 text-sm text-base-content/70"
       >
         {render_slot(@footer)}
       </div>
@@ -242,20 +247,36 @@ defmodule Setzkasten.Components.Layout do
   chosen icon (700 ms); with reduced motion, or when the shown scheme does not change, it switches
   at once.
 
+  `compact` is one ghost icon button showing the current scheme that opens a small menu with the
+  three choices, for a crowded top bar or a phone. The button's icon follows `data-theme` on
+  `<html>`, so it is right from the first paint. The menu holds the same radios, so store,
+  sync, `theme-color` and the reveal from the chosen item stay; a pointer choice closes it,
+  also on the checked item, arrow keys switch as in the segmented form, Escape closes it with
+  focus back on the button (and leaves a `<dialog>` around it open). A `value` other than
+  light or dark counts as system.
+
+  Each toggle on a page needs its own `id`: the id names the radios and the menu, so two with
+  the default id fall out of sync.
+
       <.theme_toggle />
+      <.theme_toggle id="theme-bar" compact />
       <.theme_toggle store={:server} value={@current_user.theme} on_change="set-theme" />
   """
-  attr :id, :string, default: "theme-toggle"
+  attr :id, :string, default: "theme-toggle", doc: "unique per toggle on a page"
   attr :value, :string, default: "system", values: ~w(system light dark)
   attr :store, :atom, default: :local, values: [:local, :server]
   attr :on_change, :string, default: nil
   attr :label, :string, default: "Farbschema"
   attr :labels, :map, default: %{"system" => "System", "light" => "Hell", "dark" => "Dunkel"}
+  attr :compact, :boolean, default: false, doc: "one icon button with a menu of the choices"
   attr :class, :any, default: nil
 
   def theme_toggle(assigns) do
     assigns =
-      assign(assigns, :options, [{"system", "sun-moon"}, {"light", "sun"}, {"dark", "moon"}])
+      assign(assigns,
+        options: [{"system", "sun-moon"}, {"light", "sun"}, {"dark", "moon"}],
+        value: if(assigns.value in ~w(light dark), do: assigns.value, else: "system")
+      )
 
     ~H"""
     <form
@@ -266,7 +287,7 @@ defmodule Setzkasten.Components.Layout do
       data-store="server"
       class={@class}
     >
-      {theme_options(assigns)}
+      {if @compact, do: theme_menu(assigns), else: theme_options(assigns)}
     </form>
     <div
       :if={@store == :local}
@@ -276,7 +297,7 @@ defmodule Setzkasten.Components.Layout do
       data-store="local"
       class={@class}
     >
-      {theme_options(assigns)}
+      {if @compact, do: theme_menu(assigns), else: theme_options(assigns)}
     </div>
     <script :type={ColocatedHook} name=".ThemeToggle">
       const KEY = "setzkasten:theme"
@@ -331,6 +352,12 @@ defmodule Setzkasten.Components.Layout do
       }
       export default {
         mounted() {
+          // A pointer choice closes the compact menu; arrow keys keep it open while they switch.
+          this.el.addEventListener("pointerdown", () => { this.pointer = true })
+          this.el.addEventListener("keydown", (e) => {
+            this.pointer = false
+            if (e.key === "Escape" && this.el.querySelector("details[open]")) e.preventDefault()
+          })
           this.el.addEventListener("change", (e) => {
             if (e.target.type !== "radio") return
             const v = e.target.value
@@ -338,6 +365,15 @@ defmodule Setzkasten.Components.Layout do
               try { v === "system" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, v) } catch (_) {}
             }
             reveal(e.target.closest("label") || e.target, v)
+          })
+          // On click, so choosing the checked item closes too; after change, so the reveal measures it open.
+          this.el.addEventListener("click", (e) => {
+            const menu = e.target.closest("details")
+            if (e.target.type !== "radio" || !this.pointer || !menu || !this.el.contains(menu)) return
+            setTimeout(() => {
+              menu.removeAttribute("open")
+              menu.querySelector("summary").focus()
+            })
           })
           this.onStorage = (e) => { if (e.key === KEY) apply(e.newValue || "system") }
           window.addEventListener("storage", this.onStorage)
@@ -358,6 +394,60 @@ defmodule Setzkasten.Components.Layout do
     </script>
     """
   end
+
+  defp theme_menu(assigns) do
+    ~H"""
+    <details
+      id={"#{@id}-menu"}
+      class="dropdown dropdown-end"
+      phx-mounted={JS.ignore_attributes(["open"])}
+      phx-click-away={JS.remove_attribute("open")}
+    >
+      <summary
+        class="btn btn-ghost btn-square"
+        title={@label}
+        phx-keydown={close_theme_menu(@id)}
+        phx-key="Escape"
+      >
+        <.icon :for={{value, icon} <- @options} name={icon} class={["hidden", shown_when(value)]} />
+        <span class="sr-only">{@label}</span>
+      </summary>
+      <fieldset class={[
+        "dropdown-content mt-1 z-20 w-44 rounded-box border border-base-content/10",
+        "bg-popover text-base-content shadow-lg"
+      ]}>
+        <legend class="sr-only">{@label}</legend>
+        <ul class="menu w-full text-sm font-normal">
+          <li :for={{value, icon} <- @options}>
+            <label class={[
+              "has-checked:bg-selected has-checked:text-selected-content",
+              "has-focus-visible:outline-2 has-focus-visible:outline-offset-[-2px] has-focus-visible:outline-primary"
+            ]}>
+              <input
+                type="radio"
+                name={if @store == :server, do: "theme", else: @id}
+                value={value}
+                class="sr-only"
+                checked={@value == value}
+                phx-keydown={close_theme_menu(@id)}
+                phx-key="Escape"
+              />
+              <.icon name={icon} />{@labels[value]}
+            </label>
+          </li>
+        </ul>
+      </fieldset>
+    </details>
+    """
+  end
+
+  # Literal classes, so Tailwind finds them.
+  defp shown_when("system"), do: "[:root:not([data-theme$=light],[data-theme$=dark])_&]:block"
+  defp shown_when("light"), do: "[:root[data-theme$=light]_&]:block"
+  defp shown_when("dark"), do: "[:root[data-theme$=dark]_&]:block"
+
+  defp close_theme_menu(id),
+    do: JS.remove_attribute("open", to: "##{id}-menu") |> JS.focus_first(to: "##{id}-menu")
 
   defp theme_options(assigns) do
     ~H"""

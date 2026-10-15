@@ -56,11 +56,16 @@ defmodule Setzkasten.Components.Icons do
   @doc """
   Renders a plush WebP icon. With a dark file it renders two images and lets the theme pick
   one (`dark:hidden` / `hidden dark:inline-block`), so an explicit theme choice swaps it too.
+  Global attrs go on both; an `id` stays on the light image and the dark one takes `<id>-dark`.
 
-  Sizes: `:sm` 20px (menus), `:md` 24px (dock), `:lg` 32px (list leading), `:xl` 48px (empty
+  Sizes: `:sm` 20px (sidebar), `:md` 24px (dock, top-bar menu), `:lg` 32px (list leading), `:xl` 48px (empty
   pages), `:xxl` 96px (empty pages where the plush is the figure). Sources come from the
   module configured as `config :setzkasten, plush: …`
   (see `Setzkasten.Plush`) or from `src`/`dark_src`. Decorative by default (`alt=""`).
+
+  As with `icon`, a `size-*` class in `class` replaces the size class, e.g. to scale with its
+  container (`size-[clamp(2rem,8vw,3rem)]`); `width` and `height` still come from `size`, the
+  box and aspect ratio the image has before the CSS applies.
 
       <.plush name="cart" size={:lg} />
       <.plush src={~p"/images/mascot.webp"} size={:xl} alt="Maskottchen" />
@@ -81,7 +86,14 @@ defmodule Setzkasten.Components.Icons do
 
     {size_class, px} = Map.fetch!(@plush_sizes, assigns.size)
 
-    assigns = assign(assigns, light: light, dark: dark, size_class: size_class, px: px)
+    assigns =
+      assign(assigns,
+        light: light,
+        dark: dark,
+        size_class: if(sized?(assigns.class), do: nil, else: size_class),
+        px: px,
+        dark_rest: dark_rest(assigns.rest)
+      )
 
     ~H"""
     <img
@@ -99,10 +111,13 @@ defmodule Setzkasten.Components.Icons do
       width={@px}
       height={@px}
       alt={@alt}
-      {@rest}
+      {@dark_rest}
     />
     """
   end
+
+  defp dark_rest(%{id: id} = rest) when is_binary(id), do: %{rest | id: "#{id}-dark"}
+  defp dark_rest(rest), do: rest
 
   defp sized?(nil), do: false
   defp sized?(class) when is_binary(class), do: String.contains?(class, "size-")

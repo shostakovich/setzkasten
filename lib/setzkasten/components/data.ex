@@ -8,6 +8,7 @@ defmodule Setzkasten.Components.Data do
   alias Setzkasten.Format
   import Setzkasten.Components.Icons
   import Setzkasten.Click, only: [click_js: 2, entry_click: 2]
+  import Setzkasten.Components.Overlays, only: [disclosure: 1]
 
   @show_from %{
     nil => nil,
@@ -285,19 +286,67 @@ defmodule Setzkasten.Components.Data do
           <:meta>Geändert am 07.10.2026</:meta>
         </.list_row>
       </.list>
+
+  `:foot` is a total row ("Summe") under the rows, its value at the end of the rows' trailing
+  column. When the rows have `:action`s, give the foot their count (`actions`, the buttons the
+  rows show from `md`), `menu` and `actions_class`: it keeps an invisible copy of that column,
+  so the value lines up from `md`, on phones with the rows' `trailing_on_phone={:title}`. Its
+  `class` goes on the value, as a trailing's does (`md:w-40`). It takes the list's `id` with
+  `-foot`, so in a stream LiveView keeps it and adds rows above it.
+
+      <.list>
+        <.list_row :for={b <- @bookings} title={b.title}>…<:action label="Löschen" … /></.list_row>
+        <:foot label="Summe" actions={1}><.amount value={@total} /></:foot>
+      </.list>
   """
+  attr :id, :string, default: nil
   attr :flush, :boolean, default: false
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
+  slot :foot, doc: "a total row whose value lines up with the rows' trailing column" do
+    attr :label, :string, required: true
+    attr :actions, :integer, doc: "the action buttons the rows show from `md`"
+    attr :menu, :atom, values: [:responsive, :always], doc: "as the rows' `menu`"
+    attr :actions_class, :any, doc: "as the rows' `actions_class`"
+    attr :class, :any, doc: "on the value, as on a row's `:trailing`"
+  end
+
   def list(assigns) do
     ~H"""
-    <ul class={["list", !@flush && flat(), @class]} data-focus-fallback {@rest}>
+    <ul id={@id} class={["list", !@flush && flat(), @class]} data-focus-fallback {@rest}>
       {render_slot(@inner_block)}
+      <li
+        :for={{foot, i} <- Enum.with_index(@foot)}
+        id={@id && foot_id(@id, i)}
+        class="list-row items-center rounded-none border-t border-base-content/30 font-semibold"
+      >
+        <div class="list-col-grow min-w-0">{foot.label}</div>
+        <div class={["flex items-center justify-end gap-2 text-end tabular-nums", foot[:class]]}>
+          {render_slot(foot)}
+        </div>
+        <div
+          :if={(foot[:actions] || 0) > 0}
+          class={["invisible hidden gap-1 md:flex", foot[:actions_class]]}
+          aria-hidden="true"
+        >
+          <span :for={_ <- 1..foot[:actions]//1} class="btn btn-ghost btn-sm btn-square"></span>
+        </div>
+        <div
+          :if={(foot[:actions] || 0) > 0 or foot[:menu] == :always}
+          class={["invisible", foot[:menu] != :always && "md:hidden"]}
+          aria-hidden="true"
+        >
+          <span class="btn btn-ghost btn-sm btn-square"></span>
+        </div>
+      </li>
     </ul>
     """
   end
+
+  defp foot_id(id, 0), do: "#{id}-foot"
+  defp foot_id(id, i), do: "#{id}-foot-#{i}"
 
   @doc "A group heading inside `<.list>` (e.g. a date). Global attrs (`id`, …) land on the `<li>`."
   attr :class, :any, default: nil
@@ -537,11 +586,15 @@ defmodule Setzkasten.Components.Data do
       </div>
       <details
         :if={@action != []}
-        class={[
-          "dropdown dropdown-end relative z-10 open:z-20",
-          @menu == :responsive && "md:hidden",
-          @wrap? && "max-md:row-[1/span_2]"
-        ]}
+        class={
+          [
+            "dropdown dropdown-end relative z-10 open:z-20",
+            @menu == :responsive && "md:hidden",
+            @wrap? && "max-md:row-[1/span_2]",
+            # Centred on the title line, beside the amount, at either button height.
+            @title_trailing? && "max-md:self-start max-md:translate-y-[calc(0.5lh-50%)]"
+          ]
+        }
         phx-mounted={JS.ignore_attributes(["open"])}
         phx-click-away={JS.remove_attribute("open")}
         phx-window-keydown={JS.remove_attribute("open")}
@@ -687,11 +740,21 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   A KPI tile: daisyUI `stat` on base-100 with a hairline and `tabular-nums`.
-  `size={:sm}` (`text-2xl`) for tile grids where 32px overflows. `tone` (`:success`/`:error`)
-  colours the value with the ink tokens. `stale` adds a badge instead of fading the value;
+  `size={:sm}` (`text-2xl`) for tile grids where 32px overflows. `tone` (`:success`,
+  `:warning`, `:error`) colours the value with the ink tokens. `stale` adds a badge instead of fading the value;
   `loading` shows a skeleton in place of the value. The inner block replaces `value`.
   `desc` is a plain line under the value; the `:note` slot takes its place for markup (a
   toned delta, a date with a name) in the same small text.
+
+  `:meter` holds a full-width meter under the value, before the note (a battery level as
+  `<.bar label="Ladestand" value={82} hide_label />`): a block of its own, where a note is a
+  line of inline text.
+
+  `:figure` is a non-interactive widget at the end of the tile (daisyUI `stat-figure`): a
+  plush, an icon, a gauge or a sparkline, centred beside the rows. Below `sm` it moves to the
+  end of the label row and value and note take the full width, so a narrow tile keeps room for
+  the number. It is hidden from screen readers; give it `label` when it says something the
+  value does not (a gauge's verdict), and it becomes an image with that name.
 
   With an `id`, a value that a LiveView update changes counts from the old to the new number
   (500 ms, `tabular-nums`); never on first render or a reconnect that brings the same value.
@@ -699,10 +762,18 @@ defmodule Setzkasten.Components.Data do
   the server's. `animate={false}` for values that change every second. Reduced motion: the new
   value stands at once.
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  `setzkasten-stat-grid` on a grid of stats lets the tiles share its rows (subgrid, two rows a
+  tile, three once one has a note), so a label on two lines keeps every value of the row level.
+  Opt-in, as each tile then spans rows of the grid: leave it off where a stat places itself
+  (`row-span-2`) or the grid sizes its rows (`auto-rows-fr`).
+
+      <div class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4">
         <.stat label="PV jetzt" value="1.234" unit="W" desc="Akku 82 %" size={:sm} />
         <.stat label="Depot" value="63.279" unit="€">
           <:note><.amount value={50_000} signed tone /> heute</:note>
+        </.stat>
+        <.stat label="PV jetzt" value="486" unit="W" size={:sm}>
+          <:figure><.plush name="sunny" size={:lg} /></:figure>
         </.stat>
       </div>
   """
@@ -711,7 +782,7 @@ defmodule Setzkasten.Components.Data do
   attr :value, :any, default: nil
   attr :unit, :string, default: nil
   attr :desc, :string, default: nil
-  attr :tone, :atom, default: nil, values: [nil, :success, :error]
+  attr :tone, :atom, default: nil, values: [nil, :success, :warning, :error]
   attr :size, :atom, default: :md, values: [:md, :sm]
   attr :stale, :boolean, default: false
   attr :stale_label, :string, default: "veraltet"
@@ -721,6 +792,12 @@ defmodule Setzkasten.Components.Data do
   attr :rest, :global
   slot :inner_block
   slot :note, doc: "markup in place of `desc` (the slot wins)"
+
+  slot :meter, doc: "a full-width meter under the value, e.g. `<.bar hide_label>`"
+
+  slot :figure, doc: "a widget at the end of the tile: plush, icon, gauge, sparkline" do
+    attr :label, :string, doc: "makes the figure an image with this name; hidden without"
+  end
 
   def stat(assigns) do
     assigns = assign(assigns, :live, assigns.id && assigns.animate)
@@ -733,15 +810,21 @@ defmodule Setzkasten.Components.Data do
       {@rest}
     >
       <div class="stat-title">{@label}</div>
-      <div :if={@loading} class="skeleton h-8 w-24 mt-1"></div>
+      <div
+        :if={@loading}
+        class={["skeleton h-8 w-full max-w-24 mt-1", @figure != [] && "max-sm:col-span-2"]}
+      >
+      </div>
       <div
         :if={!@loading}
         id={@live && "#{@id}-value"}
         phx-hook={@live && "Setzkasten.Components.Data.LiveValue"}
         class={[
           "stat-value tabular-nums",
+          @figure != [] && "max-sm:col-span-2",
           @size == :sm && "text-2xl",
           @tone == :success && "text-success-ink",
+          @tone == :warning && "text-warning-ink",
           @tone == :error && "text-error-ink"
         ]}
       >
@@ -749,14 +832,33 @@ defmodule Setzkasten.Components.Data do
         <span :if={@unit} class="text-base font-semibold text-base-content/70">{@unit}</span>
       </div>
       <div
-        :if={@desc || @note != [] || @stale}
-        class="stat-desc flex flex-wrap items-center gap-1 whitespace-normal"
+        :if={@meter != [] || @desc || @note != [] || @stale}
+        class={[
+          "stat-desc whitespace-normal",
+          if(@meter != [],
+            do: "mt-1 flex flex-col gap-1.5",
+            else: "flex flex-wrap items-center gap-1"
+          ),
+          @figure != [] && "max-sm:col-span-2"
+        ]}
       >
-        <span :if={@stale} class="badge badge-sm">
-          <span class="status status-warning" aria-hidden="true"></span>{@stale_label}
-        </span>
-        <span :if={@note != []}>{render_slot(@note)}</span>
-        {if @note == [], do: @desc}
+        <div :if={@meter != []}>{render_slot(@meter)}</div>
+        <%= if @meter != [] do %>
+          <div :if={@desc || @note != [] || @stale} class="flex flex-wrap items-center gap-1">
+            {stat_note(assigns)}
+          </div>
+        <% else %>
+          {stat_note(assigns)}
+        <% end %>
+      </div>
+      <div
+        :for={figure <- @figure}
+        class="stat-figure w-max max-sm:[grid-row:1] max-sm:self-start"
+        role={figure[:label] && "img"}
+        aria-label={figure[:label]}
+        aria-hidden={!figure[:label] && "true"}
+      >
+        {render_slot(figure)}
       </div>
     </div>
     <script :type={ColocatedHook} name=".LiveValue">
@@ -910,6 +1012,23 @@ defmodule Setzkasten.Components.Data do
     neutral: "setzkasten-progress-neutral"
   }
 
+  @bar_colors %{
+    1 => "text-chart-1-fill [--setzkasten-bar-line:var(--color-chart-1)]",
+    2 => "text-chart-2-fill [--setzkasten-bar-line:var(--color-chart-2)]",
+    3 => "text-chart-3-fill [--setzkasten-bar-line:var(--color-chart-3)]",
+    4 => "text-chart-4-fill [--setzkasten-bar-line:var(--color-chart-4)]",
+    5 => "text-chart-5-fill [--setzkasten-bar-line:var(--color-chart-5)]",
+    6 => "text-chart-6-fill [--setzkasten-bar-line:var(--color-chart-6)]",
+    7 => "text-chart-7-fill [--setzkasten-bar-line:var(--color-chart-7)]",
+    8 => "text-chart-8-fill [--setzkasten-bar-line:var(--color-chart-8)]",
+    {:seq, 1} => "text-seq-1 [--setzkasten-bar-line:var(--color-seq-1)]",
+    {:seq, 2} => "text-seq-2 [--setzkasten-bar-line:var(--color-seq-2)]",
+    {:seq, 3} => "text-seq-3 [--setzkasten-bar-line:var(--color-seq-3)]",
+    {:seq, 4} => "text-seq-4 [--setzkasten-bar-line:var(--color-seq-4)]",
+    {:seq, 5} => "text-seq-5 [--setzkasten-bar-line:var(--color-seq-5)]",
+    other: "text-chart-other-fill [--setzkasten-bar-line:var(--color-chart-other)]"
+  }
+
   @doc """
   A share or fill level as native `<progress>` with label and value. The pastel tones
   (`:info`, `:success`, `:warning`, `:error`) are below 3:1 against their track in the light
@@ -917,13 +1036,31 @@ defmodule Setzkasten.Components.Data do
   that is no state; it keeps 3:1 against its track and can stand alone. `target` draws a 2px
   marker at its exact share as SVG geometry (no inline style, so it works under a strict CSP).
 
+  `hide_label` drops the visible label (it stays the progress's accessible name), for a bar
+  whose label is said next to it, as a stat's `:meter` under its value.
+
+  `color` (a chart series 1–8, `:other` or a sequential step `{:seq, 1..5}`) draws the bar as
+  the chart draws that series:
+  `chart-N-fill` with a 1px `chart-N` line, in place of `tone`, so a bar beside a chart keeps
+  its series' colour without borrowing a tone's meaning. Series 1–8 and `:other` stand alone:
+  their line carries the 3:1. A sequential step has no line of its own (its fill is its line),
+  so steps 1–3 in light and 1–2 in dark need `show_value`.
+
       <.bar label="Aktien weltweit" value={72} target={70} show_value />
+      <.bar label="Solar" value={64} color={2} show_value />
   """
   attr :label, :string, required: true
   attr :value, :any, required: true
   attr :max, :any, default: 100
   attr :tone, :atom, default: :primary, values: Map.keys(@bar_tones)
+
+  attr :color, :any,
+    default: nil,
+    values: [nil | Map.keys(@bar_colors)],
+    doc: "a chart series 1–8, `:other` or `{:seq, 1..5}`, in place of `tone`"
+
   attr :show_value, :boolean, default: false
+  attr :hide_label, :boolean, default: false, doc: "no visible label; it stays the bar's name"
   attr :value_label, :string, default: nil, doc: "replaces the computed percentage"
   attr :target, :any, default: nil
   attr :class, :any, default: nil
@@ -933,16 +1070,20 @@ defmodule Setzkasten.Components.Data do
   def bar(assigns) do
     assigns =
       assign(assigns,
-        tone_class: @bar_tones[assigns.tone],
+        tone_class:
+          if(assigns.color,
+            do: ["setzkasten-progress-chart", @bar_colors[assigns.color]],
+            else: @bar_tones[assigns.tone]
+          ),
         percent: percent(assigns.value, assigns.max),
         target_x: assigns.target && target_x(assigns.target, assigns.max)
       )
 
     ~H"""
     <div class={@class} {@rest}>
-      <div class="flex justify-between gap-4 text-sm">
-        <span>{@label}</span>
-        <span :if={@show_value} class="tabular-nums">
+      <div :if={!@hide_label or @show_value} class="flex justify-between gap-4 text-sm">
+        <span :if={!@hide_label}>{@label}</span>
+        <span :if={@show_value} class="ms-auto tabular-nums">
           {@value_label || Format.number(@percent) <> " %"}
         </span>
       </div>
@@ -978,11 +1119,170 @@ defmodule Setzkasten.Components.Data do
   # The marker's x as an SVG percentage, exact to 0.001 % ("12.5%", "70%").
   defp target_x(_target, max) when max == 0, do: "0%"
 
-  defp target_x(target, max) do
-    share = (target / max * 100) |> max(0.0) |> min(100.0) |> Float.round(3)
+  defp target_x(target, max),
+    do: (target / max * 100) |> max(0.0) |> min(100.0) |> svg_percent()
+
+  defp stat_note(assigns) do
+    ~H"""
+    <span :if={@stale} class="badge badge-sm">
+      <span class="status status-warning" aria-hidden="true"></span>{@stale_label}
+    </span>
+    <span :if={@note != []}>{render_slot(@note)}</span>
+    {if @note == [], do: @desc}
+    """
+  end
+
+  defp svg_percent(share) do
+    share = Float.round(share * 1.0, 3)
     whole = trunc(share)
     if share == whole, do: "#{whole}%", else: "#{share}%"
   end
+
+  @share_fills %{
+    1 => "fill-chart-1-fill",
+    2 => "fill-chart-2-fill",
+    3 => "fill-chart-3-fill",
+    4 => "fill-chart-4-fill",
+    5 => "fill-chart-5-fill",
+    6 => "fill-chart-6-fill",
+    7 => "fill-chart-7-fill",
+    8 => "fill-chart-8-fill",
+    {:seq, 1} => "fill-seq-1",
+    {:seq, 2} => "fill-seq-2",
+    {:seq, 3} => "fill-seq-3",
+    {:seq, 4} => "fill-seq-4",
+    {:seq, 5} => "fill-seq-5",
+    other: "fill-chart-other-fill",
+    success: "fill-success-ink",
+    error: "fill-error-ink",
+    primary: "fill-primary",
+    neutral: "fill-base-content/70"
+  }
+
+  @share_heights %{sm: "h-2", md: "h-3"}
+  @share_track "fill-base-content/10"
+
+  @doc """
+  A whole split into its shares in one continuous bar: the power of each plug, a portfolio by
+  asset class, spending by category. The segments sit flush in one rounded track, as wide as
+  their values, in the given order (put the largest first and a grouped rest last), with a 2px
+  gap between neighbours that shows the surface, so similar fills stay apart; no outlines.
+
+  `segments` are maps with `label`, `value` (a number), `color` (a chart series 1–8,
+  `:other` for the grouped rest, `{:seq, 1..5}` for ordered bins such as particle sizes, or
+  `:success`, `:error`, `:primary`, `:neutral`, as in `legend`) and an optional `value_label` ("412 W"; without it the share in percent). `max`
+  larger than the sum leaves the rest as empty track; by default the bar is full. A negative
+  value counts as 0, and a whole of 0 shows the empty track.
+
+  The values are text: a `legend` with a value per segment under the bar (two columns on
+  phones), or with `legend={false}` a list for screen readers only; the bar itself is hidden
+  from them. The group is named by `label`, with the whole's `value_label` at its end. Widths
+  are SVG geometry, no inline style, and do not animate. A segment narrower than the gap
+  vanishes from the bar and stays in the legend. `id` defaults to one derived from `label`
+  (pass `id` when two share bars share a label on one page).
+
+      <.share_bar
+        label="Steckdosen"
+        value_label="756 W"
+        segments={[
+          %{label: "Waschmaschine", value: 412, color: 1, value_label: "412 W"},
+          %{label: "Arbeitsplatz", value: 138, color: 2, value_label: "138 W"},
+          %{label: "Sonstige", value: 28, color: :other, value_label: "28 W"}
+        ]}
+      />
+  """
+  attr :id, :string, default: nil, doc: "needed when two share bars share a label on one page"
+  attr :label, :string, required: true
+  attr :value_label, :string, default: nil, doc: "the whole, at the end of the label row"
+
+  attr :segments, :list,
+    required: true,
+    doc: "maps with `label`, `value`, `color` and an optional `value_label`"
+
+  attr :max, :any, default: nil, doc: "the whole when larger than the sum of the values"
+  attr :size, :atom, default: :md, values: [:sm, :md]
+  attr :legend, :boolean, default: true, doc: "`false`: the values for screen readers only"
+  attr :class, :any, default: nil
+  attr :rest, :global
+
+  def share_bar(assigns) do
+    total = assigns.segments |> Enum.map(&share_value/1) |> Enum.sum()
+    whole = max(total, assigns.max || 0)
+
+    assigns =
+      assign(assigns,
+        id: assigns.id || "share-bar-#{:erlang.phash2(assigns.label)}",
+        height_class: @share_heights[assigns.size],
+        parts: share_parts(assigns.segments, total, whole),
+        items: Enum.map(assigns.segments, &share_item(&1, whole))
+      )
+
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-label"}
+      class={["flex flex-col gap-1.5", @class]}
+      {@rest}
+    >
+      <div class="flex justify-between gap-4 text-sm">
+        <span id={"#{@id}-label"}>{@label}</span>
+        <span :if={@value_label} class="tabular-nums">{@value_label}</span>
+      </div>
+      <div class={["overflow-hidden rounded-box", @height_class]} aria-hidden="true">
+        <svg class="block h-full w-full">
+          <svg :for={part <- @parts} x={part.x} width={part.width} overflow="hidden">
+            <rect x={part.inset} width="100%" height="100%" class={part.fill} />
+          </svg>
+        </svg>
+      </div>
+      <.legend :if={@legend} items={@items} class="mt-0.5" />
+      <ul :if={!@legend} class="sr-only">
+        <li :for={item <- @items}>{item.label}: {item.value_label}</li>
+      </ul>
+    </div>
+    """
+  end
+
+  # Nested viewports in percent, each rect inset by the gap, so nothing measures in pixels.
+  defp share_parts(_segments, _total, whole) when whole <= 0,
+    do: [%{x: "0%", width: "100%", inset: "0", fill: @share_track}]
+
+  defp share_parts(segments, total, whole) do
+    spans =
+      segments
+      |> Enum.scan({0, 0, nil}, fn segment, {_start, stop, _fill} ->
+        {stop, stop + share_value(segment), Map.fetch!(@share_fills, segment.color)}
+      end)
+      |> Kernel.++([{total, whole, @share_track}])
+      |> Enum.reject(fn {start, stop, _fill} -> stop <= start end)
+
+    spans
+    |> Enum.with_index()
+    |> Enum.map(fn {{start, stop, fill}, index} ->
+      x = start / whole * 100
+
+      %{
+        x: svg_percent(x),
+        width: svg_percent(stop / whole * 100 - x),
+        inset: if(index == 0, do: "0", else: "2"),
+        fill: fill
+      }
+    end)
+  end
+
+  defp share_item(segment, whole) do
+    %{
+      label: segment.label,
+      color: segment.color,
+      value_label: segment[:value_label] || share_percent(share_value(segment), whole)
+    }
+  end
+
+  defp share_value(segment), do: max(segment.value, 0)
+
+  defp share_percent(_value, whole) when whole <= 0, do: "0 %"
+  defp share_percent(value, whole), do: Format.number(round(value / whole * 100)) <> " %"
 
   @avatar_tones %{
     primary: "bg-primary text-primary-content",
@@ -1057,7 +1357,7 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
-  @chart_heights %{sm: "h-56", md: "h-64", lg: "h-76"}
+  @chart_heights %{sm: "h-56", md: "h-64", lg: "h-76", auto: nil}
 
   @doc """
   The frame around an app-drawn chart (Chart.js etc.): card with title and `:actions`,
@@ -1066,16 +1366,45 @@ defmodule Setzkasten.Components.Data do
   keyboard and touch path to exact values). `loading` shows a skeleton. Without `hook` the
   inner block is drawn instead of the canvas (static SVG charts).
 
-      <.chart_card id="networth" title="Vermögen" hook="NetWorthChart" summary="…">
+  The hook element is `relative` and holds only the canvas, as Chart.js's responsive mode
+  needs; the card is `min-w-0`, so in a flex row it shrinks below the canvas's last width and
+  the chart can follow.
+
+  `hook_attrs` go on the hook element (`<id>-chart`), e.g. the series as `data-*`: after
+  mount LiveView patches only the `data-*` of the ignored container and calls the hook's
+  `updated()`. `id`, `class`, `phx-hook` and `phx-update` belong to the component. Global
+  attrs stay on the card.
+
+  `subtitle` carries the unit or period ("Leistung in Watt", "seit 27.08.2026 · 16 Tage"), so
+  the ticks show bare numbers and need no axis title.
+
+  `height` `:sm` 14rem, `:md` 16rem, `:lg` 19rem, or `:auto` for an inner block that sizes
+  itself (an SVG at `width: 100%; height: auto`: heat strips, maps, small multiples); its
+  `loading` skeleton takes the `:md` height. `:auto` with `hook` raises: a canvas has no
+  height of its own to give.
+
+      <.chart_card
+        id="networth"
+        title="Vermögen"
+        hook="NetWorthChart"
+        hook_attrs={%{"data-points" => Jason.encode!(@points)}}
+        summary="…"
+      >
         <:legend><.legend items={[%{label: "Vermögen", color: 1}]} /></:legend>
         <:data><.table id="networth-data" rows={@points} size={:sm} flush>…</.table></:data>
       </.chart_card>
   """
   attr :id, :string, required: true
   attr :title, :string, required: true
+  attr :subtitle, :string, default: nil
   attr :summary, :string, required: true
   attr :hook, :string, default: nil
-  attr :height, :atom, default: :md, values: [:sm, :md, :lg]
+
+  attr :hook_attrs, :map,
+    default: %{},
+    doc: "`data-*` on the hook element, e.g. the series; patched after mount"
+
+  attr :height, :atom, default: :md, values: [:sm, :md, :lg, :auto]
   attr :level, :integer, default: 2
   attr :loading, :boolean, default: false
   attr :data_label, :string, default: "Werte als Tabelle"
@@ -1086,24 +1415,38 @@ defmodule Setzkasten.Components.Data do
   slot :legend
   slot :data
 
+  def chart_card(%{height: :auto, hook: hook}) when is_binary(hook) do
+    raise ArgumentError,
+          "<.chart_card height={:auto}> needs an inner block, not a hook: a canvas takes its height from the card"
+  end
+
   def chart_card(assigns) do
-    assigns = assign(assigns, :height_class, @chart_heights[assigns.height])
+    height = @chart_heights[assigns.height]
+    assigns = assign(assigns, height_class: height, skeleton_class: height || @chart_heights.md)
 
     ~H"""
     <section
       id={@id}
-      class={["card bg-base-100 border border-base-content/10", @class]}
+      class={[
+        "setzkasten-chart-card card min-w-0 bg-base-100 border border-base-content/10",
+        @class
+      ]}
       aria-busy={@loading && "true"}
       {@rest}
     >
       <div class="card-body">
         <div class="flex flex-wrap items-start justify-between gap-2">
-          <.dynamic_tag tag_name={"h#{@level}"} class="card-title">{@title}</.dynamic_tag>
+          <div class="min-w-0">
+            <.dynamic_tag tag_name={"h#{@level}"} class="card-title">{@title}</.dynamic_tag>
+            <p :if={@subtitle} class="text-sm text-base-content/70 max-w-prose wrap-anywhere">
+              {@subtitle}
+            </p>
+          </div>
           <div :if={@actions != []} class="flex flex-wrap items-center gap-2">
             {render_slot(@actions)}
           </div>
         </div>
-        <div :if={@loading} class={@height_class}>
+        <div :if={@loading} class={@skeleton_class}>
           <div class="skeleton h-full"></div>
         </div>
         <div :if={!@loading} role="img" aria-label={@summary} class={["flex flex-col", @height_class]}>
@@ -1113,19 +1456,16 @@ defmodule Setzkasten.Components.Data do
             id={"#{@id}-chart"}
             phx-hook={@hook}
             phx-update="ignore"
-            class="h-full"
+            class="relative h-full"
+            {@hook_attrs}
           >
             <canvas></canvas>
           </div>
         </div>
         {render_slot(@legend)}
-        <details
-          :if={@data != []}
-          class="collapse collapse-arrow rounded-none border-t border-base-content/10"
-        >
-          <summary class="collapse-title text-sm font-semibold">{@data_label}</summary>
-          <div class="collapse-content overflow-x-auto">{render_slot(@data)}</div>
-        </details>
+        <.disclosure :if={@data != []} id={"#{@id}-data-toggle"} variant={:row} summary={@data_label}>
+          {render_slot(@data)}
+        </.disclosure>
       </div>
     </section>
     """
@@ -1140,6 +1480,12 @@ defmodule Setzkasten.Components.Data do
     6 => "bg-chart-6-fill border border-chart-6",
     7 => "bg-chart-7-fill border border-chart-7",
     8 => "bg-chart-8-fill border border-chart-8",
+    {:seq, 1} => "bg-seq-1",
+    {:seq, 2} => "bg-seq-2",
+    {:seq, 3} => "bg-seq-3",
+    {:seq, 4} => "bg-seq-4",
+    {:seq, 5} => "bg-seq-5",
+    other: "bg-chart-other-fill border border-chart-other",
     success: "bg-success-ink",
     error: "bg-error-ink",
     primary: "bg-primary",
@@ -1155,6 +1501,12 @@ defmodule Setzkasten.Components.Data do
     6 => "stroke-chart-6",
     7 => "stroke-chart-7",
     8 => "stroke-chart-8",
+    {:seq, 1} => "stroke-seq-1",
+    {:seq, 2} => "stroke-seq-2",
+    {:seq, 3} => "stroke-seq-3",
+    {:seq, 4} => "stroke-seq-4",
+    {:seq, 5} => "stroke-seq-5",
+    other: "stroke-chart-other",
     success: "stroke-success-ink",
     error: "stroke-error-ink",
     primary: "stroke-primary",
@@ -1162,9 +1514,14 @@ defmodule Setzkasten.Components.Data do
   }
 
   @doc """
-  Chart legend: 10px dots with `text-xs` labels. `color` is a series number 1–8 (fill
-  `chart-N-fill` with a 1px `chart-N` outline, like the bars; the outline carries the 3:1) or
-  `:success`, `:error`, `:primary`, `:neutral`. An item's `marker` is `:dot` (default),
+  Chart legend: 10px dots with `text-xs` labels. An item's `value_label` ("412 W") shows its
+  value at the end of its line: then the items form a grid of up to three columns of at least
+  8rem, by the legend's own width (two in a phone card or a half-width card), labels end in an
+  ellipsis, values right-aligned with tabular figures. `color` is a series number 1–8 (fill
+  `chart-N-fill` with a 1px `chart-N` outline, like the bars; the outline carries the 3:1),
+  `:other` (the grouped rest, `chart-other-fill` with a `chart-other` outline), a step of the
+  sequential ramp `{:seq, 1..5}` for ordered categories, or `:success`, `:error`, `:primary`,
+  `:neutral`. An item's `marker` is `:dot` (default),
   `:line` or `:dashed` (a 16px line in the series' line colour, ≥ 3:1, to key a line or a
   dashed reference line).
 
@@ -1177,11 +1534,27 @@ defmodule Setzkasten.Components.Data do
   attr :rest, :global
 
   def legend(assigns) do
+    assigns = assign(assigns, :values?, Enum.any?(assigns.items, &(&1[:value_label] != nil)))
+
     ~H"""
-    <ul class={["flex flex-wrap gap-x-4 gap-y-1 text-xs", @class]} {@rest}>
-      <li :for={item <- @items} class="flex items-center gap-1.5">
+    <ul
+      class={[
+        if(@values?,
+          do: "setzkasten-legend-grid grid gap-x-6 gap-y-1 text-xs",
+          else: "flex flex-wrap gap-x-4 gap-y-1 text-xs"
+        ),
+        @class
+      ]}
+      {@rest}
+    >
+      <li :for={item <- @items} class={["flex items-center gap-1.5", @values? && "min-w-0"]}>
         <.legend_marker marker={Map.get(item, :marker, :dot)} color={item.color} />
-        {item.label}
+        <%= if @values? do %>
+          <span class="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>
+          <span class="shrink-0 tabular-nums">{item[:value_label]}</span>
+        <% else %>
+          {item.label}
+        <% end %>
       </li>
     </ul>
     """
@@ -1193,7 +1566,7 @@ defmodule Setzkasten.Components.Data do
   defp legend_marker(%{marker: :dot} = assigns) do
     ~H"""
     <span
-      class={["size-2.5 rounded-full", Map.fetch!(legend_colors(), @color)]}
+      class={["size-2.5 shrink-0 rounded-full", Map.fetch!(legend_colors(), @color)]}
       aria-hidden="true"
     ></span>
     """

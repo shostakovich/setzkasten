@@ -22,6 +22,15 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "a[aria-current=page]", "data-phx-link") == "patch"
   end
 
+  test "segmented patch links replace the history entry unless asked not to" do
+    assigns = %{options: [{"1M", "1m", "/?r=1m"}, {"1J", "1y", "/?r=1y"}]}
+    doc = parse(~H|<.segmented label="Zeitraum" value="1m" options={@options} />|)
+    assert doc |> find("a") |> LazyHTML.attribute("data-phx-link-state") == ~w(replace replace)
+
+    doc = parse(~H|<.segmented label="Zeitraum" value="1m" options={@options} replace={false} />|)
+    assert doc |> find("a") |> LazyHTML.attribute("data-phx-link-state") == ~w(push push)
+  end
+
   test "segmented button mode uses aria-pressed and sends the option as value" do
     assigns = %{}
 
@@ -83,9 +92,164 @@ defmodule Setzkasten.NavigationTest do
       />
       """)
 
-    assert text(doc, "legend.sr-only") == "Aufteilung"
+    assert text(doc, "legend.fieldset-legend") == "Aufteilung"
     assert attr(doc, "input[value=shares]", "checked") != nil
     assert attr(doc, "input[value=shares]", "name") == "e[split]"
+  end
+
+  test "segmented checkbox mode is a checkbox group sent as name[]" do
+    assigns = %{form: to_form(%{"days" => ["mon", "wed"]}, as: :plan)}
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:checkbox}
+        label="Wochentage"
+        field={@form[:days]}
+        options={[%{label: "Mo", long_label: "Montag", value: "mon"}, {"Di", "tue"}, {"Mi", "wed"}]}
+      />
+      """)
+
+    assert text(doc, "fieldset > legend.fieldset-legend") == "Wochentage"
+    boxes = find(doc, "fieldset > .join > label.join-item input[type=checkbox].sr-only")
+    assert LazyHTML.attribute(boxes, "name") == List.duplicate("plan[days][]", 3)
+
+    assert doc |> find("input[type=checkbox][checked]") |> LazyHTML.attribute("value") ==
+             ~w(mon wed)
+
+    assert attr(doc, "input[value=mon]", "aria-label") == "Montag"
+    assert "has-checked:setzkasten-selected" in classes(doc, "label:has(input[value=tue])")
+    # Outside the join, so daisyUI's join still finds its first and last item.
+    assert attr(doc, "fieldset > input[type=hidden]", "name") == "plan[days][]"
+    assert attr(doc, "input[type=hidden]", "value") == ""
+    assert count(doc, ".join input[type=hidden]") == 0
+
+    for name <- ["days", "days[]"] do
+      assigns = %{name: name}
+
+      doc =
+        parse(~H"""
+        <.segmented mode={:checkbox} label="Tage" name={@name} value={[:tue]} options={[{"Di", "tue"}]} />
+        """)
+
+      assert attr(doc, "input[type=checkbox]", "name") == "days[]"
+      assert attr(doc, "input[type=checkbox]", "checked") != nil
+    end
+  end
+
+  test "segmented form modes are fields: visible label, errors after use, help, described group" do
+    form =
+      to_form(%{"split" => "x"}, as: :e, errors: [split: {"is invalid", []}], action: :validate)
+
+    assigns = %{form: form}
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:radio}
+        label="Aufteilung"
+        field={@form[:split]}
+        help="Gilt für alle Beteiligten"
+        options={[{"Gleich", "equal"}, {"Anteile", "shares"}]}
+      />
+      """)
+
+    group = "fieldset#e_split"
+    assert attr(doc, group, "role") == "radiogroup"
+    assert attr(doc, group, "aria-invalid") == "true"
+    assert attr(doc, group, "aria-describedby") == "e_split-error-0 e_split-help"
+    assert text(doc, "#e_split-error-0") == "Is invalid"
+    assert text(doc, "#e_split-help") == "Gilt für alle Beteiligten"
+    assert attr(doc, "input[value=equal]", "aria-invalid") == nil
+
+    unused = to_form(%{}, as: :e, errors: [split: {"is invalid", []}])
+    assigns = %{form: unused}
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:radio}
+        label="Aufteilung"
+        field={@form[:split]}
+        hide_label
+        options={[{"Gleich", "equal"}]}
+      />
+      """)
+
+    assert count(doc, "[id$=-error-0]") == 0
+    assert attr(doc, "fieldset", "aria-invalid") == nil
+    assert classes(doc, "legend") == ["sr-only"]
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:checkbox}
+        id="days"
+        name="days"
+        label="Tage"
+        errors={["Mindestens ein Tag"]}
+        options={[{"Mo", "mon"}, {"Di", "tue"}]}
+      />
+      """)
+
+    assert attr(doc, "fieldset#days", "role") == nil
+    assert attr(doc, "fieldset#days", "aria-invalid") == nil
+
+    assert doc |> find("input[type=checkbox]") |> LazyHTML.attribute("aria-invalid") ==
+             ~w(true true)
+
+    assert attr(doc, "fieldset#days", "aria-describedby") == "days-error-0"
+  end
+
+  test "segmented takes its errors from field over errors, as input does" do
+    form =
+      to_form(%{"split" => "x"}, as: :e, errors: [split: {"is invalid", []}], action: :validate)
+
+    assigns = %{form: form}
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:radio}
+        label="Aufteilung"
+        field={@form[:split]}
+        errors={["Bitte wählen"]}
+        options={[{"Gleich", "equal"}]}
+      />
+      """)
+
+    assert count(doc, "[id^=e_split-error-]") == 1
+    assert text(doc, "#e_split-error-0") == "Is invalid"
+  end
+
+  test "segmented form modes without field or id take their id from name" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.segmented
+        mode={:checkbox}
+        name="plan[days][]"
+        label="Tage"
+        errors={["Mindestens ein Tag"]}
+        help="Mehrere möglich"
+        options={[{"Mo", "mon"}]}
+      />
+      <.segmented
+        mode={:radio}
+        name="split"
+        label="Aufteilung"
+        help="Gilt für alle"
+        options={[{"A", "a"}]}
+      />
+      """)
+
+    assert attr(doc, "fieldset#plan_days", "aria-describedby") ==
+             "plan_days-error-0 plan_days-help"
+
+    assert text(doc, "#plan_days-error-0") == "Mindestens ein Tag"
+    assert attr(doc, "fieldset#split", "aria-describedby") == "split-help"
+    assert count(doc, "[id=-help]") == 0
   end
 
   test "segmented options carry a long accessible name, in every mode" do
@@ -245,6 +409,11 @@ defmodule Setzkasten.NavigationTest do
 
     assert classes(doc, "details") == ~w(dropdown dropdown-end)
     assert attr(doc, "details", "phx-key") == "Escape"
+    assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Navigation.Dropdown"
+
+    assert colocated_js("Setzkasten.Components.Navigation") =~
+             ~s[if (e.key === "Escape" && this.el.open) e.preventDefault()]
+
     assert attr(doc, "summary", "aria-label") == "Konto"
     assert attr(doc, "a.menu-active", "aria-current") == "page"
     assert attr(doc, "button.text-error-ink", "phx-click") =~ "logout"
@@ -379,7 +548,8 @@ defmodule Setzkasten.NavigationTest do
     doc =
       parse(~H|<.segmented mode={:radio} name="r" label="Zeitraum" options={@options} block />|)
 
-    assert classes(doc, "fieldset") == ~w(join flex w-full setzkasten-segmented-block)
+    assert classes(doc, "fieldset") == ~w(fieldset min-w-0 w-full setzkasten-segmented-block)
+    assert classes(doc, "fieldset > .join") == ~w(join flex w-full)
     assert "flex-1" in classes(doc, "label")
 
     doc = parse(~H|<.segmented label="Zeitraum" options={@options} />|)
@@ -414,9 +584,10 @@ defmodule Setzkasten.NavigationTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     [coarse] = Regex.run(~r/@media \(pointer: coarse\) \{\s*\.btn,.*?\n  \}/s, css)
     assert coarse =~ ".file-input,"
+    assert coarse =~ ".menu :where(li > a, li > button, li > summary, li > label),"
 
     assert coarse =~
-             ~r/\.menu :where\(li > a, li > button, li > summary\) \{\s*align-content: center;/
+             ~r/\.menu :where\(li > a, li > button, li > summary, li > label\) \{\s*align-content: center;/
   end
 
   test "an active button item is marked like an active link" do

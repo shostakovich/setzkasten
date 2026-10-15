@@ -199,6 +199,8 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
             <:leading><.avatar icon="wallet" tone={:base} /></:leading>
             <:meta>{join_meta(["08.03.2024", "Girokonto"])}</:meta>
             <:trailing><.amount value={300} signed tone /></:trailing>
+            <:action label="Bearbeiten" icon="pencil" navigate="/tables" />
+            <:action label="Löschen" icon="trash-2" on_click="noop" danger />
           </.list_row>
         </.list>
         <:note>
@@ -206,6 +208,21 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           bleibt ein kurzer Wert am Ende der Titelzeile, beide Zeilen rechtsbündig; die
           Meta-Zeile nimmt darunter die volle Breite (wie ein Kontoauszug).
         </:note>
+      </.demo>
+      <.demo title="Summe unter der Liste (:foot), auch mit Aktionen">
+        <.list id="foot-demo">
+          <.list_row
+            :for={{title, value} <- [{"Miete", -118_000}, {"Strom", -8_600}, {"Gehalt", 312_450}]}
+            title={title}
+            trailing_on_phone={:title}
+          >
+            <:meta>Oktober</:meta>
+            <:trailing><.amount value={value} signed tone /></:trailing>
+            <:action label="Bearbeiten" icon="pencil" navigate="/tables" />
+            <:action label="Löschen" icon="trash-2" on_click="noop" danger />
+          </.list_row>
+          <:foot label="Summe" actions={2}><.amount value={185_850} signed tone /></:foot>
+        </.list>
       </.demo>
       <.demo title="Titel als Button (on_click), z. B. für einen Dialog">
         <.list>

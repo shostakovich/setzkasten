@@ -1,5 +1,12 @@
 defmodule Setzkasten.Components.Forms do
-  @moduledoc "Form fields, a searchable select, a file drop zone and the form footer."
+  @moduledoc """
+  Form fields, a searchable select, a file drop zone and the form footer.
+
+  `phx-hook="Setzkasten.Components.Forms.FocusInvalid"` on a `<.form>` (with an `id`) moves
+  focus to the first field with `aria-invalid="true"` once a submit comes back with errors (a
+  radio or checkbox group to its first control). `JS.focus(to: "[aria-invalid=true]")` cannot:
+  it focuses every match in turn and ends on the last.
+  """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
   import Setzkasten.Components.Icons
@@ -15,6 +22,12 @@ defmodule Setzkasten.Components.Forms do
   the field border in `error-ink` and error lines linked by `aria-describedby`. Messages go
   through the function configured as `config :setzkasten, translate_error: {Mod, :fun}`
   (an app's Gettext `translate_error/1`); without it `%{count}`-style bindings are filled in.
+
+  A `toggle` is a checkbox with `role="switch"`: screen readers announce a switch, on or off
+  from the native checked state. `bare` (checkbox and toggle) drops the field's padding and
+  row height, so the control lines up with a heading beside it (a card's `:actions`); on touch
+  screens a hit area centred on the label, at least 44px each way, keeps the target without
+  growing the row, also with `hide_label`.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
@@ -48,6 +61,11 @@ defmodule Setzkasten.Components.Forms do
   attr :help, :string, default: nil
   attr :help_tone, :atom, default: nil, values: [nil, :warning]
   attr :inline, :boolean, default: false, doc: "field and inner block (a button) in one join"
+
+  attr :bare, :boolean,
+    default: false,
+    doc: "checkbox and toggle: no field padding or row height, e.g. beside a heading"
+
   attr :prefix, :string, default: nil
   attr :suffix, :string, default: nil
   attr :icon, :string, default: nil, doc: "Lucide icon at the start of the field (search)"
@@ -89,8 +107,18 @@ defmodule Setzkasten.Components.Forms do
       end)
 
     ~H"""
-    <div class="fieldset min-w-0">
-      <label class="flex items-center gap-3 text-sm pointer-coarse:min-h-11">
+    <div class={if @bare, do: "inline-flex min-w-0 flex-col", else: "fieldset min-w-0"}>
+      <label class={[
+        "flex items-center gap-3 text-sm",
+        if(@bare,
+          do: [
+            "relative pointer-coarse:after:absolute pointer-coarse:after:left-1/2 pointer-coarse:after:top-1/2",
+            "pointer-coarse:after:h-11 pointer-coarse:after:w-full pointer-coarse:after:min-w-11",
+            "pointer-coarse:after:-translate-x-1/2 pointer-coarse:after:-translate-y-1/2"
+          ],
+          else: "pointer-coarse:min-h-11"
+        )
+      ]}>
         <input
           type="hidden"
           name={@name}
@@ -104,6 +132,7 @@ defmodule Setzkasten.Components.Forms do
           name={@name}
           value="true"
           checked={@checked}
+          role={@type == "toggle" && "switch"}
           class={[control_class(@type), @class]}
           aria-invalid={@errors != [] && "true"}
           aria-describedby={@describedby}
@@ -121,7 +150,12 @@ defmodule Setzkasten.Components.Forms do
     assigns = prepare(assigns)
 
     ~H"""
-    <fieldset class="fieldset min-w-0" aria-describedby={@describedby}>
+    <fieldset
+      class="fieldset min-w-0"
+      role="radiogroup"
+      aria-invalid={@errors != [] && "true"}
+      aria-describedby={@describedby}
+    >
       <legend class={["fieldset-legend", @hide_label && "sr-only"]}>{@label}</legend>
       <label
         :for={{label, value} <- @options}
@@ -1019,7 +1053,9 @@ defmodule Setzkasten.Components.Forms do
   @doc """
   The footer of a form: primary action at the end, cancel before it, destructive actions in
   `:secondary` at the start. Below `sm` the buttons are full width and stacked with the
-  primary action on top.
+  primary action on top. Its hairline sits 24px below the content and 16px above the buttons:
+  a footer, set apart from the last field, not glued to it. In a grid or flex column it adds
+  8px to the forms' `gap-4`. A margin in `class` (`mt-0`, `mt-8`) replaces these.
 
   `sticky` pins the bar to the bottom of the viewport, above the dock inside `<.app_shell>`.
   On phones it spans `main`'s side gutters so nothing shows through beside it; from `sm` the bar
@@ -1057,7 +1093,7 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <div
       class={[
-        "flex gap-2 border-t border-base-content/10 bg-base-100",
+        "setzkasten-action-bar flex gap-2 border-t border-base-content/10 bg-base-100",
         "sm:flex-row sm:items-center sm:justify-end",
         "[.modal-box_&]:bg-popover [.modal-box_&]:-mb-6 [.modal-box_&]:py-4",
         if(@sticky,
@@ -1081,7 +1117,8 @@ defmodule Setzkasten.Components.Forms do
       <%= if @sticky do %>
         <%!-- Pinned on its own on phone pages, where the outer bar is display: contents. --%>
         <div class={[
-          "contents max-sm:flex max-sm:[.modal-box_&]:contents flex-wrap gap-2",
+          "setzkasten-action-bar-pinned contents max-sm:flex max-sm:[.modal-box_&]:contents",
+          "flex-wrap gap-2",
           "border-t border-base-content/10 bg-base-100 max-sm:[&>.btn]:flex-1",
           pinned_bar(),
           @class
@@ -1101,6 +1138,24 @@ defmodule Setzkasten.Components.Forms do
         {render_slot(@inner_block)}
       <% end %>
     </div>
+    <script :type={ColocatedHook} name=".FocusInvalid">
+      const CONTROLS = "input:not([type=hidden]), select, textarea, button"
+      export default {
+        mounted() {
+          this.observer = new MutationObserver(() => {
+            const wasLoading = this.loading
+            this.loading = this.el.classList.contains("phx-submit-loading")
+            if (!wasLoading || this.loading) return
+            const invalid = this.el.querySelector('[aria-invalid="true"]')
+            const target = invalid && (invalid.matches(CONTROLS) ? invalid : invalid.querySelector(CONTROLS))
+            // LiveView puts focus back on the submitter after this, so the move waits a task.
+            if (target) setTimeout(() => target.focus())
+          })
+          this.observer.observe(this.el, { attributes: true, attributeFilter: ["class"] })
+        },
+        destroyed() { this.observer.disconnect() }
+      }
+    </script>
     """
   end
 

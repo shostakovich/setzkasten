@@ -45,6 +45,8 @@ defmodule Setzkasten.LayoutTest do
 
     assert text(doc, ".card-body h2.card-title") == "Kosten"
     assert text(doc, "section > div.border-t") == "F"
+    # The footer follows a card's --card-p (tighter phone cards) as the body does.
+    assert "px-[var(--card-p,1.5rem)]" in classes(doc, "section > div.border-t")
 
     doc = parse(~H|<.card title="Liste" bleed={:phone}>
   <:list>
@@ -52,7 +54,10 @@ defmodule Setzkasten.LayoutTest do
   </:list>
 </.card>|)
     assert count(doc, ".card-body") == 0
-    assert classes(doc, "section > div:first-child") == ~w(px-6 pt-6 pb-2)
+
+    assert classes(doc, "section > div:first-child") ==
+             ~w|px-[var(--card-p,1.5rem)] pt-[var(--card-p,1.5rem)] pb-2|
+
     assert "max-sm:-mx-4" in classes(doc, "section")
   end
 
@@ -107,6 +112,52 @@ defmodule Setzkasten.LayoutTest do
     assert text(doc, "label:has(input[value=light]) span.sr-only") == "Light"
   end
 
+  test "a compact theme toggle is one button showing the scheme, with the choices in a menu" do
+    assigns = %{}
+    doc = parse(~H|<.theme_toggle id="tt" value="light" compact />|)
+
+    assert attr(doc, "#tt", "phx-hook") == "Setzkasten.Components.Layout.ThemeToggle"
+    menu = "#tt > details#tt-menu"
+    assert Enum.all?(~w(dropdown dropdown-end), &(&1 in classes(doc, menu)))
+    assert attr(doc, menu, "phx-click-away") =~ "open"
+    assert ~w(btn btn-ghost btn-square) == classes(doc, "#{menu} > summary")
+    assert attr(doc, "#{menu} > summary", "title") == "Farbschema"
+    assert text(doc, "#{menu} > summary span.sr-only") == "Farbschema"
+
+    icons = find(doc, "#{menu} > summary svg")
+    assert Enum.count(icons) == 3
+
+    assert "[:root[data-theme$=light]_&]:block" in classes(
+             doc,
+             "#{menu} > summary svg:nth-of-type(2)"
+           )
+
+    assert "[:root:not([data-theme$=light],[data-theme$=dark])_&]:block" in classes(
+             doc,
+             "#{menu} > summary svg:nth-of-type(1)"
+           )
+
+    assert count(doc, "#{menu} fieldset ul.menu li label input[type=radio].sr-only") == 3
+    assert text(doc, "#{menu} fieldset legend") == "Farbschema"
+    assert attr(doc, "input[value=light]", "checked") != nil
+    assert attr(doc, "input[value=dark]", "phx-keydown") =~ "focus_first"
+    assert text(doc, "label:has(input[value=dark])") == "Dunkel"
+
+    hook = colocated_js("Setzkasten.Components.Layout")
+    assert hook =~ ~s[menu.querySelector("summary").focus()]
+    assert hook =~ ~s[this.el.contains(menu)]
+    assert hook =~ ~s[this.el.addEventListener("click", (e) => {]
+
+    assert hook =~
+             ~s|if (e.key === "Escape" && this.el.querySelector("details[open]")) e.preventDefault()|
+
+    doc = parse(~H|<.theme_toggle store={:server} on_change="t" compact />|)
+    assert attr(doc, "form details input[value=dark]", "name") == "theme"
+
+    doc = parse(~H|<.theme_toggle store={:server} value={nil} on_change="t" compact />|)
+    assert attr(doc, "input[value=system]", "checked") != nil
+  end
+
   test "server-stored theme toggle is a form sending the change" do
     assigns = %{}
     doc = parse(~H|<.theme_toggle store={:server} on_change="set-theme" />|)
@@ -152,6 +203,58 @@ defmodule Setzkasten.LayoutTest do
     assert css =~ "--setzkasten-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1)"
     assert css =~ "@property --setzkasten-reveal-radius"
     assert hook =~ ~s[root.removeAttribute("style")]
+  end
+
+  test "theme tokens that equal a role follow it, so an app overrides the role once" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    # Both dark blocks: the system one and the explicit choice.
+    for declaration <- [
+          "--color-success-ink: var(--color-success);",
+          "--color-error-ink: var(--color-error);",
+          "--color-sidebar-negative: var(--color-error-ink);"
+        ] do
+      assert length(String.split(css, declaration)) == 3, declaration
+    end
+
+    assert css =~
+             "--color-selected: var(--color-neutral);\n    --color-selected-content: var(--color-neutral-content);"
+  end
+
+  test "info and warning inks: their roles in dark, chart lines follow, utilities everywhere" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    for declaration <- [
+          "--color-info-ink: var(--color-info);",
+          "--color-warning-ink: var(--color-warning);"
+        ] do
+      assert length(String.split(css, declaration)) == 3, declaration
+    end
+
+    for {n, ink} <- [{2, "warning"}, {3, "success"}, {4, "error"}, {6, "info"}] do
+      declaration = "--color-chart-#{n}: var(--color-#{ink}-ink);"
+      assert length(String.split(css, declaration)) == 4, declaration
+    end
+
+    assert css =~ ~r/@theme \{[^}]*--color-info-ink: oklch[^}]*--color-warning-ink: oklch/
+  end
+
+  test "every ink is text-grade: 4.5:1 on base-100 and base-200 in each theme" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    for marker <- [
+          ~s([data-theme="zipfel-light"] {),
+          ":root:not([data-theme]) {",
+          ~s([data-theme="zipfel-dark"] {)
+        ] do
+      tokens = theme_tokens(css, marker)
+      inks = tokens |> Map.keys() |> Enum.filter(&String.ends_with?(&1, "-ink"))
+      assert Enum.sort(inks) == ~w(error-ink info-ink success-ink warning-ink)
+
+      for ink <- inks, surface <- ~w(base-100 base-200) do
+        assert contrast(tokens[ink], tokens[surface]) >= 4.5, "#{marker} #{ink} on #{surface}"
+      end
+    end
   end
 
   test "header and card text break long unbroken strings" do
@@ -201,5 +304,54 @@ defmodule Setzkasten.LayoutTest do
     assert attr(doc, "header a", "href") == "/settings"
     assert attr(doc, "header a", "data-phx-link") == nil
     assert count(parse(~H|<.header>T</.header>|), "header a") == 0
+  end
+
+  defp theme_tokens(css, marker) do
+    block =
+      css |> String.split(marker, parts: 2) |> List.last() |> String.split("}", parts: 2) |> hd()
+
+    values =
+      ~r/--color-([\w-]+): (?:oklch\(([\d.]+)% ([\d.]+) ([\d.]+)\)|var\(--color-([\w-]+)\));/
+      |> Regex.scan(block)
+      |> Map.new(fn
+        [_, name, l, c, h] -> {name, Enum.map([l, c, h], &(&1 |> Float.parse() |> elem(0)))}
+        [_, name, "", "", "", ref] -> {name, ref}
+      end)
+
+    Map.new(values, fn {name, value} -> {name, resolve(values, value)} end)
+  end
+
+  defp resolve(values, ref) when is_binary(ref), do: resolve(values, values[ref])
+  defp resolve(_values, oklch), do: oklch
+
+  defp contrast(a, b) do
+    [hi, lo] = Enum.sort([luminance(a), luminance(b)], :desc)
+    (hi + 0.05) / (lo + 0.05)
+  end
+
+  # OKLCH to linear sRGB (Björn Ottosson's matrices), clipped to the gamut, weighted per WCAG.
+  defp luminance([l, c, h]) do
+    {a, b} = {c * :math.cos(h * :math.pi() / 180), c * :math.sin(h * :math.pi() / 180)}
+    l = l / 100
+
+    [lms_l, lms_m, lms_s] =
+      Enum.map(
+        [
+          l + 0.3963377774 * a + 0.2158037573 * b,
+          l - 0.1055613458 * a - 0.0638541728 * b,
+          l - 0.0894841775 * a - 1.2914855480 * b
+        ],
+        &(&1 ** 3)
+      )
+
+    [
+      4.0767416621 * lms_l - 3.3077115913 * lms_m + 0.2309699292 * lms_s,
+      -1.2684380046 * lms_l + 2.6097574011 * lms_m - 0.3413193965 * lms_s,
+      -0.0041960863 * lms_l - 0.7034186147 * lms_m + 1.7076147010 * lms_s
+    ]
+    |> Enum.zip_with([0.2126, 0.7152, 0.0722], fn channel, weight ->
+      weight * min(max(channel, 0.0), 1.0)
+    end)
+    |> Enum.sum()
   end
 end

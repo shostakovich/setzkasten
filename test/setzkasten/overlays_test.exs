@@ -34,6 +34,26 @@ defmodule Setzkasten.OverlaysTest do
     assert css =~ ~r/\.modal-box:focus-visible \{\s*outline: none;/
   end
 
+  test "a bottom sheet keeps its content and a sticky bar above the bottom safe area" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media \(width < 40rem\) \{\s*\.modal-bottom > \.modal-box \{\s*border-bottom: env\(safe-area-inset-bottom\) solid transparent;/
+
+    assigns = %{}
+    assert classes(parse(~H|<.confirm_dialog />|), ".modal-box") == ["modal-box"]
+  end
+
+  test "a side panel keeps its content clear of the top and bottom safe areas" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/  :is\(\.modal-start, \.modal-end\) > \.modal-box \{\s*border-top: env\(safe-area-inset-top\) solid transparent;/
+
+    assert css =~
+             ~r/:is\(\.modal-start, \.modal-end\) > \.modal-box:not\(\.setzkasten-sidebar\) \{\s*border-bottom: env\(safe-area-inset-bottom\) solid transparent;/
+  end
+
   test "side panel placement and server-driven show" do
     assigns = %{}
     doc = parse(~H|<.modal id="p" placement={:end} show>Body</.modal>|)
@@ -175,6 +195,29 @@ defmodule Setzkasten.OverlaysTest do
              ".file-input::file-selector-button {\n    --btn-bg: var(--setzkasten-popover-control);"
   end
 
+  test "a row disclosure is a quiet 14px row with a hairline above, as under a chart" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.disclosure id="r" summary="Werte als Tabelle" variant={:row}>x</.disclosure>|)
+
+    assert classes(doc, "details") ==
+             ~w(collapse collapse-arrow rounded-none border-t border-base-content/10)
+
+    assert classes(doc, "summary") == ~w(collapse-title font-semibold text-sm)
+    assert attr(doc, "details", "phx-mounted") =~ "ignore_attrs"
+
+    chart =
+      parse(~H"""
+      <.chart_card id="c" title="t" summary="s">
+        <svg></svg><:data>Tabelle</:data>
+      </.chart_card>
+      """)
+
+    assert classes(chart, "details#c-data-toggle") == classes(doc, "details")
+    assert classes(chart, "details#c-data-toggle > summary") == classes(doc, "summary")
+  end
+
   test "a disclosure's count is a quiet number after the summary" do
     assigns = %{}
     doc = parse(~H|<.disclosure id="d" summary="Ausgemustert" count={2}>x</.disclosure>|)
@@ -185,7 +228,9 @@ defmodule Setzkasten.OverlaysTest do
     doc =
       parse(~H|<.disclosure id="d" summary="Mehr" variant={:button} count={0}>x</.disclosure>|)
 
-    assert text(doc, "summary span.tabular-nums") == "0"
+    # In the button a pill badge, so the number does not read as part of the label.
+    assert classes(doc, "summary span.tabular-nums") == ~w(badge badge-sm tabular-nums)
+    assert text(doc, "summary span.badge") == "0"
 
     assert count(parse(~H|<.disclosure id="d" summary="Mehr">x</.disclosure>|), "summary span") ==
              0

@@ -113,6 +113,22 @@ defmodule Setzkasten.ActionsTest do
     assert [%{"value" => %{"number" => "3"}}] = pushes(attr(doc, "button", "phx-click"))
   end
 
+  test "confirm parks a button's value as the client sends it, over a phx-value-value" do
+    assigns = %{}
+    doc = parse(~H|<.button value="42" phx-click="pick" confirm="Sicher?">x</.button>|)
+
+    assert [%{"event" => "pick", "value" => %{"value" => "42"}}] =
+             pushes(attr(doc, "button", "phx-click"))
+
+    doc =
+      parse(
+        ~H|<.button value="b" phx-value-value="a" phx-value-id="7" phx-click="pick" confirm="?">x</.button>|
+      )
+
+    assert [%{"value" => %{"value" => "b", "id" => "7"}}] =
+             pushes(attr(doc, "button", "phx-click"))
+  end
+
   test "confirm carries phx-target into the parked push" do
     assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
 

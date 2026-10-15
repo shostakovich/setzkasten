@@ -22,6 +22,10 @@
 - `alert` content spans the alert's full width, so `:actions` end at its edge.
 - `section_heading` `size={:sm}` for compact surfaces such as a popover.
 - `combobox_options` and `options_from`: one option list for many comboboxes.
+- Escape in an open `dropdown` closes only the menu, not a `<dialog>` around it.
+- `modal` side panels (`placement` `:start`, `:end`) keep their content and ✕ clear of the top and bottom safe areas.
+- `input type="radio_group"` is a `radiogroup` that carries `aria-invalid` with errors, so screen readers and
+  `FocusInvalid` find it.
 - `table` `size={:dense}` for data grids: 36px rows (44px on coarse pointers), 32px controls in cells.
 - `row-selected` token (`bg-row-selected`): `table` rows with `aria-current` or `aria-selected="true"` take it with a 3px `selected` bar at their start.
 - A proper minus sign: U+2212 comes from a one-glyph Figtree face built from its plus (0.45em, plus-sign height and side bearings) instead of Figtree's short minus.
@@ -45,5 +49,66 @@
 - `show_confirm(id, question, action, opts)` works without a leading `%JS{}`; piped onto commands it still takes one.
 - `join_meta/1` leaves out `false` parts, as it does `nil` and `""`.
 - A confirmed click parks its `phx-value-*` as the rendered button sends them: `nil` and `false` left out, `true` empty.
+- A confirmed click also parks a button's `value` as `"value"`, as LiveView's client sends it without `confirm`.
 - `app_shell layout={:sidebar}`: the dock shows its "Mehr" button whenever entries are left out of it, so they stay reachable on phones.
 - Dock labels stay on one line and end in an ellipsis; the link keeps the full label as its name.
+- `plush` with a dark file: an `id` no longer repeats, the dark image takes `<id>-dark`.
+- The dock hides only for fields that bring up the on-screen keyboard, no longer for a focused slider, colour,
+  date or time picker, button or file input.
+- `app_shell` `layout={:topbar}`: with more than five dock entries, or entries left out of the dock, the dock shows
+  four and a "Mehr" button that opens a sheet with the rest, so every entry stays reachable on phones.
+- `modal` on phones: the bottom sheet keeps its content and a sticky action bar above the bottom safe area.
+- `app_shell` `layout={:sidebar}` without a dock: a button at the start of the top bar opens the sidebar on phones,
+  which had no way into the navigation.
+- Theme tokens that equal a role follow it: the dark `success-ink`, `error-ink` and `sidebar-negative`, the light
+  `selected` and `selected-content`. Overriding `success`, `error` or `neutral` no longer means restating them.
+- `info-ink` and `warning-ink` tokens (`text-info-ink`, `text-warning-ink`, …), text-grade like the other inks, for text,
+  icons and marks such as ratings; alert and flash icons and the chart lines 2 and 6 use them (darker in light), and in
+  dark the chart lines 3 and 4 follow their inks too.
+- `app_shell` `layout={:sidebar}`: a `:nav_footer` brings the dock's "Mehr" button, so phones reach it in the sidebar
+  also when every entry fits the dock.
+- `chart_card` `hook_attrs`: attributes on the hook element, e.g. the series as `data-*` for the chart hook.
+- `segmented` `mode={:checkbox}`: any number of options chosen, a checkbox group sent as `name[]`.
+- Guide: categorical chart series skip the series numbers a chart already uses semantically; what does not fit the
+  free series is grouped.
+- `chart_card` `height={:auto}`: a self-sizing inner block (server-drawn SVG) sets the chart's height.
+- `chart_card` `subtitle` for the unit or period, as in `card`, so ticks show bare numbers.
+- `stat` keeps label, value and note at the top when a taller neighbour in its grid row stretches it.
+- `stat` `:figure` slot: a plush, icon, gauge or sparkline at the tile's end, at the end of the label row on phones.
+- `stat` `tone={:warning}`: the value in `warning-ink`.
+- `chart-other` and `chart-other-fill` tokens for the grouped rest of a chart, and `legend` `color: :other`.
+- `segmented` `:radio` and `:checkbox` are fields like `input`: a visible label (`hide_label`), errors after use,
+  `help`, `aria-describedby` and `aria-invalid`. The label now shows by default. An app that renders its own error
+  line beside it now shows the error twice: drop that line.
+- `chart_card` keeps daisyUI's card rules off its content: a `figure` is no centred flex box, a `p` does not grow.
+- `input type="toggle"` has `role="switch"`, so screen readers announce a switch.
+- `segmented mode={:patch}` replaces the history entry by default (`replace`), so Back leaves the page instead of
+  stepping through every choice.
+- `bar` `color` (chart series 1–8 or `:other`): the series fill with its line, in place of a tone.
+- `app_shell` `bar_width`: the top bar row's own width (default `width`), so the header keeps its width on pages of
+  different widths.
+- `plush`: a `size-*` class replaces its size class, as with `icon`; `width`/`height` still follow `size`.
+- A field with a visible label ends at its last line (its room moves above it), so it lines up at the bottom with a
+  button or `segmented` beside it in an `items-end` row.
+- `chart_card`: the hook element is `relative` for Chart.js's responsive mode, and the card `min-w-0`, so a chart in a
+  flex row shrinks.
+- `share_bar`: a whole split into its shares in one continuous bar, with a legend of values.
+- `legend` items take a `value_label`, shown right-aligned in a grid of up to three columns sized by the legend's width.
+- Sequential ramp `seq-1` … `seq-5` (one hue, light and dark) for ordered categories, as `color: {:seq, n}` in `legend`,
+  `bar` and `share_bar`.
+- `setzkasten-stat-grid`: stats in such a grid share its rows (subgrid), so a label on two lines no longer drops its value below its neighbours'.
+- `theme_toggle compact`: one icon button showing the current scheme, with System / Hell / Dunkel in a small menu.
+- `action_bar` keeps 24px above its hairline, so the footer no longer sits on the last field; a margin in its `class` replaces it.
+- `list_row` with `trailing_on_phone={:title}`: the `⋮` menu sits on the title line beside the amount on phones.
+- `app_shell`: plush in the top-bar menu at 24px (`:md`), as in the dock; the bar keeps its height.
+- Dock: Lucide icons, glyphs and "Mehr" take the 24px box of a plush, so every dock label sits on one line.
+- `Setzkasten.Components.Forms.FocusInvalid` hook for a `<.form>`: focus on the first invalid field after a failed submit.
+  The guide's `JS.focus(to: "[aria-invalid=true]")` ended on the last one.
+- Guide: at most 5–6 value ticks on a chart axis, fewer on phones.
+- `disclosure variant={:button}`: `count` is a small neutral badge, set apart from the label.
+- `card`: the footer and the `:list` header follow `--card-p` set on the card, so a card with tighter padding keeps them lined up.
+- `disclosure variant={:row}`: a quiet 14px row with a hairline above; `chart_card`'s data table uses it (and keeps its
+  open state across patches).
+- `stat` `:meter`: a full-width meter under the value; `bar` `hide_label` keeps its label only as the accessible name.
+- `list` `:foot`: a total row whose value lines up with the rows' trailing column, also beside their actions.
+- `input` checkbox and toggle `bare`: no field padding or row height, beside a heading; a 44px hit area on touch screens.

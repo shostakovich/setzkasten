@@ -498,6 +498,105 @@ defmodule Setzkasten.DataTest do
     assert count(parse(~H|<.stat label="x" loading />|), ".skeleton") == 1
   end
 
+  test "stat tones colour the value with the inks, warning included" do
+    for {tone, ink} <- [
+          success: "text-success-ink",
+          warning: "text-warning-ink",
+          error: "text-error-ink"
+        ] do
+      assigns = %{tone: tone}
+      assert ink in classes(parse(~H|<.stat label="x" value="1" tone={@tone} />|), ".stat-value")
+    end
+  end
+
+  test "stats in a stat grid share its rows, so a wrapped label keeps the values level" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@supports \(grid-template-rows: subgrid\) \{\s*\.setzkasten-stat-grid > \.stat \{\s*grid-row: span 2;\s*grid-template-rows: subgrid;\s*row-gap: 0;/
+
+    assert css =~
+             ~r/\.setzkasten-stat-grid:has\(> \.stat > \.stat-desc\) > \.stat \{\s*grid-row: span 3;/
+
+    refute css =~ ~r/\.grid[^{]*> \.stat \{/
+  end
+
+  test "a stat stretched by its grid row keeps label, value and note at the top" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/  \.stat \{\s*align-content: start;/
+  end
+
+  test "a stat figure sits at the end, moves to the label row on phones, hidden unless labelled" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.stat id="pv" label="PV" value="486" unit="W" desc="Sonnig" size={:sm}>
+        <:figure><img src="/sun.webp" alt="" /></:figure>
+      </.stat>
+      """)
+
+    figure = classes(doc, ".stat > .stat-figure")
+    # w-max: an image's max-width: 100% would let the grid squeeze the figure column.
+    assert Enum.all?(~w(stat-figure w-max max-sm:[grid-row:1] max-sm:self-start), &(&1 in figure))
+    assert attr(doc, ".stat-figure", "aria-hidden") == "true"
+    assert "max-sm:col-span-2" in classes(doc, ".stat-value")
+    assert "max-sm:col-span-2" in classes(doc, ".stat-desc")
+    # Outside the value, so the rolling number never counts the figure's text.
+    assert count(doc, "#pv-value .stat-figure") == 0
+
+    doc =
+      parse(~H"""
+      <.stat label="CO₂" value="640" unit="ppm">
+        <:figure label="Luft gut"><svg></svg></:figure>
+      </.stat>
+      """)
+
+    assert attr(doc, ".stat-figure", "role") == "img"
+    assert attr(doc, ".stat-figure", "aria-label") == "Luft gut"
+    assert attr(doc, ".stat-figure", "aria-hidden") == nil
+
+    doc = parse(~H|<.stat label="x" loading>
+  <:figure>F</:figure>
+</.stat>|)
+    assert "max-sm:col-span-2" in classes(doc, ".skeleton")
+    assert text(doc, ".stat-figure") == "F"
+    refute "max-sm:col-span-2" in classes(parse(~H|<.stat label="x" value="1" />|), ".stat-value")
+  end
+
+  test "a stat's meter is a full-width block under the value, its note below" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.stat label="Ladestand" value="78" unit="%" desc="entlädt">
+        <:meter><.bar label="Ladestand" value={78} hide_label /></:meter>
+      </.stat>
+      """)
+
+    assert Enum.all?(~w(stat-desc flex flex-col), &(&1 in classes(doc, ".stat-desc")))
+    assert count(doc, ".stat-desc > div:first-child progress") == 1
+    assert text(doc, ".stat-desc > div:last-child") == "entlädt"
+    # One row under the value, so a grid of stats keeps three shared rows.
+    assert count(doc, ".stat > .stat-desc") == 1
+
+    plain = parse(~H|<.stat label="x" value="1" desc="Akku" />|)
+
+    assert classes(plain, ".stat-desc") ==
+             ~w(stat-desc whitespace-normal flex flex-wrap items-center gap-1)
+  end
+
+  test "a bar can drop its visible label and keep it as its name" do
+    assigns = %{}
+    doc = parse(~H|<.bar label="Ladestand" value={78} hide_label />|)
+    assert count(doc, "div > div.text-sm") == 0
+    assert attr(doc, "progress", "aria-label") == "Ladestand"
+
+    doc = parse(~H|<.bar label="Ladestand" value={78} hide_label show_value />|)
+    assert text(doc, "div > div.text-sm") == "78\u00A0%"
+    refute text(doc, "div > div.text-sm") =~ "Ladestand"
+  end
+
   test "stat note slot takes the place of desc" do
     assigns = %{}
 
@@ -558,6 +657,32 @@ defmodule Setzkasten.DataTest do
              ~r/\.progress\.setzkasten-progress-neutral \{\s*color: color-mix\(in oklab, var\(--color-base-content\) 70%, transparent\);/
   end
 
+  test "a bar takes a chart series colour: its fill with its line, in place of the tone" do
+    for {color, fill, line} <- [
+          {2, "chart-2-fill", "chart-2"},
+          {:other, "chart-other-fill", "chart-other"}
+        ] do
+      assigns = %{color: color}
+      doc = parse(~H|<.bar label="Solar" value={64} color={@color} tone={:error} show_value />|)
+
+      assert classes(doc, "progress") ==
+               [
+                 "progress",
+                 "w-full",
+                 "setzkasten-progress-chart",
+                 "text-#{fill}",
+                 "[--setzkasten-bar-line:var(--color-#{line})]"
+               ]
+    end
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.progress\.setzkasten-progress-chart::-webkit-progress-value \{\s*box-shadow: inset 0 0 0 1px var\(--setzkasten-bar-line\);/
+
+    assert css =~ ~r/\.progress\.setzkasten-progress-chart::-moz-progress-bar \{\s*box-shadow/
+  end
+
   test "bar caps the bar at max but shows the real share" do
     assigns = %{}
     doc = parse(~H|<.bar label="Budget" value={112} tone={:error} show_value />|)
@@ -593,10 +718,238 @@ defmodule Setzkasten.DataTest do
     assert attr(doc, "[role=img]", "aria-label") == "steigt"
     assert attr(doc, "#nw-chart", "phx-hook") == "NetWorth"
     assert attr(doc, "#nw-chart", "phx-update") == "ignore"
+    # Chart.js resizes responsively inside a relative container that holds only the canvas.
+    assert classes(doc, "#nw-chart") == ~w(relative h-full)
+    assert count(doc, "#nw-chart > *") == 1
+    # A flex row could not shrink the card below the canvas's last width.
+    assert "min-w-0" in classes(doc, "section#nw")
     assert text(doc, "summary") == "Werte als Tabelle"
+
+    doc =
+      parse(~H"""
+      <.chart_card
+        id="nw"
+        title="Vermögen"
+        hook="NetWorth"
+        summary="steigt"
+        hook_attrs={%{"data-points" => "[1,2]"}}
+        data-testid="card"
+      />
+      """)
+
+    assert attr(doc, "#nw-chart", "data-points") == "[1,2]"
+    assert attr(doc, "section#nw", "data-points") == nil
+    assert attr(doc, "section#nw", "data-testid") == "card"
 
     assert count(parse(~H|<.chart_card id="x" title="t" summary="s" loading />|), ".skeleton") ==
              1
+  end
+
+  test "a chart card with height={:auto} lets a self-sizing inner block set its height" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.chart_card id="map" title="Ertrag" summary="Karte" height={:auto}>
+        <svg viewBox="0 0 720 600" class="w-full h-auto"></svg>
+      </.chart_card>
+      """)
+
+    assert classes(doc, "[role=img]") == ~w(flex flex-col)
+    assert count(doc, "[role=img] > svg") == 1
+
+    loading = parse(~H|<.chart_card id="m" title="t" summary="s" height={:auto} loading />|)
+    assert classes(loading, "div:has(> .skeleton)") == ["h-64"]
+
+    assert_raise ArgumentError, ~r/height=\{:auto\}/, fn ->
+      parse(~H|<.chart_card id="c" title="t" summary="s" hook="Chart" height={:auto} />|)
+    end
+  end
+
+  test "a chart card keeps daisyUI's card rules for figures and paragraphs off its content" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.chart_card id="map" title="Ertrag" summary="Karte" height={:auto}>
+        <figure><svg viewBox="0 0 720 600"></svg></figure>
+      </.chart_card>
+      """)
+
+    assert "setzkasten-chart-card" in classes(doc, "section#map")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-chart-card :where\(figure\) \{\s*display: block;\s*overflow: visible;\s*\}\s*\.setzkasten-chart-card :where\(p\) \{\s*flex-grow: 0;/
+  end
+
+  test "a chart card's subtitle sits under the title, actions stay at the end of the title row" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.chart_card id="pv" title="PV heute" subtitle="Leistung in Watt" summary="s">
+        <:actions><button id="range">Tag</button></:actions>
+        <svg></svg>
+      </.chart_card>
+      """)
+
+    subtitle = "h2.card-title + p"
+    assert text(doc, subtitle) == "Leistung in Watt"
+
+    assert classes(doc, subtitle) ==
+             ~w(text-sm text-base-content/70 max-w-prose wrap-anywhere)
+
+    assert count(doc, ".card-body > div:first-child > div.min-w-0 > p") == 1
+    assert count(doc, ".card-body > div:first-child > div:last-child > #range") == 1
+    assert count(parse(~H|<.chart_card id="x" title="t" summary="s" />|), "h2 + p") == 0
+  end
+
+  test "share bar: flush segments in one rounded track, as wide as their values, in order" do
+    assigns = %{
+      segments: [
+        %{label: "Waschmaschine", value: 412, color: 1, value_label: "412 W"},
+        %{label: "Arbeitsplatz", value: 138, color: 2, value_label: "138 W"},
+        %{label: "Aus", value: 0, color: 3, value_label: "0 W"},
+        %{label: "Sonstige", value: 50, color: :other, value_label: "50 W"}
+      ]
+    }
+
+    html =
+      rendered_to_string(
+        ~H|<.share_bar label="Steckdosen" value_label="600 W" segments={@segments} />|
+      )
+
+    refute html =~ "style="
+    doc = LazyHTML.from_fragment(html)
+
+    assert attr(doc, "[role=group]", "aria-labelledby") ==
+             "#{attr(doc, "[role=group]", "id")}-label"
+
+    assert text(doc, "[role=group] > div:first-child") =~ "600 W"
+
+    assert Enum.all?(
+             ~w(overflow-hidden rounded-box h-3),
+             &(&1 in classes(doc, "div[aria-hidden]"))
+           )
+
+    parts = find(doc, "div[aria-hidden] svg > svg")
+    assert LazyHTML.attribute(parts, "x") == ["0%", "68.667%", "91.667%"]
+    assert LazyHTML.attribute(parts, "width") == ["68.667%", "23%", "8.333%"]
+    # A 2px gap that shows the surface between neighbours, no outlines.
+    assert doc |> find("div[aria-hidden] rect") |> LazyHTML.attribute("x") == ["0", "2", "2"]
+
+    assert doc |> find("div[aria-hidden] rect") |> LazyHTML.attribute("class") ==
+             ["fill-chart-1-fill", "fill-chart-2-fill", "fill-chart-other-fill"]
+
+    # The legend keeps every segment in order, the empty one too, with its value.
+    assert doc |> find("ul li span.tabular-nums") |> Enum.map(&LazyHTML.text/1) ==
+             ["412 W", "138 W", "0 W", "50 W"]
+  end
+
+  test "share bar: the rest below max is empty track, values fall back to shares" do
+    assigns = %{
+      segments: [
+        %{label: "Aktien", value: 30, color: 1},
+        %{label: "Anleihen", value: 20, color: 6}
+      ]
+    }
+
+    doc =
+      parse(~H"""
+      <.share_bar id="pf" label="Depot" segments={@segments} max={100} size={:sm} legend={false} />
+      """)
+
+    assert "h-2" in classes(doc, "div[aria-hidden]")
+    parts = find(doc, "div[aria-hidden] svg > svg")
+    assert LazyHTML.attribute(parts, "x") == ["0%", "30%", "50%"]
+    assert LazyHTML.attribute(parts, "width") == ["30%", "20%", "50%"]
+
+    assert attr(doc, "div[aria-hidden] svg > svg:last-child rect", "class") ==
+             "fill-base-content/10"
+
+    assert count(doc, "ul:not(.sr-only)") == 0
+
+    assert doc |> find("ul.sr-only li") |> Enum.map(&LazyHTML.text/1) == [
+             "Aktien: 30 %",
+             "Anleihen: 20 %"
+           ]
+  end
+
+  test "share bar: a whole of 0 shows the empty track, a negative value counts as 0" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.share_bar label="Steckdosen" segments={[%{label: "Aus", value: 0, color: 1}]} />
+      """)
+
+    assert attr(doc, "div[aria-hidden] svg > svg", "width") == "100%"
+    assert attr(doc, "div[aria-hidden] rect", "class") == "fill-base-content/10"
+    assert text(doc, "ul li span.tabular-nums") == "0 %"
+
+    assigns = %{
+      segments: [
+        %{label: "Einspeisung", value: -20, color: 2},
+        %{label: "Haus", value: 30, color: 1},
+        %{label: "Akku", value: 10, color: 3}
+      ]
+    }
+
+    doc = parse(~H|<.share_bar label="Leistung" segments={@segments} />|)
+    parts = find(doc, "div[aria-hidden] svg > svg")
+    assert LazyHTML.attribute(parts, "x") == ["0%", "75%"]
+    assert LazyHTML.attribute(parts, "width") == ["75%", "25%"]
+
+    assert doc |> find("ul li span.tabular-nums") |> Enum.map(&LazyHTML.text/1) ==
+             ["0 %", "75 %", "25 %"]
+  end
+
+  test "share bar: an unknown colour raises, with or without the legend" do
+    assigns = %{segments: [%{label: "A", value: 1, color: 9}]}
+
+    for legend <- [true, false] do
+      assigns = Map.put(assigns, :legend, legend)
+
+      assert_raise KeyError, fn ->
+        rendered_to_string(~H|<.share_bar label="A" segments={@segments} legend={@legend} />|)
+      end
+    end
+  end
+
+  test "the sequential ramp: five tokens per theme, for legend, bar and share bar" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    for step <- 1..5 do
+      # Light, both dark blocks and the @theme registration.
+      assert length(String.split(css, "--color-seq-#{step}: oklch(")) == 5
+    end
+
+    assert css =~ ~r/@theme \{[^}]*--color-seq-1: [^}]*--color-seq-5: /
+
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.legend items={[
+        %{label: "PM10", color: {:seq, 1}},
+        %{label: "PM1", color: {:seq, 5}, marker: :line}
+      ]} />
+      """)
+
+    assert "bg-seq-1" in classes(doc, "li:first-child span")
+    assert "stroke-seq-5" in classes(doc, "li:last-child svg")
+
+    bar = parse(~H|<.bar label="Feinstaub" value={40} color={{:seq, 3}} show_value />|)
+    assert "text-seq-3" in classes(bar, "progress")
+
+    doc =
+      parse(~H"""
+      <.share_bar label="Partikel" segments={[%{label: "PM10", value: 3, color: {:seq, 2}}]} />
+      """)
+
+    assert attr(doc, "rect", "class") == "fill-seq-2"
   end
 
   test "legend uses chart tokens" do
@@ -605,6 +958,57 @@ defmodule Setzkasten.DataTest do
     assert "bg-chart-1-fill" in classes(doc, "li:first-child span")
     assert "border-chart-1" in classes(doc, "li:first-child span")
     assert "bg-error-ink" in classes(doc, "li:last-child span")
+
+    doc =
+      parse(~H"""
+      <.legend items={[
+        %{label: "Sonstige", color: :other},
+        %{label: "Rest", color: :other, marker: :line}
+      ]} />
+      """)
+
+    assert ~w(bg-chart-other-fill border border-chart-other) --
+             classes(doc, "li:first-child span") == []
+
+    assert "stroke-chart-other" in classes(doc, "li:last-child svg")
+  end
+
+  test "the grouped rest has its own chart tokens in every theme, registered for utilities" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             "--color-chart-other-fill: oklch(86.00% 0.012 254.00);\n    --color-chart-other: oklch(60.00% 0.012 254.00);"
+
+    assert length(String.split(css, "--color-chart-other-fill: var(--color-chart-other);")) == 3
+    assert length(String.split(css, "--color-chart-other: oklch(58.00% 0.010 254.00);")) == 3
+    assert css =~ ~r/@theme \{[^}]*--color-chart-other-fill: [^}]*--color-chart-other: /
+  end
+
+  test "legend items with a value line up in a grid, values right-aligned" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.legend items={[
+        %{label: "Kühlschrank", color: 3, value_label: "86 W"},
+        %{label: "Rest", color: :other}
+      ]} />
+      """)
+
+    assert classes(doc, "ul") == ~w(setzkasten-legend-grid grid gap-x-6 gap-y-1 text-xs)
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             "grid-template-columns: repeat(auto-fill, minmax(max(8rem, (100% - 3rem) / 3), 1fr));"
+
+    assert attr(doc, "li:first-child span.truncate", "title") == "Kühlschrank"
+    assert text(doc, "li:first-child span.tabular-nums") == "86 W"
+    assert "shrink-0" in classes(doc, "li:first-child span.rounded-full")
+
+    plain = parse(~H|<.legend items={[%{label: "A", color: 1}]} />|)
+    assert classes(plain, "ul") == ~w(flex flex-wrap gap-x-4 gap-y-1 text-xs)
+    assert count(plain, "span.tabular-nums") == 0
   end
 
   test "legend takes global attrs and line markers in the series' line colour" do
@@ -761,6 +1165,95 @@ defmodule Setzkasten.DataTest do
     assert count(doc, ".loading") == 1
   end
 
+  test "a list's foot is a total row whose value ends where the rows' trailing column ends" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="Miete">
+          <:trailing>−1.180 €</:trailing>
+          <:action label="Bearbeiten" navigate="/e" /><:action label="Löschen" on_click="x" />
+        </.list_row>
+        <:foot label="Summe" actions={2} class="md:w-28">−1.180 €</:foot>
+      </.list>
+      """)
+
+    foot = "ul.list > li:last-child"
+
+    assert Enum.all?(
+             ~w(list-row rounded-none font-semibold border-t),
+             &(&1 in classes(doc, foot))
+           )
+
+    refute "order-last" in classes(doc, foot)
+    assert text(doc, "#{foot} .list-col-grow") == "Summe"
+    assert "md:w-28" in classes(doc, "#{foot} > div:nth-child(2)")
+    assert count(doc, "#{foot} > div.invisible.md\\:flex > span.btn-square") == 2
+    assert count(doc, "#{foot} > div.invisible.md\\:hidden > span.btn-square") == 1
+
+    assert doc |> find("#{foot} > div.invisible") |> LazyHTML.attribute("aria-hidden") ==
+             ~w(true true)
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="A" /><:foot label="Summe">1 €</:foot>
+      </.list>
+      """)
+
+    assert count(doc, "li:last-child > div.invisible") == 0
+  end
+
+  test "a list's foot copies a menu={:always} column and the rows' actions_class" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="A" /><:foot label="Summe" menu={:always}>1 €</:foot>
+      </.list>
+      """)
+
+    foot = "ul.list > li:last-child"
+    assert count(doc, "#{foot} > div.invisible") == 1
+    assert classes(doc, "#{foot} > div.invisible") == ["invisible"]
+
+    doc =
+      parse(~H"""
+      <.list>
+        <.list_row title="A" />
+        <:foot label="Summe" actions={1} menu={:always} actions_class="lg:gap-2">1 €</:foot>
+      </.list>
+      """)
+
+    assert Enum.all?(
+             ~w(invisible hidden md:flex lg:gap-2),
+             &(&1 in classes(doc, "#{foot} > div.invisible:nth-last-child(2)"))
+           )
+
+    refute "md:hidden" in classes(doc, "#{foot} > div.invisible:last-child")
+  end
+
+  test "a streamed list's foot takes an id from the list, so LiveView keeps it" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list id="bookings" phx-update="stream">
+        <.list_row id="bookings-1" title="A" /><:foot label="Summe">1 €</:foot>
+      </.list>
+      """)
+
+    assert attr(doc, "ul.list", "id") == "bookings"
+    assert attr(doc, "ul.list > li:last-child", "id") == "bookings-foot"
+
+    doc = parse(~H|<.list>
+  <.list_row title="A" /><:foot label="Summe">1 €</:foot>
+</.list>|)
+    assert attr(doc, "ul.list > li:last-child", "id") == nil
+  end
+
   test "list row keeps a short trailing value on the title line on phones" do
     assigns = %{}
 
@@ -784,6 +1277,25 @@ defmodule Setzkasten.DataTest do
     assert "max-md:hidden" in column
     refute "max-md:row-start-2" in column
     refute "max-md:gap-y-1" in classes(doc, "li")
+
+    doc =
+      parse(~H"""
+      <.list_row title="Depot A" navigate="/p/1" trailing_on_phone={:title}>
+        <:trailing>1 €</:trailing>
+        <:action label="Bearbeiten" icon="pencil" navigate="/p/1/edit" />
+      </.list_row>
+      """)
+
+    # The ⋮ menu sits on the title line beside the value, not in the middle of the row.
+    menu = classes(doc, "details.dropdown")
+    assert Enum.all?(~w|max-md:self-start max-md:translate-y-[calc(0.5lh-50%)]|, &(&1 in menu))
+
+    plain =
+      parse(~H"""
+      <.list_row title="Depot A"><:action label="Bearbeiten" navigate="/e" /></.list_row>
+      """)
+
+    refute "max-md:self-start" in classes(plain, "details.dropdown")
   end
 
   test "wrapped trailing lines align at the start on phones" do

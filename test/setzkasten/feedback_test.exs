@@ -9,7 +9,7 @@ defmodule Setzkasten.FeedbackTest do
              ~w(alert alert-soft text-base-content alert-warning)
 
     assert attr(doc, "div", "role") == "status"
-    assert "text-chart-2" in classes(doc, "svg")
+    assert "text-warning-ink" in classes(doc, "svg")
     assert text(doc, "p.font-semibold") == "API-Key fehlt"
   end
 
@@ -50,9 +50,9 @@ defmodule Setzkasten.FeedbackTest do
     assert attr(doc, ".alert", "aria-busy") == "true"
 
     assert classes(doc, ".loading") ==
-             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-chart-6)
+             ~w(loading loading-spinner loading-sm motion-reduce:hidden text-info-ink)
 
-    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-chart-6)
+    assert classes(doc, "svg.lucide") == ~w(lucide size-5 motion-safe:hidden text-info-ink)
     assert count(parse(~H|<.alert icon={false}>x</.alert>|), "svg") == 0
   end
 
@@ -62,6 +62,7 @@ defmodule Setzkasten.FeedbackTest do
     assert "toast-top" in classes(doc, ".toast")
     assert "alert-info" in classes(doc, "#flash-info")
     assert attr(doc, "#flash-info", "role") == "status"
+    assert "text-info-ink" in classes(doc, "#flash-info svg")
     assert attr(doc, "button", "aria-label") == "Schließen"
     assert attr(doc, "button", "phx-click") =~ "lv:clear-flash"
     # Leaves in the exit time on the motion tokens, without movement under reduced motion.

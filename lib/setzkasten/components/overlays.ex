@@ -82,7 +82,8 @@ defmodule Setzkasten.Components.Overlays do
   defp encode(%JS{ops: ops}), do: Phoenix.json_library().encode!(ops)
 
   @doc """
-  A native `<dialog>`: a bottom sheet on phones and centred from `sm` (`placement={:center}`),
+  A native `<dialog>`: a bottom sheet on phones, its content and a sticky action bar above the
+  bottom safe area, and centred from `sm` (`placement={:center}`),
   or a side panel (`placement={:end}` or `{:start}`, with a ✕ close button unless
   `close_button={false}`, for content that brings its own). Escape, the backdrop and `<form method="dialog">`
   close it; focus moves in and back natively; `on_cancel` runs after every close.
@@ -315,7 +316,7 @@ defmodule Setzkasten.Components.Overlays do
       phx-hook=".Modal"
       phx-mounted={JS.ignore_attributes(["open"])}
     >
-      <div class="modal-box max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <div class="modal-box">
         <h2
           id={"#{@id}-title"}
           class="text-lg font-semibold wrap-anywhere"
@@ -674,10 +675,12 @@ defmodule Setzkasten.Components.Overlays do
 
   @doc """
   A `<details>` disclosure. `variant={:collapse}` (default) draws daisyUI's bordered
-  `collapse collapse-arrow`; `variant={:button}` renders the summary as a button (with `icon`)
-  for compact "more options" triggers. The summary is at least 44px on touch screens.
+  `collapse collapse-arrow`; `variant={:row}` is a quiet 14px row with only a hairline above,
+  inside a card or under a chart (`chart_card`'s "Werte als Tabelle" is one); `variant={:button}`
+  renders the summary as a button (with `icon`) for compact "more options" triggers. The summary is at least 44px on touch screens.
   The open state survives LiveView patches. `count` follows the summary as a quiet number, as
-  in `section_heading` (not "Kurse (3)").
+  in `section_heading` (not "Kurse (3)"); in the button it is a small neutral badge, set apart
+  from the label it would otherwise read as part of.
 
       <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
       <.disclosure id="retired" summary="Ausgemustert" count={2}>…</.disclosure>
@@ -694,7 +697,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :summary, :string, default: nil, doc: "the summary text; or the `:title` slot"
   attr :count, :integer, default: nil
   attr :open, :boolean, default: false
-  attr :variant, :atom, default: :collapse, values: [:collapse, :button]
+  attr :variant, :atom, default: :collapse, values: [:collapse, :row, :button]
   attr :icon, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global
@@ -715,9 +718,8 @@ defmodule Setzkasten.Components.Overlays do
       {@rest}
     >
       <summary class="btn">
-        <.icon :if={@icon} name={@icon} />{@summary}{render_slot(@title)}<.summary_count count={
-          @count
-        } />
+        <.icon :if={@icon} name={@icon} />{@summary}{render_slot(@title)}
+        <span :if={@count} class="badge badge-sm tabular-nums">{@count}</span>
       </summary>
       <div class="mt-3 text-sm">{render_slot(@inner_block)}</div>
     </details>
@@ -728,15 +730,24 @@ defmodule Setzkasten.Components.Overlays do
     ~H"""
     <details
       id={@id}
-      class={["collapse collapse-arrow border border-base-content/10 bg-base-100", @class]}
+      class={[
+        "collapse collapse-arrow",
+        if(@variant == :row,
+          do: "rounded-none border-t border-base-content/10",
+          else: "border border-base-content/10 bg-base-100"
+        ),
+        @class
+      ]}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
       {@rest}
     >
-      <summary class="collapse-title font-semibold">
+      <summary class={["collapse-title font-semibold", @variant == :row && "text-sm"]}>
         {@summary}{render_slot(@title)}<.summary_count count={@count} />
       </summary>
-      <div class="collapse-content text-sm">{render_slot(@inner_block)}</div>
+      <div class={["collapse-content text-sm", @variant == :row && "overflow-x-auto"]}>
+        {render_slot(@inner_block)}
+      </div>
     </details>
     """
   end
