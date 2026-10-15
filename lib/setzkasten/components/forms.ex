@@ -121,7 +121,12 @@ defmodule Setzkasten.Components.Forms do
     assigns = prepare(assigns)
 
     ~H"""
-    <fieldset class="fieldset min-w-0" aria-describedby={@describedby}>
+    <fieldset
+      class="fieldset min-w-0"
+      role="radiogroup"
+      aria-invalid={@errors != [] && "true"}
+      aria-describedby={@describedby}
+    >
       <legend class={["fieldset-legend", @hide_label && "sr-only"]}>{@label}</legend>
       <label
         :for={{label, value} <- @options}

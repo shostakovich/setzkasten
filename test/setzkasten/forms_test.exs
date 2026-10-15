@@ -166,6 +166,22 @@ defmodule Setzkasten.FormsTest do
     assert text(doc, "fieldset > legend") == "Aufteilung"
     assert count(doc, "input.radio.radio-primary") == 2
     assert attr(doc, "#s_b", "checked") != nil
+    assert attr(doc, "fieldset", "role") == "radiogroup"
+    assert attr(doc, "fieldset", "aria-invalid") == nil
+
+    doc =
+      parse(~H"""
+      <.input
+        name="s"
+        id="s"
+        type="radio_group"
+        label="Aufteilung"
+        options={[{"A", "a"}]}
+        errors={["muss gewählt sein"]}
+      />
+      """)
+
+    assert attr(doc, "fieldset[role=radiogroup]", "aria-invalid") == "true"
   end
 
   test "textarea" do
