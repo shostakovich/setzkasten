@@ -245,6 +245,11 @@ defmodule Setzkasten.NavigationTest do
 
     assert classes(doc, "details") == ~w(dropdown dropdown-end)
     assert attr(doc, "details", "phx-key") == "Escape"
+    assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Navigation.Dropdown"
+
+    assert colocated_js("Setzkasten.Components.Navigation") =~
+             ~s[if (e.key === "Escape" && this.el.open) e.preventDefault()]
+
     assert attr(doc, "summary", "aria-label") == "Konto"
     assert attr(doc, "a.menu-active", "aria-current") == "page"
     assert attr(doc, "button.text-error-ink", "phx-click") =~ "logout"

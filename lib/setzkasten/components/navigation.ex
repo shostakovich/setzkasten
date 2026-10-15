@@ -302,6 +302,7 @@ defmodule Setzkasten.Components.Navigation do
   @doc """
   A menu behind a button: `<details class="dropdown">` with a `menu`. Closes on outside
   click, Escape and after choosing an item; Escape and choosing return focus to the trigger.
+  Escape in the open menu closes only the menu, not a `<dialog>` around it.
   Stays open across LiveView patches. Disclosure semantics from `<details>` (no `role="menu"`).
 
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (an event name with
@@ -371,6 +372,7 @@ defmodule Setzkasten.Components.Navigation do
       phx-click-away={JS.remove_attribute("open")}
       phx-window-keydown={JS.remove_attribute("open")}
       phx-key="Escape"
+      phx-hook=".Dropdown"
       {@rest}
     >
       <summary
@@ -427,6 +429,15 @@ defmodule Setzkasten.Components.Navigation do
         </li>
       </ul>
     </details>
+    <script :type={ColocatedHook} name=".Dropdown">
+      export default {
+        mounted() {
+          this.el.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && this.el.open) e.preventDefault()
+          })
+        }
+      }
+    </script>
     """
   end
 
