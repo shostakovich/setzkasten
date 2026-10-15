@@ -472,7 +472,7 @@ defmodule Setzkasten.ShellTest do
     end
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
-    assert length(String.split(css, "--color-sidebar-negative: oklch(74.93% 0.151 21.82);")) == 3
+    assert length(String.split(css, "--color-sidebar-negative: var(--color-error-ink);")) == 3
     assert css =~ "--color-sidebar-negative: oklch(81.00% 0.095 22.00);"
   end
 

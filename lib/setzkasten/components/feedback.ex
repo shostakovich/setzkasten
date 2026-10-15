@@ -21,16 +21,16 @@ defmodule Setzkasten.Components.Feedback do
   }
 
   @icon_colors %{
-    info: "text-chart-6",
+    info: "text-info-ink",
     success: "text-success-ink",
-    warning: "text-chart-2",
+    warning: "text-warning-ink",
     error: "text-error-ink",
     neutral: nil
   }
 
   @doc """
   A message inside the page: `alert alert-soft alert-<tone>`, text in base-content, icon in
-  the tone's line colour (`chart-6`, `success-ink`, `chart-2`, `error-ink`; ≥ 3:1 on the tint).
+  the tone's ink (`info-ink`, `success-ink`, `warning-ink`, `error-ink`; ≥ 3:1 on the tint).
 
   `role` is `alert` for `:error` and `status` otherwise. With `:actions` the buttons sit at
   the end while the alert's content box is at least 32rem wide (about 34rem with its padding)
@@ -191,7 +191,7 @@ defmodule Setzkasten.Components.Feedback do
       ]}
       {@rest}
     >
-      <.icon :if={@kind == :info} name="info" class="size-5 text-chart-6" />
+      <.icon :if={@kind == :info} name="info" class="size-5 text-info-ink" />
       <.icon :if={@kind == :error} name="circle-alert" class="size-5 text-error-ink" />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
