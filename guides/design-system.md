@@ -408,6 +408,9 @@ Visible and accessible default strings are German; each has an attr:
   `hide_label`, `help`, `prefix`/`suffix` (€, %), `icon`, `numeric` (right-aligned, `tabular-nums`,
   `inputmode="decimal"`), `options`/`prompt`/`multiple`. `class` lands on the field box (`max-w-40` for narrow amounts).
   - Markup: `fieldset` > label > field > errors > help.
+  - `radio_group` options: `{label, value}` or maps with `:description`, a 70 % line under the label (what the choice
+    brings: "Nächster Termin 19.11.2026"); the radio sits on the first line, the label alone is its name and the
+    description its `aria-describedby`.
   - `help_tone={:warning}`: the help line with `triangle-alert`, text in full base-content (warning is a fill,
     never text); still linked by `aria-describedby`.
   - `inline` (text-like types): field and inner block (the button, `class="join-item"`) in one `join`, stacked

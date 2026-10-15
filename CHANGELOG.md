@@ -121,3 +121,5 @@
 - `stat` with `navigate`, `patch` or `href`: the tile links to the KPI's detail page.
 - `button` with an `icon` keeps it through `phx-disable-with`: the pending text stands in a stack beside the label
   instead of LiveView replacing the content and restoring only its text.
+- `radio_group` options may be maps with a `:description`: a quieter line under the label, the radio's
+  accessible description.
