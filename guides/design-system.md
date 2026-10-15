@@ -383,7 +383,9 @@ Visible and accessible default strings are German; each has an attr:
   `.` or `:`), as for every id the overlay helpers address. `saved` (needs `id`, raises without or on a link): the saved
   moment of 2.10 after `push_saved(socket, id)`; a `phx-disable-with` text becomes the pending label in the same
   stack (LiveView would flatten the stack otherwise). A button with an `icon` keeps it through `phx-disable-with`
-  in the same kind of stack.
+  in the same kind of stack (an empty one keeps the label); clicked, it shows daisyUI's disabled look while LiveView
+  awaits the reply, as LiveView then sets no `disabled`. `icon_only` with a `phx-disable-with` text raises: it would
+  not fit the square.
   40px on fine pointers, 44px on coarse. `:danger` is filled `error-ink` with white text in light (as strong as
   primary), the error fill in dark. In the dark sidebar a `:neutral` button takes a quiet translucent fill, for a
   global action that should not compete with the page's primary.

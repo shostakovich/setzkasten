@@ -243,6 +243,57 @@ defmodule Setzkasten.ActionsTest do
              ":is(.setzkasten-saved, .setzkasten-pending):is(.phx-submit-loading, .phx-click-loading)"
   end
 
+  test "a clicked pending button looks disabled until the reply" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.btn\.setzkasten-pending\.phx-click-loading \{\s*pointer-events: none;\s*--btn-border: #0000;\s*--btn-noise: none;\s*--btn-fg: color-mix\(in oklch, var\(--color-base-content\) 20%, #0000\);\s*&:not\(\.btn-link, \.btn-ghost\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 10%, transparent\);/
+  end
+
+  test "an empty or bare phx-disable-with keeps the icon and label, nil drops it" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H|<.button icon="check" phx-click="go" phx-disable-with="">Los</.button>|),
+          parse(~H|<.button icon="check" phx-click="go" phx-disable-with>Los</.button>|)
+        ] do
+      assert attr(doc, "button", "phx-disable-with") == nil
+      assert "setzkasten-pending" in classes(doc, "button")
+      assert count(doc, ".setzkasten-saved-idle svg.lucide") == 1
+      assert count(doc, ".setzkasten-saved-pending") == 0
+      assert text(doc, "button") == "Los"
+    end
+
+    doc = parse(~H|<.button icon="check" phx-click="go" phx-disable-with={nil}>Los</.button>|)
+    assert attr(doc, "button", "phx-disable-with") == nil
+    refute "setzkasten-pending" in classes(doc, "button")
+    assert count(doc, ".setzkasten-saved-stack") == 0
+  end
+
+  test "an icon-only button takes no phx-disable-with text" do
+    assigns = %{}
+
+    assert_raise ArgumentError, ~r/<.button icon_only> takes no phx-disable-with text/, fn ->
+      parse(~H"""
+      <.button
+        icon="trash-2"
+        icon_only
+        label="Löschen"
+        phx-click="delete"
+        phx-disable-with="Löscht …"
+      />
+      """)
+    end
+
+    doc =
+      parse(~H"""
+      <.button icon="trash-2" icon_only label="Löschen" phx-click="delete" phx-disable-with="" />
+      """)
+
+    assert attr(doc, "button", "aria-label") == "Löschen"
+    assert count(doc, ".setzkasten-saved-idle svg.lucide") == 1
+  end
+
   test "push_saved pushes the saved event for the button id" do
     socket = %Phoenix.LiveView.Socket{}
     socket = push_saved(socket, "save")

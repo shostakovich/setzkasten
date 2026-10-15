@@ -120,6 +120,7 @@
   `trailing_on_phone={:meta}` the trailing content ends the last line.
 - `stat` with `navigate`, `patch` or `href`: the tile links to the KPI's detail page.
 - `button` with an `icon` keeps it through `phx-disable-with`: the pending text stands in a stack beside the label
-  instead of LiveView replacing the content and restoring only its text.
+  instead of LiveView replacing the content and restoring only its text; clicked, it looks disabled until the reply.
+  `icon_only` with a `phx-disable-with` text raises.
 - `radio_group` options may be maps with a `:description`: a quieter line under the label, the radio's
   accessible description.

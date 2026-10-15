@@ -1253,9 +1253,16 @@
   .setzkasten-saved-done path {
     stroke-dasharray: 23;
   }
-  /* LiveView disables the buttons of a submitted form, not a clicked one without phx-disable-with. */
-  .setzkasten-pending.phx-click-loading {
+  /* daisyUI's disabled look: LiveView disables a clicked button only through phx-disable-with. */
+  .btn.setzkasten-pending.phx-click-loading {
     pointer-events: none;
+    --btn-border: #0000;
+    --btn-noise: none;
+    --btn-fg: color-mix(in oklch, var(--color-base-content) 20%, #0000);
+    &:not(.btn-link, .btn-ghost) {
+      background-color: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+      box-shadow: none;
+    }
   }
   .setzkasten-saved[data-saved] .setzkasten-saved-done path {
     animation: setzkasten-draw var(--setzkasten-duration-overlay) var(--setzkasten-ease-out) both;
