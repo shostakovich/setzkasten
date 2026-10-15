@@ -511,9 +511,13 @@
   }
 }
 
-/* A fieldset whose label is for screen readers only (hide_label, inline) keeps no block
-   padding, so its field lines up with buttons beside it. */
+/* A fieldset's room sits above it, none below its last line, so a field with a visible label
+   ends where a button beside it ends; stacked fields keep daisyUI's 8px between them. With the
+   label for screen readers only (hide_label, inline) it keeps no room at all. */
 @layer utilities.setzkasten {
+  .fieldset {
+    padding-block: 0.5rem 0;
+  }
   .fieldset:has(> :is(label, legend).sr-only:first-child) {
     padding-block: 0;
   }
@@ -646,6 +650,20 @@
     font-size: 0.875rem;
     line-height: 1.25rem;
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+}
+
+/* action_bar's hairline 24px below the content; in a grid or flex column the gap-4 gives 16px of
+   it. In this layer, so a margin utility in the bar's class wins. Of the bar and its pinned row,
+   the one that is display: contents ignores its margin. */
+@layer utilities.setzkasten {
+  .setzkasten-action-bar,
+  .setzkasten-action-bar-pinned {
+    margin-top: 1.5rem;
+  }
+  :is(.grid, .flex) > .setzkasten-action-bar,
+  :is(.grid, .flex) > * > .setzkasten-action-bar-pinned {
+    margin-top: 0.5rem;
   }
 }
 

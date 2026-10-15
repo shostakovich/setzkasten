@@ -4,6 +4,50 @@ defmodule Setzkasten.FormsTest do
   defp form(params, errors \\ []),
     do: to_form(params, as: :expense, errors: errors, action: :validate)
 
+  test "a bare toggle lines up with a heading and keeps a 44px hit area on touch screens" do
+    assigns = %{}
+    doc = parse(~H|<.input name="auto" id="auto" type="toggle" label="Automatik" bare />|)
+
+    assert count(doc, ".fieldset") == 0
+    assert classes(doc, "div") == ~w(inline-flex min-w-0 flex-col)
+    label = classes(doc, "label")
+    refute "pointer-coarse:min-h-11" in label
+
+    assert Enum.all?(
+             ~w(relative pointer-coarse:after:absolute pointer-coarse:after:h-11
+                pointer-coarse:after:min-w-11 pointer-coarse:after:left-1/2
+                pointer-coarse:after:-translate-x-1/2),
+             &(&1 in label)
+           )
+
+    refute "pointer-coarse:after:inset-x-0" in label
+
+    assert attr(doc, "input[type=checkbox]", "role") == "switch"
+
+    assert "pointer-coarse:min-h-11" in classes(
+             parse(~H|<.input name="a" id="a" type="toggle" label="A" />|),
+             "label"
+           )
+  end
+
+  test "a shipped hook focuses the first invalid field once a submit comes back" do
+    hook = colocated_js("Setzkasten.Components.Forms")
+    assert hook =~ ~s|this.el.querySelector('[aria-invalid="true"]')|
+    assert hook =~ ~s|this.loading = this.el.classList.contains("phx-submit-loading")|
+    assert hook =~ ~s|if (!wasLoading \|\| this.loading) return|
+    refute hook =~ ~s|addEventListener("submit"|
+    assert hook =~ ~s|invalid.querySelector(CONTROLS)|
+    assert hook =~ ~s|setTimeout(() => target.focus())|
+  end
+
+  test "a field with a visible label ends where a button beside it ends" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/  \.fieldset \{\s*padding-block: 0\.5rem 0;/
+
+    assert css =~
+             ~r/\.fieldset:has\(> :is\(label, legend\)\.sr-only:first-child\) \{\s*padding-block: 0;/
+  end
+
   test "text input with label, help and describedby" do
     assigns = %{form: form(%{"title" => "Wocheneinkauf"})}
     doc = parse(~H|<.input field={@form[:title]} label="Titel" help="Kurz" />|)
@@ -127,8 +171,13 @@ defmodule Setzkasten.FormsTest do
     assert attr(doc, "input[type=checkbox]", "checked") != nil
     assert "pointer-coarse:min-h-11" in classes(doc, "label")
 
+    assert attr(doc, "input[type=checkbox]", "role") == nil
+
     doc = parse(~H|<.input name="t" id="t" type="toggle" label="An" />|)
     assert classes(doc, "input[type=checkbox]") == ~w(toggle toggle-primary)
+    # The native checked state is the switch's on/off; an aria-checked would go stale.
+    assert attr(doc, "input[type=checkbox]", "role") == "switch"
+    assert attr(doc, "input[type=checkbox]", "aria-checked") == nil
   end
 
   test "checkbox and radio without a colour variant take the 50 % field border" do
@@ -217,6 +266,15 @@ defmodule Setzkasten.FormsTest do
 
     assert "flex-col-reverse" in classes(doc, "div")
     assert doc |> find("button") |> LazyHTML.text() =~ ~r/Löschen.*Abbrechen.*Speichern/s
+    assert Enum.all?(~w(setzkasten-action-bar border-t pt-4), &(&1 in classes(doc, "div")))
+    refute "mt-6" in classes(doc, "div")
+  end
+
+  test "the action bar's margins sit in a layer that a margin utility in its class beats" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@layer utilities\.setzkasten \{\s*\.setzkasten-action-bar,\s*\.setzkasten-action-bar-pinned \{\s*margin-top: 1\.5rem;\s*\}\s*:is\(\.grid, \.flex\) > \.setzkasten-action-bar,\s*:is\(\.grid, \.flex\) > \* > \.setzkasten-action-bar-pinned \{\s*margin-top: 0\.5rem;/
   end
 
   test "sticky action bar sits above the dock and spans the page gutters on phones only" do
@@ -260,7 +318,7 @@ defmodule Setzkasten.FormsTest do
     pinned = classes(doc, "form > div > div:first-child")
 
     assert Enum.all?(
-             ~w(contents max-sm:flex max-sm:[.modal-box_&]:contents sticky mt-6),
+             ~w(setzkasten-action-bar-pinned contents max-sm:flex max-sm:[.modal-box_&]:contents sticky mt-6),
              &(&1 in pinned)
            )
 
