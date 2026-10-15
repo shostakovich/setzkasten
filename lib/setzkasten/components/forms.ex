@@ -155,7 +155,11 @@ defmodule Setzkasten.Components.Forms do
 
   def input(%{type: "radio_group"} = assigns) do
     assigns = prepare(assigns)
-    assigns = assign(assigns, :options, Enum.map(assigns.options, &radio_option(&1, assigns.id)))
+
+    options =
+      for {option, i} <- Enum.with_index(assigns.options), do: radio_option(option, assigns.id, i)
+
+    assigns = assign(assigns, :options, options)
 
     ~H"""
     <fieldset
@@ -179,14 +183,14 @@ defmodule Setzkasten.Components.Forms do
           value={option.value}
           checked={to_string(option.value) == to_string(@value)}
           class={["radio radio-primary", option.description && "-mt-0.5", @class]}
-          aria-labelledby={option.description && "#{option.id}-label"}
-          aria-describedby={option.description && "#{option.id}-description"}
+          aria-labelledby={option.description && option.label_id}
+          aria-describedby={option.description && option.description_id}
           {@rest}
         />
         <%= if option.description do %>
           <span class="min-w-0">
-            <span id={"#{option.id}-label"} class="block">{option.label}</span>
-            <span id={"#{option.id}-description"} class="block text-base-content/70">
+            <span id={option.label_id} class="block">{option.label}</span>
+            <span id={option.description_id} class="block text-base-content/70">
               {option.description}
             </span>
           </span>
@@ -329,10 +333,20 @@ defmodule Setzkasten.Components.Forms do
     """
   end
 
-  defp radio_option({label, value}, id), do: radio_option(%{label: label, value: value}, id)
+  defp radio_option({label, value}, id, i),
+    do: radio_option(%{label: label, value: value}, id, i)
 
-  defp radio_option(%{label: label, value: value} = option, id),
-    do: %{id: "#{id}_#{value}", label: label, value: value, description: option[:description]}
+  # The label and description ids are IDREFs, which a value with a space would split.
+  defp radio_option(%{label: label, value: value} = option, id, i) do
+    %{
+      id: "#{id}_#{value}",
+      label_id: "#{id}-option-#{i}-label",
+      description_id: "#{id}-option-#{i}-description",
+      label: label,
+      value: value,
+      description: option[:description]
+    }
+  end
 
   defp prepare(assigns) do
     assigns
