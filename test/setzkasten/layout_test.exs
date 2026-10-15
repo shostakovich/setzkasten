@@ -112,6 +112,52 @@ defmodule Setzkasten.LayoutTest do
     assert text(doc, "label:has(input[value=light]) span.sr-only") == "Light"
   end
 
+  test "a compact theme toggle is one button showing the scheme, with the choices in a menu" do
+    assigns = %{}
+    doc = parse(~H|<.theme_toggle id="tt" value="light" compact />|)
+
+    assert attr(doc, "#tt", "phx-hook") == "Setzkasten.Components.Layout.ThemeToggle"
+    menu = "#tt > details#tt-menu"
+    assert Enum.all?(~w(dropdown dropdown-end), &(&1 in classes(doc, menu)))
+    assert attr(doc, menu, "phx-click-away") =~ "open"
+    assert ~w(btn btn-ghost btn-square) == classes(doc, "#{menu} > summary")
+    assert attr(doc, "#{menu} > summary", "title") == "Farbschema"
+    assert text(doc, "#{menu} > summary span.sr-only") == "Farbschema"
+
+    icons = find(doc, "#{menu} > summary svg")
+    assert Enum.count(icons) == 3
+
+    assert "[:root[data-theme$=light]_&]:block" in classes(
+             doc,
+             "#{menu} > summary svg:nth-of-type(2)"
+           )
+
+    assert "[:root:not([data-theme$=light],[data-theme$=dark])_&]:block" in classes(
+             doc,
+             "#{menu} > summary svg:nth-of-type(1)"
+           )
+
+    assert count(doc, "#{menu} fieldset ul.menu li label input[type=radio].sr-only") == 3
+    assert text(doc, "#{menu} fieldset legend") == "Farbschema"
+    assert attr(doc, "input[value=light]", "checked") != nil
+    assert attr(doc, "input[value=dark]", "phx-keydown") =~ "focus_first"
+    assert text(doc, "label:has(input[value=dark])") == "Dunkel"
+
+    hook = colocated_js("Setzkasten.Components.Layout")
+    assert hook =~ ~s[menu.querySelector("summary").focus()]
+    assert hook =~ ~s[this.el.contains(menu)]
+    assert hook =~ ~s[this.el.addEventListener("click", (e) => {]
+
+    assert hook =~
+             ~s|if (e.key === "Escape" && this.el.querySelector("details[open]")) e.preventDefault()|
+
+    doc = parse(~H|<.theme_toggle store={:server} on_change="t" compact />|)
+    assert attr(doc, "form details input[value=dark]", "name") == "theme"
+
+    doc = parse(~H|<.theme_toggle store={:server} value={nil} on_change="t" compact />|)
+    assert attr(doc, "input[value=system]", "checked") != nil
+  end
+
   test "server-stored theme toggle is a form sending the change" do
     assigns = %{}
     doc = parse(~H|<.theme_toggle store={:server} on_change="set-theme" />|)

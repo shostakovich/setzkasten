@@ -456,13 +456,13 @@
     .select,
     .file-input,
     .tab,
-    .menu :where(li > a, li > button, li > summary),
+    .menu :where(li > a, li > button, li > summary, li > label),
     .collapse > summary,
     details > summary {
       min-height: 2.75rem;
     }
     /* daisyUI aligns menu items to the top of their grid. */
-    .menu :where(li > a, li > button, li > summary) {
+    .menu :where(li > a, li > button, li > summary, li > label) {
       align-content: center;
     }
     .btn-square,

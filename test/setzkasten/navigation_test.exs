@@ -584,9 +584,10 @@ defmodule Setzkasten.NavigationTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     [coarse] = Regex.run(~r/@media \(pointer: coarse\) \{\s*\.btn,.*?\n  \}/s, css)
     assert coarse =~ ".file-input,"
+    assert coarse =~ ".menu :where(li > a, li > button, li > summary, li > label),"
 
     assert coarse =~
-             ~r/\.menu :where\(li > a, li > button, li > summary\) \{\s*align-content: center;/
+             ~r/\.menu :where\(li > a, li > button, li > summary, li > label\) \{\s*align-content: center;/
   end
 
   test "an active button item is marked like an active link" do
