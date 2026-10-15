@@ -34,6 +34,16 @@ defmodule Setzkasten.OverlaysTest do
     assert css =~ ~r/\.modal-box:focus-visible \{\s*outline: none;/
   end
 
+  test "a side panel keeps its content clear of the top and bottom safe areas" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/  :is\(\.modal-start, \.modal-end\) > \.modal-box \{\s*border-top: env\(safe-area-inset-top\) solid transparent;/
+
+    assert css =~
+             ~r/:is\(\.modal-start, \.modal-end\) > \.modal-box:not\(\.setzkasten-sidebar\) \{\s*border-bottom: env\(safe-area-inset-bottom\) solid transparent;/
+  end
+
   test "side panel placement and server-driven show" do
     assigns = %{}
     doc = parse(~H|<.modal id="p" placement={:end} show>Body</.modal>|)

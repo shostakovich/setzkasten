@@ -660,6 +660,13 @@
     background-color: var(--color-popover);
     border: var(--setzkasten-popover-border, none);
   }
+  :is(.modal-start, .modal-end) > .modal-box {
+    border-top: env(safe-area-inset-top) solid transparent;
+  }
+  /* The sidebar dialog pads its own foot. */
+  :is(.modal-start, .modal-end) > .modal-box:not(.setzkasten-sidebar) {
+    border-bottom: env(safe-area-inset-bottom) solid transparent;
+  }
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
