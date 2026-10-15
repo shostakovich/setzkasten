@@ -18,8 +18,12 @@ defmodule Setzkasten.Components.Actions do
 
   @sizes %{sm: "btn-sm", md: nil, lg: "btn-lg"}
 
+  @link_attrs ~w(href navigate patch method download replace target rel)a
+
   @doc """
-  A button, or a link styled as one when `href`, `navigate` or `patch` is set.
+  A button, or a link styled as one when `href`, `navigate` or `patch` is set. `disabled` on a
+  link drops its target: an `<a>` without `href` that neither navigates nor takes focus, with
+  `role="link"`, `aria-disabled` and daisyUI's disabled look.
 
   Variants are fixed: `:primary`, `:neutral` (default; also cancel/secondary), `:ghost`,
   `:danger`, `:danger_outline`, `:link`. `class` is appended to the base classes.
@@ -48,7 +52,10 @@ defmodule Setzkasten.Components.Actions do
 
   A button with an `icon` keeps it through `phx-disable-with` the same way: the text stands in
   a stack beside its label while the event runs. LiveView would replace the content with the
-  text and restore only the text, losing the icon.
+  text and restore only the text, losing the icon. An empty `phx-disable-with` keeps the label.
+  A clicked button takes daisyUI's disabled look until the reply instead of `disabled`;
+  LiveView ignores further clicks meanwhile. `icon_only` with a `phx-disable-with` text raises:
+  the text would not fit the square.
 
       <.button variant={:primary} icon="plus">Neue Ausgabe</.button>
       <.button variant={:ghost} icon="trash-2" icon_only label="Löschen"
@@ -87,6 +94,12 @@ defmodule Setzkasten.Components.Actions do
 
   def button(%{icon_only: true, label: nil}) do
     raise ArgumentError, "<.button icon_only> needs a label"
+  end
+
+  def button(%{icon_only: true, rest: %{"phx-disable-with": text}})
+      when is_binary(text) and text != "" do
+    raise ArgumentError,
+          "<.button icon_only> takes no phx-disable-with text: it would not fit the square button"
   end
 
   def button(%{saved: true, rest: rest}) when not is_map_key(rest, :id) do
@@ -143,6 +156,9 @@ defmodule Setzkasten.Components.Actions do
       |> mirror_phx_value()
 
     cond do
+      link?(assigns.rest) and assigns.disabled ->
+        disabled_link(assigns)
+
       link?(assigns.rest) ->
         ~H"""
         <.link class={@classes} aria-label={@icon_only && @label} {@rest}>
@@ -153,12 +169,28 @@ defmodule Setzkasten.Components.Actions do
       assigns.saved ->
         saved_button(assigns)
 
-      assigns.icon && Map.has_key?(assigns.rest, :"phx-disable-with") ->
+      assigns.icon && assigns.rest[:"phx-disable-with"] ->
         pending_button(assigns)
 
       true ->
         plain_button(assigns)
     end
+  end
+
+  defp disabled_link(assigns) do
+    assigns = assign(assigns, :rest, Map.drop(assigns.rest, @link_attrs))
+
+    ~H"""
+    <a
+      role="link"
+      aria-disabled="true"
+      class={[@classes, "btn-disabled"]}
+      aria-label={@icon_only && @label}
+      {@rest}
+    >
+      <.icon :if={@icon} name={@icon} />{render_slot(@inner_block)}
+    </a>
+    """
   end
 
   defp plain_button(assigns) do
@@ -197,7 +229,9 @@ defmodule Setzkasten.Components.Actions do
 
   defp pending_button(assigns) do
     {pending, rest} = Map.pop(assigns.rest, :"phx-disable-with")
-    assigns = assign(assigns, pending: pending, rest: rest)
+
+    assigns =
+      assign(assigns, pending: if(pending in ["", true], do: nil, else: pending), rest: rest)
 
     ~H"""
     <button
@@ -210,7 +244,7 @@ defmodule Setzkasten.Components.Actions do
     >
       <span class="setzkasten-saved-stack">
         <span class="setzkasten-saved-idle">{button_content(assigns)}</span>
-        <span class="setzkasten-saved-pending">{@pending}</span>
+        <span :if={@pending} class="setzkasten-saved-pending">{@pending}</span>
       </span>
     </button>
     """

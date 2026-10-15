@@ -68,6 +68,32 @@ defmodule Setzkasten.ActionsTest do
     assert classes(doc, "a") == ["btn", "btn-sm"]
   end
 
+  test "a disabled link keeps its look but neither navigates nor takes focus" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button href="/export.csv" download target="_blank" icon="download" disabled>Export</.button>
+      """)
+
+    for name <- ~w(href download target) do
+      assert attr(doc, "a", name) == nil
+    end
+
+    assert attr(doc, "a", "role") == "link"
+    assert attr(doc, "a", "aria-disabled") == "true"
+    assert "btn-disabled" in classes(doc, "a")
+    assert count(doc, "a svg.lucide") == 1
+    assert text(doc, "a") == "Export"
+
+    doc = parse(~H|<.button navigate="/depots" disabled>Alle</.button>|)
+    assert attr(doc, "a", "href") == nil
+    assert attr(doc, "a", "data-phx-link") == nil
+
+    doc = parse(~H|<.button navigate="/depots">Alle</.button>|)
+    assert attr(doc, "a", "aria-disabled") == nil
+  end
+
   test "confirm on a link raises instead of navigating without asking" do
     assigns = %{}
 
@@ -241,6 +267,57 @@ defmodule Setzkasten.ActionsTest do
 
     assert css =~
              ":is(.setzkasten-saved, .setzkasten-pending):is(.phx-submit-loading, .phx-click-loading)"
+  end
+
+  test "a clicked pending button looks disabled until the reply" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.btn\.setzkasten-pending\.phx-click-loading \{\s*pointer-events: none;\s*--btn-border: #0000;\s*--btn-noise: none;\s*--btn-fg: color-mix\(in oklch, var\(--color-base-content\) 20%, #0000\);\s*&:not\(\.btn-link, \.btn-ghost\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 10%, transparent\);/
+  end
+
+  test "an empty or bare phx-disable-with keeps the icon and label, nil drops it" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H|<.button icon="check" phx-click="go" phx-disable-with="">Los</.button>|),
+          parse(~H|<.button icon="check" phx-click="go" phx-disable-with>Los</.button>|)
+        ] do
+      assert attr(doc, "button", "phx-disable-with") == nil
+      assert "setzkasten-pending" in classes(doc, "button")
+      assert count(doc, ".setzkasten-saved-idle svg.lucide") == 1
+      assert count(doc, ".setzkasten-saved-pending") == 0
+      assert text(doc, "button") == "Los"
+    end
+
+    doc = parse(~H|<.button icon="check" phx-click="go" phx-disable-with={nil}>Los</.button>|)
+    assert attr(doc, "button", "phx-disable-with") == nil
+    refute "setzkasten-pending" in classes(doc, "button")
+    assert count(doc, ".setzkasten-saved-stack") == 0
+  end
+
+  test "an icon-only button takes no phx-disable-with text" do
+    assigns = %{}
+
+    assert_raise ArgumentError, ~r/<.button icon_only> takes no phx-disable-with text/, fn ->
+      parse(~H"""
+      <.button
+        icon="trash-2"
+        icon_only
+        label="Löschen"
+        phx-click="delete"
+        phx-disable-with="Löscht …"
+      />
+      """)
+    end
+
+    doc =
+      parse(~H"""
+      <.button icon="trash-2" icon_only label="Löschen" phx-click="delete" phx-disable-with="" />
+      """)
+
+    assert attr(doc, "button", "aria-label") == "Löschen"
+    assert count(doc, ".setzkasten-saved-idle svg.lucide") == 1
   end
 
   test "push_saved pushes the saved event for the button id" do

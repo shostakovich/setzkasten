@@ -113,13 +113,17 @@
 - `list` `:foot`: a total row whose value lines up with the rows' trailing column, also beside their actions.
 - `input` checkbox and toggle `bare`: no field padding or row height, beside a heading; a 44px hit area on touch screens.
 - `Setzkasten.Format.date/2`, `datetime/2` and `time/2`: German dates and times ("14.10.2026", "Mi, 14.10.",
-  "14.10.2026, 18:05", "18:05") from the app's local time.
-- `amount` and `Format.money/2` take `minor_digits` for integers in another minor unit: yen without decimals, dinar with
-  three.
+  "14.10.2026, 18:05", "18:05") from the app's local time as `Date`, `Time` or `NaiveDateTime`.
+- `amount`, `Format.money/2`, `Format.machine/2` and `Format.shown_sign/3` take `minor_digits` for integers in another
+  minor unit: yen without decimals, dinar with three; `decimals` follows it.
 - `list_row` takes `:meta` more than once, one truncated line each (who paid, then what it means for you); with
   `trailing_on_phone={:meta}` the trailing content ends the last line.
-- `stat` with `navigate`, `patch` or `href`: the tile links to the KPI's detail page.
+- `stat` with `navigate`, `patch` or `href`: the whole tile links to the KPI's detail page, `:meter` and `:figure`
+  included.
 - `button` with an `icon` keeps it through `phx-disable-with`: the pending text stands in a stack beside the label
-  instead of LiveView replacing the content and restoring only its text.
+  instead of LiveView replacing the content and restoring only its text; clicked, it looks disabled until the reply.
+  `icon_only` with a `phx-disable-with` text raises.
 - `radio_group` options may be maps with a `:description`: a quieter line under the label, the radio's
   accessible description.
+- `button` with `href`, `navigate` or `patch` and `disabled`: an `<a>` without its target, `aria-disabled` and in the
+  disabled look, instead of a link that still navigates.

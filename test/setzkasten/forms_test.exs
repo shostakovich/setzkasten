@@ -253,13 +253,37 @@ defmodule Setzkasten.FormsTest do
       />
       """)
 
-    assert attr(doc, "#f_monthly", "aria-labelledby") == "f_monthly-label"
-    assert attr(doc, "#f_monthly", "aria-describedby") == "f_monthly-description"
-    assert text(doc, "#f_monthly-label") == "Monatlich"
-    assert text(doc, "#f_monthly-description") == "Nächster Termin 19.11.2026"
+    assert attr(doc, "#f_monthly", "aria-labelledby") == "f-option-0-label"
+    assert attr(doc, "#f_monthly", "aria-describedby") == "f-option-0-description"
+    assert text(doc, "#f-option-0-label") == "Monatlich"
+    assert text(doc, "#f-option-0-description") == "Nächster Termin 19.11.2026"
     assert attr(doc, "#f_monthly", "checked") != nil
     assert attr(doc, "#f_yearly", "aria-describedby") == nil
     assert count(doc, "label.items-start") == 1
+  end
+
+  test "a radio option's value with a space still names and describes its radio" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input
+        name="f"
+        id="f"
+        type="radio_group"
+        label="Wie oft?"
+        options={[
+          {"Monatlich", "monthly"},
+          %{label: "Alle zwei Wochen", value: "every 2 weeks", description: "Am Montag"}
+        ]}
+      />
+      """)
+
+    radio = "input[value='every 2 weeks']"
+    assert attr(doc, radio, "aria-labelledby") == "f-option-1-label"
+    assert attr(doc, radio, "aria-describedby") == "f-option-1-description"
+    assert text(doc, "#f-option-1-label") == "Alle zwei Wochen"
+    assert text(doc, "#f-option-1-description") == "Am Montag"
   end
 
   test "textarea" do

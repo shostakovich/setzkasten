@@ -46,6 +46,25 @@ defmodule Setzkasten.FormatTest do
     assert Format.shown_sign(-4, 2, 3) == 0
   end
 
+  test "minor_digits with sign, zero and Decimal" do
+    assert Format.money(4850, currency: "JPY", minor_digits: 0, signed: true) ==
+             "+4.850#{@nbsp}JPY"
+
+    assert Format.money(0, currency: "JPY", minor_digits: 0, signed: true) == "0#{@nbsp}JPY"
+    assert Format.machine(0, minor_digits: 0) == "0"
+    assert Format.machine(-4, minor_digits: 3, decimals: 2) == "0.00"
+    assert Format.shown_sign(0, 0, 0) == 0
+
+    decimal = %{__struct__: Decimal, sign: -1, coef: 12_345, exp: -1}
+    assert Format.money(decimal, currency: "JPY", minor_digits: 0) == "#{@minus}1.235#{@nbsp}JPY"
+
+    assert Format.money(decimal, currency: "KWD", minor_digits: 3) ==
+             "#{@minus}1.234,500#{@nbsp}KWD"
+
+    assert Format.machine(decimal, minor_digits: 0) == "-1235"
+    assert Format.shown_sign(%{decimal | coef: 4}, 0, 0) == 0
+  end
+
   test "dates with two-digit day and month, weekday and year by option" do
     assert Format.date(~D[2026-03-01]) == "01.03.2026"
     assert Format.date(~D[2026-10-12], weekday: :short) == "Mo, 12.10.2026"
@@ -54,11 +73,21 @@ defmodule Setzkasten.FormatTest do
     for {day, name} <- Enum.zip(12..18, ~w(Mo Di Mi Do Fr Sa So)) do
       assert Format.date(Date.new!(2026, 10, day), weekday: :short) =~ ~r/\A#{name}, /
     end
+
+    assert Format.date(~D[2026-10-12], weekday: false) == "12.10.2026"
+    assert Format.date(~D[2026-10-12], weekday: nil) == "12.10.2026"
+
+    assert_raise ArgumentError, ~r/unknown :weekday :long/, fn ->
+      Format.date(~D[2026-10-12], weekday: :long)
+    end
   end
 
-  test "the date of a moment is its date part, without time zone math" do
+  test "the date of a local moment is its date part; a DateTime is no local time" do
     assert Format.date(~N[2026-10-14 23:59:59]) == "14.10.2026"
-    assert Format.date(~U[2026-10-14 23:30:00Z]) == "14.10.2026"
+
+    for format <- [&Format.date/1, &Format.datetime/1, &Format.time/1] do
+      assert_raise FunctionClauseError, fn -> format.(~U[2026-10-14 23:30:00Z]) end
+    end
   end
 
   test "date and time of a local moment, times in hours and minutes" do
