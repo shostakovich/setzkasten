@@ -23,6 +23,52 @@ defmodule Setzkasten.ShellTest do
     assert text(doc, "nav.dock a:last-child .dock-label") == "B"
   end
 
+  test "the top bar row takes bar_width, independent of the page's width" do
+    for layout <- [:topbar, :sidebar] do
+      assigns = %{layout: layout}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout} width={:narrow} bar_width={:wide}>
+          <:brand>App</:brand>
+          <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+        </.app_shell>
+        """)
+
+      assert "max-w-7xl" in classes(doc, "header .navbar")
+      assert "max-w-3xl" in classes(doc, "main#main")
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout} width={:narrow}>
+          <:brand>App</:brand>
+          <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+        </.app_shell>
+        """)
+
+      assert "max-w-3xl" in classes(doc, "header .navbar")
+    end
+  end
+
+  test "the top-bar menu shows a plush at 24px without growing the bar, an icon at 16px" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" plush="cart" navigate="/a" />
+        <:nav key={:b} label="B" icon="list" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    plush = classes(doc, ".menu-horizontal a[href='/a'] img.plush")
+    assert Enum.all?(~w(size-6 -my-[1.5px]), &(&1 in plush))
+    assert "size-4" in classes(doc, ".menu-horizontal a[href='/b'] svg")
+    assert "size-6" in classes(doc, "nav.dock a[href='/a'] img.plush")
+    refute "-my-[1.5px]" in classes(doc, "nav.dock a[href='/a'] img.plush")
+  end
+
   test "a nav plush without an image falls back to the entry's icon" do
     assigns = %{}
 
@@ -58,6 +104,124 @@ defmodule Setzkasten.ShellTest do
     # The current page is behind "more", so the button is the active one.
     assert "dock-active" in classes(doc, "nav.dock button")
     assert attr(doc, "nav.dock button", "aria-current") == "true"
+  end
+
+  test "topbar dock with more than five entries: four and a more sheet with the rest" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell current={:f} more_label="More">
+        <:brand>App</:brand>
+        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 4
+    more = "nav.dock button[aria-haspopup=dialog]"
+    assert text(doc, "#{more} .dock-label") == "More"
+    assert attr(doc, more, "phx-click") =~ "#app-shell-more"
+    assert "dock-active" in classes(doc, more)
+
+    sheet = "dialog#app-shell-more"
+    assert "modal-bottom" in classes(doc, sheet)
+    assert attr(doc, sheet, "aria-labelledby") == "app-shell-more-title"
+    assert text(doc, "#{sheet} h2") == "More"
+    assert doc |> find("#{sheet} nav a") |> LazyHTML.attribute("href") == ["/e", "/f"]
+    assert attr(doc, "#{sheet} a[href='/f']", "aria-current") == "page"
+    assert "menu-active" in classes(doc, "#{sheet} a[href='/f']")
+    assert attr(doc, "#{sheet} a[href='/e']", "aria-current") == nil
+
+    doc =
+      parse(~H"""
+      <.app_shell current={:a}>
+        <:brand>App</:brand>
+        <:nav :for={k <- ~w(a b c d e)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 5
+    assert count(doc, "nav.dock button") == 0
+    assert count(doc, "dialog") == 0
+  end
+
+  test "entries left out of the topbar dock are in the more sheet, with icon and count" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell current={:b}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" />
+        <:nav
+          id="nav-s"
+          key={:s}
+          label="Sensoren"
+          plush="cart"
+          count={2}
+          count_label="neu"
+          dock={false}
+          navigate="/s"
+        />
+        <:nav key={:n} label="Neu" icon="plus" on_click="new" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 1
+    refute "dock-active" in classes(doc, "nav.dock button")
+
+    sheet = "dialog#app-shell-more"
+    assert count(doc, "#{sheet} a[href='/b']") == 0
+    assert attr(doc, "#{sheet} #nav-s-more", "aria-label") == "Sensoren, 2 neu"
+    assert count(doc, "#{sheet} #nav-s-more img.plush") == 1
+    assert text(doc, "#{sheet} #nav-s-more .badge") == "2"
+    assert [%{"event" => "new"}] = pushes(attr(doc, "#{sheet} li button", "phx-click"))
+
+    doc =
+      parse(~H"""
+      <.app_shell dock={false}>
+        <:brand>App</:brand>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" />
+        <:nav key={:s} label="Sensoren" icon="list" dock={false} navigate="/s" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "dialog") == 0
+  end
+
+  test "the top-bar more sheet: a parent in the dock stands in, button entries close the sheet" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell current={{:account, 1}}>
+        <:brand>App</:brand>
+        <:nav key={:accounts} label="Konten" icon="landmark" navigate="/k" />
+        <:nav
+          key={{:account, 1}}
+          label="Giro"
+          icon="wallet"
+          dock={false}
+          parent={:accounts}
+          navigate="/k/1"
+        />
+        <:nav id="add" key={:add} label="Neu" on_click="add" phx-target="#a" /> x
+      </.app_shell>
+      """)
+
+    assert attr(doc, "nav.dock a[href='/k']", "aria-current") == "true"
+    refute "dock-active" in classes(doc, "nav.dock button[aria-haspopup]")
+
+    sheet = "dialog#app-shell-more"
+    assert attr(doc, "#{sheet} a[href='/k/1']", "aria-current") == "page"
+    assert "menu-active" in classes(doc, "#{sheet} a[href='/k/1']")
+
+    [hide, _push] = attr(doc, "#add-more", "phx-click") |> Jason.decode!()
+    assert hide == ["dispatch", %{"event" => "setzkasten:hide-modal", "to" => "#app-shell-more"}]
+    assert [%{"event" => "add", "target" => "#a"}] = pushes(attr(doc, "#add-more", "phx-click"))
+    refute attr(doc, "#add-menu", "phx-click") =~ "hide-modal"
+    # One text column: an entry without media keeps the icon's place.
+    assert count(doc, "#add-more > span.size-5[aria-hidden]") == 1
   end
 
   test "brand, nav footer and account know where they render" do
@@ -588,8 +752,9 @@ defmodule Setzkasten.ShellTest do
       """)
 
     assert text(doc, ".menu-horizontal li button") == "Neu"
-    assert count(doc, "nav.dock button") == 0
+    assert count(doc, "nav.dock button:not([aria-haspopup])") == 0
     assert count(doc, "nav.dock a") == 1
+    assert text(doc, "dialog#app-shell-more li button") == "Neu"
   end
 
   test "a long nav label does not widen the sidebar's other entries" do
@@ -655,6 +820,7 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "nav.dock a") == 1
     assert attr(doc, "nav.dock button", "phx-click") =~ "app-shell-sidebar"
     assert "dock-active" in classes(doc, "nav.dock button")
+    assert count(doc, "dialog#app-shell-more") == 0
 
     doc =
       parse(~H"""
@@ -665,6 +831,131 @@ defmodule Setzkasten.ShellTest do
       """)
 
     assert count(doc, "nav.dock button") == 0
+  end
+
+  test "the dock gives way only to fields that bring up the on-screen keyboard" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    # :read-write leaves out sliders, colour and file inputs, buttons, checkboxes and read-only fields.
+    assert css =~
+             ~s|body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {\n    display: none;|
+  end
+
+  test "a sidebar nav footer brings the more button, so phones reach it in the sidebar" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav_footer><a href="/sync">Sync</a></:nav_footer>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 1
+    assert attr(doc, "nav.dock button", "phx-click") =~ "#app-shell-sidebar"
+    refute "dock-active" in classes(doc, "nav.dock button")
+    assert count(doc, "dialog#app-shell-sidebar a[href='/sync']") == 1
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav_footer>Sync</:nav_footer>
+        <:nav :for={k <- ~w(a b c d e)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock a") == 4
+    assert count(doc, "nav.dock button") == 1
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>App</:brand>
+        <:nav_footer>Sync</:nav_footer>
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav.dock button") == 0
+  end
+
+  test "a sidebar shell without a dock opens the sidebar from the top bar on phones" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H"""
+          <.app_shell layout={:sidebar} expand_label="Expand">
+            <:brand>App</:brand>
+            <:nav key={:g} label="Giro" icon="landmark" dock={false} navigate="/g" />
+            <:nav key={:t} label="Tagesgeld" icon="wallet" dock={false} navigate="/t" /> x
+          </.app_shell>
+          """),
+          parse(~H"""
+          <.app_shell layout={:sidebar} dock={false} expand_label="Expand">
+            <:brand>App</:brand>
+            <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+          </.app_shell>
+          """)
+        ] do
+      assert count(doc, "nav.dock") == 0
+      button = "header .navbar > button:first-child"
+      assert attr(doc, button, "aria-label") == "Expand"
+      assert attr(doc, button, "aria-haspopup") == "dialog"
+      assert attr(doc, button, "phx-click") =~ "#app-shell-sidebar"
+      assert "md:hidden" in classes(doc, button)
+      assert count(doc, "#{button} path[d='m14 9 3 3-3 3']") == 1
+    end
+
+    for doc <- [
+          parse(~H"""
+          <.app_shell layout={:sidebar}>
+            <:brand>App</:brand>
+            <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+          </.app_shell>
+          """),
+          parse(~H"""
+          <.app_shell layout={:sidebar} dock={false}>
+            <:brand>App</:brand>
+            <:bar>Winter</:bar>
+            <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+          </.app_shell>
+          """)
+        ] do
+      assert count(doc, "header button") == 0
+    end
+  end
+
+  test "every dock item has a 24px icon box, so all labels sit on one line" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar}>
+        <:brand>App</:brand>
+        <:nav key={:a} label="A" plush="cart" navigate="/a" />
+        <:nav key={:b} label="B" icon="list" navigate="/b" />
+        <:nav key={:g} label="G" glyph="G" navigate="/g" />
+        <:nav key={:c} label="C" icon="list" dock={false} navigate="/c" /> x
+      </.app_shell>
+      """)
+
+    assert "size-6" in classes(doc, "nav.dock a[href='/a'] img.plush")
+    assert Enum.all?(~w(size-5 m-0.5), &(&1 in classes(doc, "nav.dock a[href='/b'] svg")))
+
+    assert Enum.all?(
+             ~w(size-5 m-0.5),
+             &(&1 in classes(doc, "nav.dock a[href='/g'] span[aria-hidden]"))
+           )
+
+    assert Enum.all?(
+             ~w(size-5 m-0.5),
+             &(&1 in classes(doc, "nav.dock button[aria-haspopup] svg"))
+           )
+
+    refute "m-0.5" in classes(doc, "aside.lg\\:flex a[href='/b'] svg")
   end
 
   test "dock labels stay on one line and end in an ellipsis" do

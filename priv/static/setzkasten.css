@@ -878,9 +878,9 @@
   }
 }
 
-/* The bottom dock gives way to the on-screen keyboard while a text field has focus. */
+/* The dock gives way to the on-screen keyboard; date and time fields open a picker instead. */
 @media (pointer: coarse) {
-  body:has(:is(input:not([type="checkbox"], [type="radio"]), textarea, [contenteditable]):focus) .dock {
+  body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {
     display: none;
   }
 }

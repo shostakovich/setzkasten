@@ -68,10 +68,44 @@ defmodule Setzkasten.IconsTest do
     assert attr(doc, "img", "alt") == ""
   end
 
+  test "plush with a dark file keeps ids unique, other attrs on both images" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.plush src="/a.webp" dark_src="/a-dark.webp" id="mascot" title="Maskottchen" />|)
+
+    assert attr(doc, "img#mascot", "src") == "/a.webp"
+    assert attr(doc, "img#mascot-dark", "src") == "/a-dark.webp"
+    assert doc |> find("img") |> LazyHTML.attribute("title") == ["Maskottchen", "Maskottchen"]
+
+    assert attr(parse(~H|<.plush src="/a.webp" id="mascot" />|), "img", "id") == "mascot"
+  end
+
   test "plush without a dark file renders one image, unknown names nothing" do
     assigns = %{}
     assert count(parse(~H|<.plush name="nav-solar" />|), "img") == 1
     assert count(parse(~H|<.plush name="missing" />|), "img") == 0
+  end
+
+  test "a size class on a plush replaces its size class, width and height stay" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.plush src="/a.webp" dark_src="/a-dark.webp" size={:xl} class="size-[clamp(2rem,8vw,3rem)]" />|
+      )
+
+    for img <- ["img:first-child", "img:last-child"] do
+      assert "size-[clamp(2rem,8vw,3rem)]" in classes(doc, img)
+      refute "size-12" in classes(doc, img)
+    end
+
+    assert attr(doc, "img", "width") == "48"
+
+    assert "size-12" in classes(
+             parse(~H|<.plush src="/a.webp" size={:xl} class="mx-auto" />|),
+             "img"
+           )
   end
 
   test "plush takes direct sources" do
