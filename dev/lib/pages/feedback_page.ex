@@ -11,9 +11,9 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
     ~H"""
     <.showcase id="alert" name="<.alert>" title="Hinweis im Inhalt" code={code(0)}>
       <:intro>
-        Dauerhafte Hinweise auf der Seite; getönt, Schrift in Grundfarbe, Icon in der Linienfarbe
-        des Tons: <code>chart-6</code>
-        bei Info, <code>chart-2</code>
+        Dauerhafte Hinweise auf der Seite; getönt, Schrift in Grundfarbe, Icon in der Tinte
+        des Tons: <code>info-ink</code>
+        bei Info, <code>warning-ink</code>
         bei Warnung, <code>success-ink</code>
         und <code>error-ink</code>
         bei Erfolg und Fehler. <code>role="alert"</code>

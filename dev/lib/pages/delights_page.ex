@@ -88,7 +88,7 @@ defmodule Setzkasten.Dev.Pages.DelightsPage do
       </:intro>
       <div class="grid gap-6 lg:grid-cols-2">
         <.demo title="Ausprobieren" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
+          <div class="setzkasten-stat-grid grid grid-cols-2 gap-4">
             <.stat id="live-assets" label="Vermögen" value={assets(@level)} unit="€" size={:sm} />
             <.stat id="live-rate" label="Kurs" value={rate(@level)} unit="€" size={:sm} />
             <.stat id="live-delta" label="Abweichung" value={delta(@level)} unit="%" size={:sm} />

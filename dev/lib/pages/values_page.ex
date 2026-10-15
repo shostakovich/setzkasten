@@ -52,11 +52,14 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         32px, <code>:sm</code>
         24px für Kachelraster. Veraltete Werte bekommen ein Badge, nie blasse Schrift.
       </:intro>
-      <.demo title=":md" class="grid gap-4 sm:grid-cols-2">
+      <.demo title=":md" class="setzkasten-stat-grid grid gap-4 sm:grid-cols-2">
         <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
         <.stat label="Dein Saldo" value="−42,17" unit="€" tone={:error} desc="du schuldest Dana" />
       </.demo>
-      <.demo title="Beschreibung mit Markup, :note" class="grid gap-4 sm:grid-cols-2">
+      <.demo
+        title="Beschreibung mit Markup, :note"
+        class="setzkasten-stat-grid grid gap-4 sm:grid-cols-2"
+      >
         <.stat label="Depotwert" value="63.279" unit="€">
           <:note><.amount value={50_000} signed tone /> heute</:note>
         </.stat>
@@ -64,15 +67,47 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           <:note>07.10.2026<.meta_sep /><span class="font-semibold">Stadtwerke</span></:note>
         </.stat>
       </.demo>
-      <.demo title="Kachelraster, size={:sm}, veraltet" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <.demo
+        title="Kachelraster, size={:sm}, veraltet"
+        class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
         <.stat label="PV jetzt" value="1.234" unit="W" desc="Akku 82 %" size={:sm} />
         <.stat label="Netz" value="−312" unit="W" desc="Einspeisung" size={:sm} />
         <.stat label="Heute" value="9,8" unit="kWh" desc="Ertrag" size={:sm} />
         <.stat label="Keller" value="14,2" unit="°C" desc="seit 14:32" size={:sm} stale />
       </.demo>
       <.demo
+        title="Figur, :figure (unter sm am Ende der Titelzeile)"
+        class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
+        <.stat label="PV jetzt" value="486" unit="W" desc="Sonnig, 17 °C" size={:sm}>
+          <:figure><.plush name="sunny" size={:lg} /></:figure>
+        </.stat>
+        <.stat label="Batterie" value="78" unit="%" desc="entlädt mit 120 W" size={:sm}>
+          <:figure><.plush name="battery" size={:lg} /></:figure>
+        </.stat>
+        <.stat label="Netz" value="−312" unit="W" desc="Einspeisung" size={:sm}>
+          <:figure><.icon name="zap" class="size-6 text-base-content/70" /></:figure>
+        </.stat>
+        <.stat label="Keller" loading size={:sm}>
+          <:figure><.plush name="nav-sensors" size={:lg} /></:figure>
+        </.stat>
+      </.demo>
+      <.demo
+        title="Füllstand unter dem Wert, :meter mit bar hide_label"
+        class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
+        <.stat label="Ladestand" value="78" unit="%" desc="entlädt mit 120 W" size={:sm}>
+          <:meter><.bar label="Ladestand" value={78} tone={:success} hide_label /></:meter>
+        </.stat>
+        <.stat label="Speicher" value="64" unit="%" desc="von 2 TB" size={:sm}>
+          <:meter><.bar label="Speicher belegt" value={64} tone={:neutral} hide_label /></:meter>
+        </.stat>
+        <.stat label="Netz" value="−312" unit="W" desc="Einspeisung" size={:sm} />
+      </.demo>
+      <.demo
         title="Laden (Skeleton im endgültigen Layout)"
-        class="grid grid-cols-2 md:grid-cols-4 gap-4"
+        class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4"
       >
         <.stat label="PV jetzt" loading size={:sm} />
         <.stat label="Netz" loading size={:sm} />
@@ -125,6 +160,85 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       >
         <.bar label="Liquidität" value={12} tone={:neutral} target={12.5}>Ziel 12,5&nbsp;%</.bar>
         <.bar label="Rohstoffe" value={3} tone={:neutral} show_value />
+      </.demo>
+      <.demo
+        title="color={n} (Farbe der Diagrammreihe, Füllung mit Linie wie im Diagramm)"
+        class="grid gap-5 md:grid-cols-2"
+      >
+        <.bar label="Solar" value={64} color={2} show_value />
+        <.bar label="Netz" value={24} color={1} show_value />
+        <.bar label="Akku" value={9} color={3} show_value />
+        <.bar label="Sonstige" value={3} color={:other} show_value />
+      </.demo>
+    </.showcase>
+
+    <.showcase id="share-bar" name="<.share_bar>" title="Anteilsbalken" code={code(6)}>
+      <:intro>
+        Ein Ganzes in einem durchgehenden Balken: Segmente bündig, so breit wie ihre Werte, in der
+        gegebenen Reihenfolge (größte zuerst, der gruppierte Rest zuletzt), getrennt nur durch eine
+        2px-Lücke. Die Werte stehen als Text in der Legende.
+      </:intro>
+      <.demo title="Leistung je Steckdose, Rest gruppiert (color: :other)" class="max-w-xl">
+        <.share_bar
+          id="share-plugs"
+          label="Steckdosen"
+          value_label="756 W"
+          segments={[
+            %{label: "Waschmaschine", value: 412, color: 1, value_label: "412 W"},
+            %{label: "Arbeitsplatz", value: 138, color: 2, value_label: "138 W"},
+            %{label: "Kühlschrank", value: 86, color: 3, value_label: "86 W"},
+            %{label: "Fernseher", value: 64, color: 4, value_label: "64 W"},
+            %{label: "Router & NAS", value: 28, color: 5, value_label: "28 W"},
+            %{label: "Sonstige (4)", value: 28, color: :other, value_label: "28 W"}
+          ]}
+        />
+      </.demo>
+      <.demo title="Depot nach Anlageklasse, size={:sm}" class="max-w-xl">
+        <.share_bar
+          id="share-portfolio"
+          label="Depot"
+          value_label="63.279 €"
+          size={:sm}
+          segments={[
+            %{label: "Aktien weltweit", value: 72, color: 1, value_label: "72 %"},
+            %{label: "Anleihen", value: 18, color: 6, value_label: "18 %"},
+            %{label: "Liquidität", value: 7, color: 8, value_label: "7 %"},
+            %{label: "Rohstoffe", value: 3, color: 7, value_label: "3 %"}
+          ]}
+        />
+      </.demo>
+      <.demo
+        title="Geordnete Klassen: sequenzielle Rampe {:seq, 1..5}, nie Warnfarben"
+        class="max-w-xl"
+      >
+        <.share_bar
+          id="share-particles"
+          label="Feinstaub nach Partikelgröße"
+          value_label="18 µg/m³"
+          segments={[
+            %{label: "unter 1 µm", value: 6, color: {:seq, 1}, value_label: "6 µg/m³"},
+            %{label: "1–2,5 µm", value: 5, color: {:seq, 2}, value_label: "5 µg/m³"},
+            %{label: "2,5–4 µm", value: 4, color: {:seq, 4}, value_label: "4 µg/m³"},
+            %{label: "4–10 µm", value: 3, color: {:seq, 5}, value_label: "3 µg/m³"}
+          ]}
+        />
+      </.demo>
+      <.demo
+        title="Teilweise gefüllt: max={1000}, der Rest bleibt Spur; legend={false}"
+        class="max-w-xl"
+      >
+        <.share_bar
+          id="share-budget"
+          label="Budget Oktober"
+          value_label="620 € von 1.000 €"
+          max={1000}
+          legend={false}
+          segments={[
+            %{label: "Lebensmittel", value: 410, color: 3, value_label: "410 €"},
+            %{label: "Essen gehen", value: 130, color: 2, value_label: "130 €"},
+            %{label: "Sonstiges", value: 80, color: :other, value_label: "80 €"}
+          ]}
+        />
       </.demo>
     </.showcase>
 
@@ -298,6 +412,9 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     ~S"""
     <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
     <.stat label="PV jetzt" value="1.234" unit="W" size={:sm} stale />
+    <.stat label="PV jetzt" value="486" unit="W" size={:sm}>
+      <:figure><.plush name="sunny" size={:lg} /></:figure>
+    </.stat>
     <.stat label="Depotwert" value="63.279" unit="€">
       <:note><.amount value={50_000} signed tone /> heute</:note>
     </.stat>
@@ -324,6 +441,17 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     ~S"""
     <.bar label="Aktien" value={72} target={70} show_value>Ziel 70 %</.bar>
     <.bar label="Liquidität" value={12} tone={:neutral} target={12.5}>Ziel 12,5 %</.bar>
+    """
+  end
+
+  defp code(6) do
+    ~S"""
+    <.share_bar label="Steckdosen" value_label="756 W" segments={[
+      %{label: "Waschmaschine", value: 412, color: 1, value_label: "412 W"},
+      %{label: "Arbeitsplatz", value: 138, color: 2, value_label: "138 W"},
+      %{label: "Sonstige (4)", value: 28, color: :other, value_label: "28 W"}
+    ]} />
+    <.share_bar label="Budget Oktober" max={1000} legend={false} segments={…} />
     """
   end
 

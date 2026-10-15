@@ -121,6 +121,12 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
             Laufende Kosten, die im Kurs stecken. Ordergebühren kommen aus den Buchungen.
           </:footer>
         </.card>
+        <.card title="Heizung" subtitle="toggle bare in :actions" level={3}>
+          <:actions>
+            <.input name="heating-auto" id="heating-auto" type="toggle" label="Automatik" bare />
+          </:actions>
+          <p>21,5&nbsp;°C im Wohnzimmer, Zielwert 21&nbsp;°C.</p>
+        </.card>
         <.card
           title="Kinderdepot"
           subtitle="Klickbare Karte: der Titel-Link deckt die Fläche"
@@ -168,6 +174,7 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
       </:intro>
       <.demo title="Ausprobieren" class="flex flex-wrap items-center gap-4">
         <.theme_toggle id="theme-demo" />
+        <.theme_toggle id="theme-demo-compact" compact />
         <:note>
           Die Wahl breitet sich als Kreis vom Symbol aus; siehe <.link
             navigate="/delights"
@@ -213,6 +220,7 @@ defmodule Setzkasten.Dev.Pages.LayoutPage do
   defp code(3) do
     ~S"""
     <.theme_toggle />                                  <%!-- localStorage --%>
+    <.theme_toggle id="theme-bar" compact />           <%!-- one button with a menu; own id beside another --%>
     <.theme_toggle store={:server} value={@user.theme} on_change="set-theme" />
     """
   end

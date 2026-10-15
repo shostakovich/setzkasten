@@ -19,7 +19,8 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       <:intro>
         Eine Wahl aus wenigen Optionen (Zeitraum, Ansicht): <code>join</code>
         aus Buttons, die gewählte
-        Option in der neutralen Auswahlfarbe <code>selected</code>. Drei Modi: Links, Buttons, Formularfeld.
+        Option in der neutralen Auswahlfarbe <code>selected</code>. Vier Modi: Links, Buttons, Formularfeld
+        mit einer oder mehreren Optionen.
       </:intro>
       <.demo title="mode={:patch}, size={:sm} (klickbar, Zustand in der URL)">
         <.segmented
@@ -113,6 +114,48 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           label="Aufteilung"
           value="equal"
           options={[{"Gleich", "equal"}, {"Anteile", "shares"}, {"Beträge", "exact"}]}
+        />
+      </.demo>
+      <.demo title="Als Formularfeld: sichtbares Label, Fehler und Hilfe wie bei input">
+        <form class="max-w-md" phx-submit="noop">
+          <.segmented
+            id="plan-weekdays"
+            mode={:checkbox}
+            name="plan[weekdays]"
+            label="Wochentage"
+            value={[]}
+            size={:sm}
+            errors={["Wähle mindestens einen Tag"]}
+            help="Die Erinnerung kommt an diesen Tagen um 7 Uhr."
+            options={[
+              %{label: "Mo", long_label: "Montag", value: "mon"},
+              %{label: "Di", long_label: "Dienstag", value: "tue"},
+              %{label: "Mi", long_label: "Mittwoch", value: "wed"},
+              %{label: "Do", long_label: "Donnerstag", value: "thu"},
+              %{label: "Fr", long_label: "Freitag", value: "fri"},
+              %{label: "Sa", long_label: "Samstag", value: "sat"},
+              %{label: "So", long_label: "Sonntag", value: "sun"}
+            ]}
+          />
+        </form>
+      </.demo>
+      <.demo title="mode={:checkbox} (Mehrfachauswahl, gesendet als weekdays[])">
+        <.segmented
+          id="weekdays-seg"
+          mode={:checkbox}
+          name="weekdays"
+          label="Wochentage"
+          value={~w(mon tue wed thu fri)}
+          size={:sm}
+          options={[
+            %{label: "Mo", long_label: "Montag", value: "mon"},
+            %{label: "Di", long_label: "Dienstag", value: "tue"},
+            %{label: "Mi", long_label: "Mittwoch", value: "wed"},
+            %{label: "Do", long_label: "Donnerstag", value: "thu"},
+            %{label: "Fr", long_label: "Freitag", value: "fri"},
+            %{label: "Sa", long_label: "Samstag", value: "sat"},
+            %{label: "So", long_label: "Sonntag", value: "sun"}
+          ]}
         />
       </.demo>
     </.showcase>
@@ -216,6 +259,9 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
     <.segmented mode={:button} value={@view} label="Ansicht" phx-click="view"
       options={[%{label: "Liste", value: "list", icon: "list"}, {"Anteile", "shares"}]} />
     <.segmented mode={:radio} field={@form[:split]} label="Aufteilung" options={…} />
+    <.segmented mode={:checkbox} field={@form[:weekdays]} label="Wochentage"
+      help="Die Erinnerung kommt an diesen Tagen um 7 Uhr."
+      options={[%{label: "Mo", long_label: "Montag", value: "mon"}, …]} />
     <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block options={…} />
     <%!-- in the header's actions: full width under the title on phones only --%>
     <.segmented mode={:patch} value={@range} label="Zeitraum" size={:sm} block={:phone} options={…} />

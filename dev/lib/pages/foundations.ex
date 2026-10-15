@@ -28,7 +28,13 @@ defmodule Setzkasten.Dev.Pages.Foundations do
     {5, "accent", "bg-chart-5-fill border-chart-5", "bg-chart-5"},
     {6, "info", "bg-chart-6-fill border-chart-6", "bg-chart-6"},
     {7, "secondary", "bg-chart-7-fill border-chart-7", "bg-chart-7"},
-    {8, "neutral", "bg-chart-8-fill border-chart-8", "bg-chart-8"}
+    {8, "neutral", "bg-chart-8-fill border-chart-8", "bg-chart-8"},
+    {"other", "Rest", "bg-chart-other-fill border-chart-other", "bg-chart-other"},
+    {"seq-1", "geordnet, niedrig", "bg-seq-1 border-seq-1", "bg-seq-1"},
+    {"seq-2", "geordnet", "bg-seq-2 border-seq-2", "bg-seq-2"},
+    {"seq-3", "geordnet", "bg-seq-3 border-seq-3", "bg-seq-3"},
+    {"seq-4", "geordnet", "bg-seq-4 border-seq-4", "bg-seq-4"},
+    {"seq-5", "geordnet, hoch", "bg-seq-5 border-seq-5", "bg-seq-5"}
   ]
 
   def render(assigns) do
@@ -74,14 +80,17 @@ defmodule Setzkasten.Dev.Pages.Foundations do
           <span class="text-primary">Link primary</span>
           · <.amount value={35020} signed tone /> success-ink
           · <.amount value={-7420} tone /> error-ink
+          · <span class="text-info-ink">info-ink</span>
+          · <span class="text-warning-ink">warning-ink</span>
         </p>
         <:note>
-          Farbiger Text nur in <code>primary</code>, <code>success-ink</code>
-          und <code>error-ink</code>.
+          Farbiger Text nur in <code>primary</code>
+          und den Inks <code>success-ink</code>, <code>error-ink</code>, <code>info-ink</code>
+          und <code>warning-ink</code>.
           Die übrigen Rollen sind im hellen Theme Flächen (1,5–2,7:1 auf Weiß).
         </:note>
       </.demo>
-      <.demo title="Diagrammreihen chart-1…8">
+      <.demo title="Diagrammreihen chart-1…8, chart-other und die sequenzielle Rampe seq-1…5">
         <ul class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
           <li :for={{n, role, fill, line} <- @series} class="flex items-end gap-3">
             <span class="flex h-10 items-end gap-1" aria-hidden="true">

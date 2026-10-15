@@ -333,7 +333,7 @@ defmodule Setzkasten.Dev.ScreenLive do
           help="Kleinbuchstaben und Bindestriche, z. B. code-reviews-2026."
         />
         <.input name="post[body]" id="post-body" type="textarea" label="Text" rows="8" />
-        <.action_bar sticky class="mt-6">
+        <.action_bar sticky>
           <.button navigate="/screens/posts">Abbrechen</.button>
           <.button type="submit" variant={:primary}>Speichern</.button>
         </.action_bar>
@@ -346,7 +346,7 @@ defmodule Setzkasten.Dev.ScreenLive do
 
   def render(%{screen: "settings"} = assigns) do
     ~H"""
-    <.app_shell layout={:topbar} current={:settings} width={:narrow}>
+    <.app_shell layout={:topbar} current={:settings} width={:narrow} bar_width={:default}>
       <:brand><.plush name="mascot" size={:lg} />Teilbar</:brand>
       <:nav key={:expenses} label="Ausgaben" plush="receipt" navigate="/screens/settings" />
       <:nav key={:balances} label="Salden" plush="scale" navigate="/screens/settings" />
@@ -439,7 +439,7 @@ defmodule Setzkasten.Dev.ScreenLive do
           Am Monatsende schlägt Teilbar vor, wer wem wie viel überweist.
         </.alert>
 
-        <.action_bar sticky class="mt-6">
+        <.action_bar sticky>
           <:secondary>
             <.button
               variant={:danger_outline}
@@ -742,7 +742,13 @@ defmodule Setzkasten.Dev.ScreenLive do
       <:nav key={:home} label="Home" plush="nav-dashboard" navigate="/screens/dashboard" />
       <:nav key={:pv} label="PV" plush="nav-solar" navigate="/screens/dashboard" />
       <:nav key={:switches} label="Schalten" plush="nav-switches" navigate="/screens/dashboard" />
-      <:nav key={:reports} label="Berichte" plush="nav-reports" navigate="/screens/dashboard" />
+      <:nav
+        key={:reports}
+        label="Berichte"
+        plush="nav-reports"
+        dock={false}
+        navigate="/screens/dashboard"
+      />
       <:nav key={:weather} label="Wetter" plush="nav-weather" navigate="/screens/dashboard" />
       <:nav key={:sensors} label="Sensoren" plush="nav-sensors" navigate="/screens/dashboard" />
       <.header>
@@ -754,20 +760,28 @@ defmodule Setzkasten.Dev.ScreenLive do
       </.header>
 
       <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <.stat id="live-pv" label="PV jetzt" unit="W" desc="Sonnig, 17 °C">
-            <span class="inline-flex items-center gap-2">
-              <.plush name="sunny" size={:lg} />{Dashboard.live(:pv, @live_step)}
-            </span>
+        <div class="setzkasten-stat-grid grid grid-cols-2 gap-4">
+          <.stat
+            id="live-pv"
+            label="PV jetzt"
+            value={Dashboard.live(:pv, @live_step)}
+            unit="W"
+            desc="Sonnig, 17 °C"
+          >
+            <:figure><.plush name="sunny" size={:lg} /></:figure>
           </.stat>
-          <.stat id="live-battery" label="Batterie" unit="%" desc="entlädt mit 120 W">
-            <span class="inline-flex items-center gap-2">
-              <.plush name="battery" size={:lg} />{Dashboard.live(:battery, @live_step)}
-            </span>
+          <.stat
+            id="live-battery"
+            label="Batterie"
+            value={Dashboard.live(:battery, @live_step)}
+            unit="%"
+            desc="entlädt mit 120 W"
+          >
+            <:figure><.plush name="battery" size={:lg} /></:figure>
           </.stat>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="setzkasten-stat-grid grid grid-cols-2 md:grid-cols-4 gap-4">
           <.stat
             :for={tile <- Dashboard.tiles()}
             label={tile.label}
@@ -821,16 +835,20 @@ defmodule Setzkasten.Dev.ScreenLive do
         </.chart_card>
 
         <.card title="Steckdosen" subtitle="Verbrauch gesamt 650 W · Balkonkraftwerk erzeugt 486 W">
-          <div class="space-y-3">
-            <.bar
-              :for={plug <- Dashboard.plugs()}
-              label={plug.name}
-              value={plug.watt}
-              max={650}
-              show_value
-              value_label={"#{plug.watt} W"}
-            />
-          </div>
+          <.share_bar
+            id="plug-power"
+            label="Leistung je Steckdose"
+            value_label="650 W"
+            segments={
+              for {plug, color} <- Enum.with_index(Dashboard.plugs(), 1),
+                  do: %{
+                    label: plug.name,
+                    value: plug.watt,
+                    color: color,
+                    value_label: "#{plug.watt} W"
+                  }
+            }
+          />
         </.card>
 
         <.chart_card

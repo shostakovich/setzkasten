@@ -175,6 +175,14 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
         für Felder, die keins sind (Datei-Upload, eigene Auswahl). <code>field_describedby/3</code>
         verknüpft sie mit dem Feld.
       </:intro>
+      <.demo
+        title="Zeitraum in einer Zeile: sichtbare Labels, Feld und Button enden unten bündig"
+        class="flex flex-wrap items-end gap-3"
+      >
+        <.input id="range-from" name="from" type="date" label="Von" value="2026-08-27" class="w-44" />
+        <.input id="range-to" name="to" type="date" label="Bis" value="2026-09-12" class="w-44" />
+        <.button id="range-apply" variant={:primary}>Anwenden</.button>
+      </.demo>
       <.demo title="Datei-Upload mit Fehler und Hinweis" class="max-w-md">
         <fieldset class="fieldset">
           <label for="u-photo" class="fieldset-legend">Beleg</label>
@@ -248,6 +256,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
         id="expense-form"
         phx-change="validate"
         phx-submit="save"
+        phx-hook="Setzkasten.Components.Forms.FocusInvalid"
         class="max-w-3xl space-y-4"
         novalidate
       >
