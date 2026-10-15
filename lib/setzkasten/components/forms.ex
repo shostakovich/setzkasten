@@ -38,6 +38,10 @@ defmodule Setzkasten.Components.Forms do
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
   the join. The button takes `class="join-item"`.
 
+  `radio_group` options are `{label, value}` tuples or maps with `:label`, `:value` and an optional
+  `:description`: a quieter line under the label (what the choice means or brings), the radio's
+  description for screen readers, while the label alone stays its name.
+
       <.input field={@form[:amount]} label="Betrag" suffix="€" numeric class="max-w-40"
               help="Mit Komma, z. B. 87,42" />
       <.input field={@form[:category_id]} type="select" label="Kategorie" options={@categories}
@@ -70,7 +74,10 @@ defmodule Setzkasten.Components.Forms do
   attr :suffix, :string, default: nil
   attr :icon, :string, default: nil, doc: "Lucide icon at the start of the field (search)"
   attr :numeric, :boolean, default: false
-  attr :options, :list, doc: "options for select and radio_group"
+
+  attr :options, :list,
+    doc: "options for select and radio_group (a radio option may be a map with `:description`)"
+
   attr :prompt, :string, default: nil
   attr :multiple, :boolean, default: false
   attr :class, :any, default: nil
@@ -148,6 +155,7 @@ defmodule Setzkasten.Components.Forms do
 
   def input(%{type: "radio_group"} = assigns) do
     assigns = prepare(assigns)
+    assigns = assign(assigns, :options, Enum.map(assigns.options, &radio_option(&1, assigns.id)))
 
     ~H"""
     <fieldset
@@ -158,19 +166,33 @@ defmodule Setzkasten.Components.Forms do
     >
       <legend class={["fieldset-legend", @hide_label && "sr-only"]}>{@label}</legend>
       <label
-        :for={{label, value} <- @options}
-        class="flex items-center gap-3 text-sm pointer-coarse:min-h-11"
+        :for={option <- @options}
+        class={[
+          "flex gap-3 text-sm pointer-coarse:min-h-11",
+          if(option.description, do: "items-start", else: "items-center")
+        ]}
       >
         <input
           type="radio"
-          id={"#{@id}_#{value}"}
+          id={option.id}
           name={@name}
-          value={value}
-          checked={to_string(value) == to_string(@value)}
-          class={["radio radio-primary", @class]}
+          value={option.value}
+          checked={to_string(option.value) == to_string(@value)}
+          class={["radio radio-primary", option.description && "-mt-0.5", @class]}
+          aria-labelledby={option.description && "#{option.id}-label"}
+          aria-describedby={option.description && "#{option.id}-description"}
           {@rest}
         />
-        {label}
+        <%= if option.description do %>
+          <span class="min-w-0">
+            <span id={"#{option.id}-label"} class="block">{option.label}</span>
+            <span id={"#{option.id}-description"} class="block text-base-content/70">
+              {option.description}
+            </span>
+          </span>
+        <% else %>
+          {option.label}
+        <% end %>
       </label>
       <.field_error id={@id} errors={@errors} />
       <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
@@ -306,6 +328,11 @@ defmodule Setzkasten.Components.Forms do
     />
     """
   end
+
+  defp radio_option({label, value}, id), do: radio_option(%{label: label, value: value}, id)
+
+  defp radio_option(%{label: label, value: value} = option, id),
+    do: %{id: "#{id}_#{value}", label: label, value: value, description: option[:description]}
 
   defp prepare(assigns) do
     assigns

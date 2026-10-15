@@ -33,6 +33,9 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           <:item label="currency_display={:code}">
             <.amount value={110} currency="USD" currency_display={:code} />
           </:item>
+          <:item label="minor_digits={0} (Yen)">
+            <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
+          </:item>
           <:item label="size={:lg}"><.amount value={6_327_914} size={:lg} /></:item>
           <:item label="decimals={0} (ganze Euro, KPIs)">
             <.amount value={6_327_914} decimals={0} />
@@ -54,7 +57,14 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
       </:intro>
       <.demo title=":md" class="setzkasten-stat-grid grid gap-4 sm:grid-cols-2">
         <.stat label="Vermögen" value="63.279" unit="€" desc="+8,4 % seit Jahresbeginn" />
-        <.stat label="Dein Saldo" value="−42,17" unit="€" tone={:error} desc="du schuldest Dana" />
+        <.stat
+          label="Dein Saldo"
+          value="−42,17"
+          unit="€"
+          tone={:error}
+          desc="du schuldest Dana"
+          navigate="/values"
+        />
       </.demo>
       <.demo
         title="Beschreibung mit Markup, :note"
@@ -405,6 +415,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     <.amount value={Decimal.new("63279.14")} size={:lg} />
     <.amount value={6_327_914} decimals={0} />
     <.amount value={110} currency="USD" currency_display={:code} />
+    <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
     """
   end
 

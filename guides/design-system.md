@@ -382,7 +382,8 @@ Visible and accessible default strings are German; each has an attr:
   the hook mounts (dead render, slow connect) a click submits without asking. Its `id` is a plain CSS identifier (no
   `.` or `:`), as for every id the overlay helpers address. `saved` (needs `id`, raises without or on a link): the saved
   moment of 2.10 after `push_saved(socket, id)`; a `phx-disable-with` text becomes the pending label in the same
-  stack (LiveView would flatten the stack otherwise).
+  stack (LiveView would flatten the stack otherwise). A button with an `icon` keeps it through `phx-disable-with`
+  in the same kind of stack.
   40px on fine pointers, 44px on coarse. `:danger` is filled `error-ink` with white text in light (as strong as
   primary), the error fill in dark. In the dark sidebar a `:neutral` button takes a quiet translucent fill, for a
   global action that should not compete with the page's primary.
@@ -407,6 +408,9 @@ Visible and accessible default strings are German; each has an attr:
   `hide_label`, `help`, `prefix`/`suffix` (€, %), `icon`, `numeric` (right-aligned, `tabular-nums`,
   `inputmode="decimal"`), `options`/`prompt`/`multiple`. `class` lands on the field box (`max-w-40` for narrow amounts).
   - Markup: `fieldset` > label > field > errors > help.
+  - `radio_group` options: `{label, value}` or maps with `:description`, a 70 % line under the label (what the choice
+    brings: "Nächster Termin 19.11.2026"); the radio sits on the first line, the label alone is its name and the
+    description its `aria-describedby`.
   - `help_tone={:warning}`: the help line with `triangle-alert`, text in full base-content (warning is a fill,
     never text); still linked by `aria-describedby`.
   - `inline` (text-like types): field and inner block (the button, `class="join-item"`) in one `join`, stacked
@@ -547,7 +551,7 @@ Visible and accessible default strings are German; each has an attr:
   pass their count (`actions`, the buttons from `md`), `menu` and `actions_class`, and it keeps an invisible copy of
   that column, from `md` and on phones with the rows' `trailing_on_phone={:title}`. It takes the list's `id` with
   `-foot`, so a stream keeps it and adds rows above it.
-  - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates), `:trailing` (value, badge; moves to
+  - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates; one line per `:meta`), `:trailing` (value, badge; moves to
     a second line below `md`, its lines aligned at the start; with `trailing_on_phone={:meta}` to the end of the
     meta line; with `trailing_on_phone={:title}` a short value (amount, optional small second line such as a
     percentage) stays at the end of the title line, lines right-aligned, the `⋮` menu centred on that line beside
@@ -570,8 +574,13 @@ Visible and accessible default strings are German; each has an attr:
   `value` in minor units or `Decimal`; `currency` (default `"EUR"`); `signed`; `tone` (negative `error-ink`,
   positive `success-ink`, zero 70 %, by the shown value; `tone={:negative}` for balances in lists: negative
   `error-ink`, zero 70 %, positive plain, since green on every positive balance is noise, not state); `decimals` (default 2, `0` for whole-currency KPIs;
-  `<data value>` stays exact); `currency_display={:code}` shows the ISO code ("1,10 USD") where currencies mix;
+  `<data value>` stays exact); `currency_display={:code}` shows the ISO code ("1,10 USD") where currencies mix; `minor_digits` (0 for yen, 3 for dinar,
+  default 2) for an integer in another currency's minor unit;
   `size={:lg}` for totals; `animate` (needs `id`) for a rolling number (2.10).
+- **`Setzkasten.Format`** – the components' German formats for the app's own text: `money/2`, `number/2`,
+  `machine/2`, and dates and times: `date/2` ("14.10.2026"; `weekday: :short` "Mi, 14.10.2026", `year: false`
+  "14.10."), `datetime/2` ("14.10.2026, 18:05") and `time/2` ("18:05"). They take the app's local time and do no
+  time zone math; a `DateTime` passed to `date/2` gives the date it carries.
 - **`stat`** – KPI tile: `label`, `value`, `unit`, `desc` (or the `:note` slot for markup, e.g. a toned
   `amount`; the slot wins), `tone` (`:success | :warning | :error`, the value in that ink), `size` `:md` (32px) |
   `:sm` (24px, tile grids), `stale` (badge, never faded text), `loading` (skeleton); with `id`, a rolling
@@ -581,6 +590,8 @@ Visible and accessible default strings are German; each has an attr:
   a stat has a note), so a German label that hyphenates onto two lines ("Eigenverbrauchs-quote") keeps every value
   of the row level; also with `size={:sm}`, `:figure` and `:note`. Opt-in, as every tile then spans two or three
   rows: leave it off where a stat places itself (`row-span-*`) or the grid sizes its rows (`auto-rows-*`).
+  `navigate`/`patch`/`href`: the tile links to the KPI's detail page (the label is the link and covers the tile; a
+  light fill under the pointer and on tap, a focus ring around the tile).
   `:meter`: a full-width meter under the value, before the note (a battery level as `<.bar hide_label>`), in the
   same row as the note, so grids keep their shared rows. `:figure`: a non-interactive widget at the tile's end (daisyUI `stat-figure`: plush, icon, gauge, sparkline),
   centred beside the rows; below `sm` at the end of the label row, value and note across the full width.

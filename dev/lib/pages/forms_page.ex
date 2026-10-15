@@ -161,6 +161,22 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
             {"Genaue Beträge", "exact"}
           ]}
         />
+        <.input
+          name="c[frequency]"
+          id="c-frequency"
+          type="radio_group"
+          label="Wie oft?"
+          value="monthly"
+          options={[
+            %{label: "Wöchentlich", value: "weekly", description: "Nächster Termin 21.10.2026"},
+            %{
+              label: "Monatlich",
+              value: "monthly",
+              description: "Nächster Termin 14.11.2026; 1 verpasster Termin wird sofort eingetragen"
+            },
+            %{label: "Jährlich", value: "yearly", description: "Nächster Termin 14.10.2027"}
+          ]}
+        />
       </.demo>
     </.showcase>
 

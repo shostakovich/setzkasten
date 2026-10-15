@@ -217,6 +217,8 @@ defmodule Setzkasten.FormsTest do
     assert attr(doc, "#s_b", "checked") != nil
     assert attr(doc, "fieldset", "role") == "radiogroup"
     assert attr(doc, "fieldset", "aria-invalid") == nil
+    assert attr(doc, "#s_a", "aria-labelledby") == nil
+    assert attr(doc, "#s_a", "aria-describedby") == nil
 
     doc =
       parse(~H"""
@@ -231,6 +233,33 @@ defmodule Setzkasten.FormsTest do
       """)
 
     assert attr(doc, "fieldset[role=radiogroup]", "aria-invalid") == "true"
+  end
+
+  test "a radio option's description sits under its label and describes the radio" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input
+        name="f"
+        id="f"
+        type="radio_group"
+        label="Wie oft?"
+        value="monthly"
+        options={[
+          %{label: "Monatlich", value: "monthly", description: "Nächster Termin 19.11.2026"},
+          {"Jährlich", "yearly"}
+        ]}
+      />
+      """)
+
+    assert attr(doc, "#f_monthly", "aria-labelledby") == "f_monthly-label"
+    assert attr(doc, "#f_monthly", "aria-describedby") == "f_monthly-description"
+    assert text(doc, "#f_monthly-label") == "Monatlich"
+    assert text(doc, "#f_monthly-description") == "Nächster Termin 19.11.2026"
+    assert attr(doc, "#f_monthly", "checked") != nil
+    assert attr(doc, "#f_yearly", "aria-describedby") == nil
+    assert count(doc, "label.items-start") == 1
   end
 
   test "textarea" do

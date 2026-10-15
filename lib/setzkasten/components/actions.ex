@@ -46,6 +46,10 @@ defmodule Setzkasten.Components.Actions do
   a check and `saved_label` for 1.5 s, then its label again, at the same width, announced in a
   polite live region. A `phx-disable-with` text becomes the pending label in the same stack.
 
+  A button with an `icon` keeps it through `phx-disable-with` the same way: the text stands in
+  a stack beside its label while the event runs. LiveView would replace the content with the
+  text and restore only the text, losing the icon.
+
       <.button variant={:primary} icon="plus">Neue Ausgabe</.button>
       <.button variant={:ghost} icon="trash-2" icon_only label="Löschen"
                confirm="Ausgabe löschen?" phx-click="delete" phx-value-id={@expense.id} />
@@ -149,6 +153,9 @@ defmodule Setzkasten.Components.Actions do
       assigns.saved ->
         saved_button(assigns)
 
+      assigns.icon && Map.has_key?(assigns.rest, :"phx-disable-with") ->
+        pending_button(assigns)
+
       true ->
         plain_button(assigns)
     end
@@ -185,6 +192,27 @@ defmodule Setzkasten.Components.Actions do
     <span :if={@loading} class="loading loading-spinner loading-sm motion-reduce:hidden"></span>
     <.icon :if={@loading} name="ellipsis" class="motion-safe:hidden" />
     <.icon :if={@icon && !@loading} name={@icon} />{render_slot(@inner_block)}
+    """
+  end
+
+  defp pending_button(assigns) do
+    {pending, rest} = Map.pop(assigns.rest, :"phx-disable-with")
+    assigns = assign(assigns, pending: pending, rest: rest)
+
+    ~H"""
+    <button
+      type={@type}
+      class={["setzkasten-pending" | @classes]}
+      disabled={@disabled || @loading}
+      aria-busy={@loading && "true"}
+      aria-label={@icon_only && @label}
+      {@rest}
+    >
+      <span class="setzkasten-saved-stack">
+        <span class="setzkasten-saved-idle">{button_content(assigns)}</span>
+        <span class="setzkasten-saved-pending">{@pending}</span>
+      </span>
+    </button>
     """
   end
 

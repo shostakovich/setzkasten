@@ -351,6 +351,36 @@ defmodule Setzkasten.DataTest do
     refute "max-md:row-start-2" in column
   end
 
+  test "list row meta lines: one per meta, trailing at the end of the last on phones" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Einkauf">
+        <:meta>Bezahlt von Anna für alle</:meta>
+        <:meta>Dein Saldo: 3,00 €</:meta>
+      </.list_row>
+      """)
+
+    lines =
+      for line <- find(doc, ".list-col-grow > p.truncate"), do: String.trim(LazyHTML.text(line))
+
+    assert lines ==
+             ["Bezahlt von Anna für alle", "Dein Saldo: 3,00 €"]
+
+    doc =
+      parse(~H"""
+      <.list_row title="Einkauf" trailing_on_phone={:meta}>
+        <:meta>Bezahlt von Anna</:meta>
+        <:meta>Dein Saldo</:meta>
+        <:trailing :let={place}><span id={"badge-#{place}"}>Neu</span></:trailing>
+      </.list_row>
+      """)
+
+    assert text(doc, ".list-col-grow > p.truncate") == "Bezahlt von Anna"
+    assert text(doc, ".list-col-grow > div:has(#badge-meta) > p") == "Dein Saldo"
+  end
+
   test "list row moves trailing content under the title on phones" do
     assigns = %{}
 
@@ -484,6 +514,19 @@ defmodule Setzkasten.DataTest do
     assert "text-base-content/70" in classes(doc, "data")
   end
 
+  test "amount in minor units of a currency without cents" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.amount value={-4850} currency="JPY" minor_digits={0} currency_display={:code} tone />|
+      )
+
+    assert text(doc, "data") == "−4.850\u00A0JPY"
+    assert attr(doc, "data", "value") == "-4850"
+    assert "text-error-ink" in classes(doc, "data")
+  end
+
   test "stat tile with unit, tone, stale and loading" do
     assigns = %{}
     doc = parse(~H|<.stat label="Saldo" value="−42" unit="€" tone={:error} size={:sm} stale />|)
@@ -496,6 +539,24 @@ defmodule Setzkasten.DataTest do
 
     assert text(doc, ".stat-desc .badge") == "veraltet"
     assert count(parse(~H|<.stat label="x" loading />|), ".skeleton") == 1
+  end
+
+  test "a stat with a target is a link over the whole tile" do
+    assigns = %{}
+    doc = parse(~H|<.stat label="Dein Saldo" value="12,50" unit="€" navigate="/salden" />|)
+
+    assert text(doc, ".stat-title a[href='/salden']") == "Dein Saldo"
+    assert "after:inset-0" in classes(doc, ".stat-title a")
+    tile = classes(doc, ".stat")
+
+    assert Enum.all?(
+             ~w(relative hover:bg-base-200 has-[a:focus-visible]:outline-2),
+             &(&1 in tile)
+           )
+
+    plain = parse(~H|<.stat label="Saldo" value="1" />|)
+    assert count(plain, ".stat a") == 0
+    refute "relative" in classes(plain, ".stat")
   end
 
   test "stat tones colour the value with the inks, warning included" do

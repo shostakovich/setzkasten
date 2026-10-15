@@ -363,8 +363,8 @@ defmodule Setzkasten.Components.Data do
 
   @doc """
   A list row: `:leading` (plush, icon, avatar), title (`title` or the inner block,
-  `font-medium`), `:meta` (70 %, truncates), `:trailing` (value, amount, badge) and `:action`
-  entries. With `navigate`/`patch`/`href` the title link covers the row, which takes a light
+  `font-medium`), `:meta` (70 %, truncates; each `:meta` is a line of its own), `:trailing`
+  (value, amount, badge) and `:action` entries. With `navigate`/`patch`/`href` the title link covers the row, which takes a light
   fill under the pointer (no chevron: the row's title and its hover say it opens). With
   `on_click` instead (an event name with `phx-target={@myself}`, or a `%JS{}` that carries its
   own target: `JS.push("open", target: @myself)`) the
@@ -465,6 +465,7 @@ defmodule Setzkasten.Components.Data do
             else: assigns.actions_label
           ),
         wrap?: assigns.trailing != [] and assigns.trailing_on_phone == :line,
+        meta_lines: meta_lines(assigns),
         meta_trailing?: assigns.trailing != [] and assigns.trailing_on_phone == :meta,
         title_trailing?: assigns.trailing != [] and assigns.trailing_on_phone == :title,
         inline_actions:
@@ -524,14 +525,16 @@ defmodule Setzkasten.Components.Data do
         <p :if={!@link? && !@title_click} class="font-medium wrap-anywhere">
           {@title}{render_slot(@inner_block)}
         </p>
-        <p :if={@meta != [] and !@meta_trailing?} class="text-sm text-base-content/70 truncate">
-          {render_slot(@meta)}
+        <p :for={line <- @meta_lines} class="text-sm text-base-content/70 truncate">
+          {render_slot(line)}
         </p>
         <div
           :if={@meta_trailing?}
           class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-base-content/70"
         >
-          <p :if={@meta != []} class="min-w-0 max-w-full truncate">{render_slot(@meta)}</p>
+          <p :if={@meta != []} class="min-w-0 max-w-full truncate">
+            {render_slot(List.last(@meta))}
+          </p>
           <div class="flex shrink-0 items-center gap-2 md:hidden">
             {render_slot(@trailing, :meta)}
           </div>
@@ -653,6 +656,12 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
+  # With the trailing content at the end of the meta line, the last line renders beside it.
+  defp meta_lines(%{trailing: [_ | _], trailing_on_phone: :meta, meta: meta}),
+    do: Enum.drop(meta, -1)
+
+  defp meta_lines(%{meta: meta}), do: meta
+
   # The row link (table) or the title link or button (list) covers the row; keyboard focus
   # rings the row, not the text.
   # outline-solid: the ::after inherits --tw-outline-style: none from outline-none.
@@ -681,11 +690,14 @@ defmodule Setzkasten.Components.Data do
   rounds half away from zero; `<data value>` keeps the exact value.
   `size={:lg}` for totals; inside `<.stat>` the stat sets the size. `currency_display={:code}`
   shows the ISO code instead of the symbol ("1,10 USD"), e.g. where several currencies meet.
+  `minor_digits` says how many decimal places the integer's minor unit has: 2 by default, 0 for
+  yen, 3 for dinar; `decimals` follows it unless given.
 
       <.amount value={-7420} signed tone />
       <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
       <.amount value={110} currency="USD" currency_display={:code} />
+      <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
 
   `animate` (needs an `id`): when a LiveView update changes the value, it counts from the old to
   the new value. Never on first render. Inside a `<.stat>` value the stat does this already.
@@ -695,7 +707,8 @@ defmodule Setzkasten.Components.Data do
   attr :value, :any, required: true, doc: "integer minor units (cents) or Decimal"
   attr :currency, :string, default: "EUR"
   attr :currency_display, :atom, default: :symbol, values: [:symbol, :code]
-  attr :decimals, :integer, default: 2
+  attr :minor_digits, :integer, default: 2, doc: "decimal places of the integer's minor unit"
+  attr :decimals, :integer, default: nil, doc: "shown decimal places; `minor_digits` by default"
   attr :signed, :boolean, default: false
 
   attr :tone, :any,
@@ -713,13 +726,15 @@ defmodule Setzkasten.Components.Data do
   end
 
   def amount(assigns) do
+    assigns = assign(assigns, :decimals, assigns.decimals || assigns.minor_digits)
+
     ~H"""
     <data
-      value={Format.machine(@value)}
+      value={Format.machine(@value, minor_digits: @minor_digits)}
       phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
-        @tone && tone_class(Format.shown_sign(@value, @decimals), @tone),
+        @tone && tone_class(Format.shown_sign(@value, @decimals, @minor_digits), @tone),
         @size == :lg && "text-lg font-semibold",
         @class
       ]}
@@ -728,6 +743,7 @@ defmodule Setzkasten.Components.Data do
       currency: @currency,
       currency_display: @currency_display,
       signed: @signed,
+      minor_digits: @minor_digits,
       decimals: @decimals
     )}</data>
     """
@@ -756,6 +772,10 @@ defmodule Setzkasten.Components.Data do
   the number. It is hidden from screen readers; give it `label` when it says something the
   value does not (a gauge's verdict), and it becomes an image with that name.
 
+  `navigate`, `patch` or `href` makes the tile a link to the KPI's detail page: the label is the
+  link and covers the tile, which takes a light fill under the pointer and on tap; keyboard
+  focus rings the tile.
+
   With an `id`, a value that a LiveView update changes counts from the old to the new number
   (500 ms, `tabular-nums`); never on first render or a reconnect that brings the same value.
   Numbers in the components' German format ("2,14", "−0,88", "12.521,00 €"); the final text is
@@ -775,6 +795,7 @@ defmodule Setzkasten.Components.Data do
         <.stat label="PV jetzt" value="486" unit="W" size={:sm}>
           <:figure><.plush name="sunny" size={:lg} /></:figure>
         </.stat>
+        <.stat label="Dein Saldo" value="12,50" unit="€" navigate={~p"/salden"} />
       </div>
   """
   attr :id, :string, default: nil, doc: "needed for the change animation"
@@ -788,6 +809,9 @@ defmodule Setzkasten.Components.Data do
   attr :stale_label, :string, default: "veraltet"
   attr :loading, :boolean, default: false
   attr :animate, :boolean, default: true, doc: "count on change (with `id`)"
+  attr :navigate, :string, default: nil, doc: "makes the tile a link (also `patch`, `href`)"
+  attr :patch, :string, default: nil
+  attr :href, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
@@ -800,16 +824,40 @@ defmodule Setzkasten.Components.Data do
   end
 
   def stat(assigns) do
-    assigns = assign(assigns, :live, assigns.id && assigns.animate)
+    assigns =
+      assign(assigns,
+        live: assigns.id && assigns.animate,
+        link?: Enum.any?([assigns.navigate, assigns.patch, assigns.href])
+      )
 
     ~H"""
     <div
       id={@id}
-      class={["stat bg-base-100 rounded-box border border-base-content/10", @class]}
+      class={[
+        "stat bg-base-100 rounded-box border border-base-content/10",
+        @link? &&
+          [
+            "relative hover:bg-base-200 has-[a:active]:bg-base-200",
+            "has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-primary",
+            "has-[a:focus-visible]:outline-offset-2"
+          ],
+        @class
+      ]}
       aria-busy={@loading && "true"}
       {@rest}
     >
-      <div class="stat-title">{@label}</div>
+      <div class="stat-title">
+        <.link
+          :if={@link?}
+          navigate={@navigate}
+          patch={@patch}
+          href={@href}
+          class="after:absolute after:inset-0 after:rounded-box focus-visible:outline-none"
+        >
+          {@label}
+        </.link>
+        {if !@link?, do: @label}
+      </div>
       <div
         :if={@loading}
         class={["skeleton h-8 w-full max-w-24 mt-1", @figure != [] && "max-sm:col-span-2"]}
