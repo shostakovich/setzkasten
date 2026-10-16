@@ -1184,6 +1184,33 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "aside.md\\:flex nav[aria-label=Area] a[href='/b'] span[aria-hidden]") == 1
   end
 
+  test "an area plush shows at 20px in the switch and falls back to the icon, then the initial" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current_area={:a}>
+        <:brand>App</:brand>
+        <:area key={:a} label="Finanzen" plush="cart" icon="wallet" navigate="/a" />
+        <:area key={:b} label="Kasse" plush="missing" icon="receipt" navigate="/b" />
+        <:area key={:c} label="Reisen" plush="missing" navigate="/c" />
+        <:nav key={:x} label="X" icon="list" navigate="/x" /> x
+      </.app_shell>
+      """)
+
+    for place <- ["aside.lg\\:flex", "dialog#app-shell-sidebar", "aside.md\\:flex"] do
+      switch = "#{place} nav[aria-label=Bereich]"
+      assert "size-5" in classes(doc, "#{switch} a[href='/a'] img.plush")
+      assert count(doc, "#{switch} a[href='/a'] svg") == 0
+      assert count(doc, "#{switch} a[href='/b'] img") == 0
+      assert count(doc, "#{switch} a[href='/b'] svg.lucide") == 1
+    end
+
+    assert "size-4" in classes(doc, "aside.lg\\:flex nav[aria-label=Bereich] a[href='/b'] svg")
+    assert "size-5" in classes(doc, "aside.md\\:flex nav[aria-label=Bereich] a[href='/b'] svg")
+    assert text(doc, "aside.md\\:flex nav[aria-label=Bereich] a[href='/c']") == "R"
+  end
+
   test "with a back link the sidebar shows the page's own navigation, without dock or area switch" do
     assigns = %{}
 

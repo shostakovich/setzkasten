@@ -590,6 +590,63 @@ defmodule Setzkasten.NavigationTest do
              ~r/\.menu :where\(li > a, li > button, li > summary, li > label\) \{\s*align-content: center;/
   end
 
+  test "dropdown items show a plush at 24px, icons and empty items keep its box at text height" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="areas">
+        <:trigger>Bereich</:trigger>
+        <:item navigate="/a" plush="cart" icon="wallet">A</:item>
+        <:item navigate="/b" icon="list">B</:item>
+        <:item navigate="/c">C</:item>
+      </.dropdown>
+      """)
+
+    plush = classes(doc, "a[href='/a'] img.plush")
+    assert Enum.all?(~w(size-6 -my-0.5), &(&1 in plush))
+    assert count(doc, "a[href='/a'] svg") == 0
+    assert classes(doc, "a[href='/b'] svg.lucide") == ~w(lucide size-4 mx-1)
+    assert classes(doc, "a[href='/c'] > span[aria-hidden=true]") == ~w(w-6 h-4 shrink-0)
+  end
+
+  test "a dropdown item's plush without an image falls back to its icon" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="areas">
+        <:trigger>Bereich</:trigger>
+        <:item navigate="/a" plush="missing" icon="wallet">A</:item>
+        <:item on_click="b">B</:item>
+      </.dropdown>
+      """)
+
+    assert count(doc, "a[href='/a'] img") == 0
+    assert classes(doc, "a[href='/a'] svg.lucide") == ~w(lucide size-4)
+    assert count(doc, "li:last-child button > span") == 0
+  end
+
+  test "a dropdown without a plush shows icons only where given" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="sites">
+        <:trigger>Website</:trigger>
+        <:item navigate="/a" icon="building-2">A</:item>
+        <:item navigate="/b"><.avatar initials="KM" size={:sm} />B</:item>
+        <:item navigate="/c" plush="missing">C</:item>
+      </.dropdown>
+      """)
+
+    assert classes(doc, "a[href='/a'] svg.lucide") == ~w(lucide size-4)
+    assert count(doc, "a[href='/b'] > span") == 0
+    assert count(doc, "a[href='/b'] > *") == 1
+    assert count(doc, "a[href='/c'] > *") == 0
+    assert count(doc, "li img") == 0
+  end
+
   test "an active button item is marked like an active link" do
     assigns = %{}
 
