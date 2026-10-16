@@ -127,3 +127,7 @@
   accessible description.
 - `button` with `href`, `navigate` or `patch` and `disabled`: an `<a>` without its target, `aria-disabled` and in the
   disabled look, instead of a link that still navigates.
+- `app_shell` `layout={:sidebar}` `:area` entries with `current_area`: a segmented area switch at the top of the sidebar,
+  its dialog and the icon rail, shown with more than one area.
+- `app_shell` `layout={:sidebar}` `:back`: a sidebar mode with the page's own navigation (e.g. the settings), a way back
+  at the top of sidebar, dialog and rail, and no dock.

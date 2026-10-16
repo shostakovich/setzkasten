@@ -58,6 +58,7 @@ defmodule Setzkasten.Dev.ScreenLive do
        filter: params["f"] || "all",
        depot: Holdings.depot(socket.assigns.holdings, params["d"]),
        marked: params["k"],
+       settings?: params["m"] == "settings",
        allocation_tab: Map.get(@allocation_params, params["a"], :regions)
      )
      |> start_ticking()}
@@ -594,15 +595,33 @@ defmodule Setzkasten.Dev.ScreenLive do
     ~H"""
     <.app_shell
       layout={:sidebar}
-      current={{:account, @account.id}}
+      current={if @settings?, do: :access, else: {:account, @account.id}}
       width={:wide}
       amount_tone={:negative}
+      current_area={:finances}
     >
       <:brand><.icon name="coins" class="size-5 text-sidebar-accent" />Haushaltsbuch</:brand>
-      <:nav key={:budget} label="Budget" icon="wallet" navigate="/screens/budget" />
-      <:nav key={:accounts} label="Alle Konten" icon="landmark" navigate="/screens/budget" />
+      <:back :if={@settings?} label="Zurück zu Finanzen" navigate="/screens/budget" />
+      <:area key={:finances} label="Finanzen" icon="wallet" navigate="/screens/budget" />
+      <:area key={:kasse} label="Kasse" icon="receipt" navigate="/screens/settings" />
       <:nav
-        :for={{group, account, first?} <- Budget.nav_accounts()}
+        :for={{key, label, icon, section} <- settings_nav(@settings?)}
+        key={key}
+        label={label}
+        icon={icon}
+        section={section}
+        navigate="/screens/budget?m=settings"
+      />
+      <:nav :if={!@settings?} key={:budget} label="Budget" icon="wallet" navigate="/screens/budget" />
+      <:nav
+        :if={!@settings?}
+        key={:accounts}
+        label="Alle Konten"
+        icon="landmark"
+        navigate="/screens/budget"
+      />
+      <:nav
+        :for={{group, account, first?} <- if(@settings?, do: [], else: Budget.nav_accounts())}
         key={{:account, account.id}}
         label={account.name}
         glyph={account.glyph || String.first(account.name)}
@@ -617,15 +636,29 @@ defmodule Setzkasten.Dev.ScreenLive do
         navigate={"/screens/budget?k=#{account.id}"}
       />
       <:nav
+        :if={!@settings?}
         key={:add_account}
         label="Konto hinzufügen"
         icon="plus"
         section={List.last(@groups).label}
         on_click="add_account"
       />
-      <:nav key={:import} label="Import" icon="upload" navigate="/screens/budget" />
-      <:nav key={:reports} label="Berichte" navigate="/screens/budget" rail={false} dock={false} />
-      <:nav key={:settings} label="Einstellungen" icon="settings" navigate="/screens/budget" />
+      <:nav :if={!@settings?} key={:import} label="Import" icon="upload" navigate="/screens/budget" />
+      <:nav
+        :if={!@settings?}
+        key={:reports}
+        label="Berichte"
+        navigate="/screens/budget"
+        rail={false}
+        dock={false}
+      />
+      <:nav
+        :if={!@settings?}
+        key={:settings}
+        label="Einstellungen"
+        icon="settings"
+        navigate="/screens/budget?m=settings"
+      />
       <:account :let={place}>
         <.dropdown
           id={"budget-account-#{place}"}
@@ -938,4 +971,15 @@ defmodule Setzkasten.Dev.ScreenLive do
   # The expanded sidebar is a native dialog, so it closes first.
   defp book(:dialog), do: "app-shell-sidebar" |> hide_modal() |> JS.push("book")
   defp book(_place), do: JS.push("book")
+
+  defp settings_nav(false), do: []
+
+  defp settings_nav(true) do
+    [
+      {:access, "Zugang", "key-round", "Allgemein"},
+      {:look, "Aussehen", "eye", "Allgemein"},
+      {:ynab, "YNAB-Import", "download", "Budget"},
+      {:group, "Gruppe", "users", "Kasse"}
+    ]
+  end
 end

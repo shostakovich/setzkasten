@@ -1104,4 +1104,116 @@ defmodule Setzkasten.ShellTest do
 
     assert count(doc, "aside.lg\\:flex a[href='/b'] > span.size-5") == 0
   end
+
+  test "with more than one area, a segmented switch tops the sidebar, its dialog and the rail" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={:b} current_area={:finanzen}>
+        <:brand>App</:brand>
+        <:area key={:finanzen} id="area-finanzen" label="Finanzen" icon="wallet" navigate="/b" />
+        <:area key={:kasse} label="Kasse" icon="receipt" href="/k" />
+        <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+      </.app_shell>
+      """)
+
+    for place <- ["aside.lg\\:flex", "dialog#app-shell-sidebar", "aside.md\\:flex"] do
+      switch = "#{place} nav[aria-label=Bereich]"
+      assert count(doc, "#{switch} a") == 2
+      assert "join" in classes(doc, switch)
+      assert attr(doc, "#{switch} a[aria-current=page]", "href") == "/b"
+      assert "setzkasten-selected" in classes(doc, "#{switch} a[aria-current=page]")
+      refute "setzkasten-selected" in classes(doc, "#{switch} a[href='/k']")
+      assert attr(doc, "#{switch} a[href='/k']", "data-phx-link") == nil
+      assert attr(doc, "#{switch} a[href='/b']", "data-phx-link") == "redirect"
+    end
+
+    assert text(doc, "aside.lg\\:flex nav[aria-label=Bereich] a[href='/k']") == "Kasse"
+
+    assert attr(doc, "aside.md\\:flex nav[aria-label=Bereich] a[href='/k']", "data-tip") ==
+             "Kasse"
+
+    assert attr(doc, "aside.md\\:flex nav[aria-label=Bereich] a[href='/k']", "aria-label") ==
+             "Kasse"
+
+    assert count(doc, "#area-finanzen-sidebar") == 1
+    assert count(doc, "#area-finanzen-dialog") == 1
+    assert count(doc, "#area-finanzen-rail") == 1
+    assert count(doc, "nav.dock a[href='/k']") == 0
+  end
+
+  test "one area, or the top-bar layout, shows no area switch" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H"""
+          <.app_shell layout={:sidebar} current_area={:kasse}>
+            <:brand>App</:brand>
+            <:area key={:kasse} label="Kasse" icon="receipt" navigate="/k" />
+            <:nav key={:b} label="Ausgaben" icon="receipt" navigate="/k" /> x
+          </.app_shell>
+          """),
+          parse(~H"""
+          <.app_shell current_area={:finanzen}>
+            <:brand>App</:brand>
+            <:area key={:finanzen} label="Finanzen" icon="wallet" navigate="/b" />
+            <:area key={:kasse} label="Kasse" icon="receipt" navigate="/k" />
+            <:nav key={:b} label="Budget" icon="wallet" navigate="/b" /> x
+          </.app_shell>
+          """)
+        ] do
+      assert count(doc, "nav[aria-label=Bereich]") == 0
+    end
+  end
+
+  test "an area without an icon shows its initial in the rail" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current_area={:a} area_label="Area">
+        <:brand>App</:brand>
+        <:area key={:a} label="Finanzen" navigate="/a" />
+        <:area key={:b} label="Kasse" navigate="/b" />
+        <:nav key={:x} label="X" icon="list" navigate="/x" /> x
+      </.app_shell>
+      """)
+
+    assert text(doc, "aside.md\\:flex nav[aria-label=Area] a[href='/b']") == "K"
+    assert count(doc, "aside.md\\:flex nav[aria-label=Area] a[href='/b'] span[aria-hidden]") == 1
+  end
+
+  test "with a back link the sidebar shows the page's own navigation, without dock or area switch" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} current={:access} current_area={:finanzen} expand_label="Expand">
+        <:brand>App</:brand>
+        <:back id="back" label="Zurück zu Finanzen" href="/budget" />
+        <:area key={:finanzen} label="Finanzen" icon="wallet" navigate="/b" />
+        <:area key={:kasse} label="Kasse" icon="receipt" navigate="/k" />
+        <:nav key={:access} label="Zugang" icon="key-round" section="Allgemein" navigate="/s/a" />
+        <:nav key={:look} label="Aussehen" icon="sun" section="Allgemein" navigate="/s/l" />
+        <:nav key={:group} label="Gruppe" icon="users" section="Kasse" navigate="/s/g" /> x
+      </.app_shell>
+      """)
+
+    assert count(doc, "nav[aria-label=Bereich]") == 0
+    assert count(doc, "nav.dock") == 0
+    assert attr(doc, "header .navbar > button:first-child", "aria-label") == "Expand"
+
+    for place <- ["aside.lg\\:flex", "dialog#app-shell-sidebar"] do
+      assert text(doc, "#{place} a[href='/budget']") == "Zurück zu Finanzen"
+      assert count(doc, "#{place} a[href='/budget'] svg") == 1
+      assert text(doc, "#{place} li.menu-title:first-of-type") =~ "Allgemein"
+    end
+
+    assert attr(doc, "aside.md\\:flex a[href='/budget']", "data-tip") == "Zurück zu Finanzen"
+    assert attr(doc, "aside.md\\:flex a[href='/budget']", "aria-label") == "Zurück zu Finanzen"
+    assert count(doc, "#back-sidebar") == 1
+    assert count(doc, "#back-dialog") == 1
+    assert count(doc, "#back-rail") == 1
+  end
 end
