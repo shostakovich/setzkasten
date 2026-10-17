@@ -135,3 +135,5 @@
   menu, the `icon` when the plush module has no image for it.
 - `dropdown`: once an item shows a plush, all labels share one text column; icons and items without one keep a 24px
   place, and every item keeps the height of its text row.
+- `app_shell` `width={:full}`: a 16px side gutter at every breakpoint for the column and the top bar, so dense tables
+  get the room; the other widths keep `px-4 sm:px-6 lg:px-8`.

@@ -29,6 +29,8 @@ defmodule Setzkasten.Components.Shell do
   `layout={:sidebar}` the column starts at the content edge (sidebar or rail plus the page
   padding), so every page starts at the same x whatever its width; the top bar row takes the
   same width. With `layout={:topbar}` the column and the navbar row are centred together.
+  `:full` keeps a 16px side gutter at every width, the others widen it to 24px from `sm` and
+  32px from `lg`.
   `bar_width` gives the top bar row a width of its own (default: `width`), so an app whose
   pages differ in width can keep one header: `<.app_shell bar_width={:wide} width={@width}>`.
 
@@ -222,6 +224,9 @@ defmodule Setzkasten.Components.Shell do
       assign(assigns,
         width_class: @widths[assigns.width],
         bar_width_class: @widths[assigns.bar_width || assigns.width],
+        gutter_class: gutter(assigns.width),
+        bar_gutter_class: gutter(assigns.bar_width || assigns.width),
+        bar_full?: (assigns.bar_width || assigns.width) == :full,
         dock_items: dock_items,
         rail_items: rail_items,
         media?: Enum.any?(assigns.nav, &media?/1),
@@ -404,7 +409,7 @@ defmodule Setzkasten.Components.Shell do
             if(@bar == [], do: "lg:hidden lg:sidebar-collapsed:block", else: "sticky top-0 z-20")
           ]}
         >
-          <div class={["navbar min-h-14 gap-2 px-4 sm:px-6 lg:px-8", @bar_width_class]}>
+          <div class={["navbar min-h-14 gap-2", @bar_gutter_class, @bar_width_class]}>
             <button
               :if={@bar_expand?}
               type="button"
@@ -440,7 +445,8 @@ defmodule Setzkasten.Components.Shell do
           ]}
         >
           <div class={[
-            "navbar mx-auto gap-4 px-4 sm:px-6 lg:px-8",
+            "navbar mx-auto gap-4",
+            @bar_gutter_class,
             @bar_width_class,
             @dock_items == [] && "max-md:flex-wrap"
           ]}>
@@ -463,14 +469,20 @@ defmodule Setzkasten.Components.Shell do
               phx-hook="Setzkasten.Components.Navigation.ScrollActive"
               class={[
                 "setzkasten-scroller min-w-0 overflow-x-auto snap-x md:scroll-px-2",
-                if(@dock_items == [],
-                  do: [
-                    "max-md:order-last max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:px-4",
-                    "max-sm:scroll-px-6 sm:max-md:-mx-6 sm:max-md:w-[calc(100%+3rem)]",
-                    "sm:max-md:px-6 sm:max-md:scroll-px-8"
-                  ],
-                  else: "hidden md:block"
-                )
+                cond do
+                  @dock_items != [] ->
+                    "hidden md:block"
+
+                  @bar_full? ->
+                    "max-md:order-last max-md:-mx-4 max-md:w-[calc(100%+2rem)] max-md:px-4 max-md:scroll-px-6"
+
+                  true ->
+                    [
+                      "max-md:order-last max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:px-4",
+                      "max-sm:scroll-px-6 sm:max-md:-mx-6 sm:max-md:w-[calc(100%+3rem)]",
+                      "sm:max-md:px-6 sm:max-md:scroll-px-8"
+                    ]
+                end
               ]}
             >
               <ul class="menu menu-horizontal flex-nowrap gap-1">
@@ -496,7 +508,8 @@ defmodule Setzkasten.Components.Shell do
         <main
           id="main"
           class={[
-            "px-4 sm:px-6 lg:px-8 py-6",
+            "py-6",
+            @gutter_class,
             @layout == :topbar && "mx-auto",
             @width_class,
             @dock_items != [] && @fab == [] && "max-md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
@@ -773,6 +786,9 @@ defmodule Setzkasten.Components.Shell do
     </span>
     """
   end
+
+  defp gutter(:full), do: "px-4"
+  defp gutter(_width), do: "px-4 sm:px-6 lg:px-8"
 
   defp amount_class(:negative, amount) when amount < 0, do: "text-sidebar-negative"
   defp amount_class(:negative, amount) when amount > 0, do: "text-sidebar-content"
