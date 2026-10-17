@@ -602,8 +602,14 @@ defmodule Setzkasten.Dev.ScreenLive do
     >
       <:brand><.icon name="coins" class="size-5 text-sidebar-accent" />Haushaltsbuch</:brand>
       <:back :if={@settings?} label="Zurück zu Finanzen" navigate="/screens/budget" />
-      <:area key={:finances} label="Finanzen" icon="wallet" navigate="/screens/budget" />
-      <:area key={:kasse} label="Kasse" icon="receipt" navigate="/screens/settings" />
+      <:area
+        key={:finances}
+        label="Finanzen"
+        plush="piggy"
+        icon="wallet"
+        navigate="/screens/budget"
+      />
+      <:area key={:kasse} label="Kasse" plush="receipt" icon="receipt" navigate="/screens/settings" />
       <:nav
         :for={{key, label, icon, section} <- settings_nav(@settings?)}
         key={key}

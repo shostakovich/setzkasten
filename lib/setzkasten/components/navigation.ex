@@ -399,8 +399,9 @@ defmodule Setzkasten.Components.Navigation do
   `:item` attrs: `navigate`/`patch`/`href` (+ `method`) or `on_click` (an event name with
   `phx-target`, e.g. `@myself`, or a `%JS{}` that carries its own target:
   `JS.push("undo", target: @myself)`),
-  `icon`, `active` (selected: `aria-current="page"` on a link, `"true"` on a button, e.g. the
-  current sort order), `danger`, `divider` (a line above the
+  `icon` (Lucide) or `plush` (24px, falls back to `icon` when the plush module has no image for
+  it, e.g. areas in an area menu), `active` (selected: `aria-current="page"` on a link,
+  `"true"` on a button, e.g. the current sort order), `danger`, `divider` (a line above the
   item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
   `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
@@ -408,6 +409,8 @@ defmodule Setzkasten.Components.Navigation do
   button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
   above the trigger, for a trigger at the bottom of the screen. The menu sets its own text
   colour and weight, so it reads the same inside the dark sidebar or a bold brand.
+  Once an item shows a plush, all labels share one text column: icons and items without one
+  keep a 24px place, and every item keeps the height of its text.
 
       <.dropdown id="account" label="Konto" align={:end} variant={:ghost}>
         <:trigger><.avatar initials="KM" size={:sm} /> kim@example.com</:trigger>
@@ -437,6 +440,7 @@ defmodule Setzkasten.Components.Navigation do
     attr :on_click, :any
     attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :icon, :string
+    attr :plush, :string, doc: "falls back to `icon` without an image"
     attr :active, :boolean
     attr :danger, :boolean
     attr :divider, :boolean
@@ -449,6 +453,14 @@ defmodule Setzkasten.Components.Navigation do
   end
 
   def dropdown(assigns) do
+    entries = Enum.map(assigns.item, &{&1, Setzkasten.Plush.media(&1)})
+
+    assigns =
+      assign(assigns,
+        entries: entries,
+        plush_box: Enum.any?(entries, &match?({_, :plush}, &1))
+      )
+
     ~H"""
     <details
       id={@id}
@@ -481,7 +493,7 @@ defmodule Setzkasten.Components.Navigation do
       ]}>
         <li :for={header <- @header} class="menu-title min-w-0 truncate">{render_slot(header)}</li>
         <li
-          :for={item <- @item}
+          :for={{item, media} <- @entries}
           class={[
             item[:divider] && "mt-1 border-t border-base-content/10 pt-1",
             item[:disabled] && "menu-disabled",
@@ -501,7 +513,7 @@ defmodule Setzkasten.Components.Navigation do
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
-            <.icon :if={item[:icon]} name={item[:icon]} />{render_slot(item)}
+            <.item_media item={item} media={media} plush_box={@plush_box} />{render_slot(item)}
           </.link>
           <button
             :if={!(item[:navigate] || item[:patch] || item[:href])}
@@ -515,7 +527,7 @@ defmodule Setzkasten.Components.Navigation do
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
-            <.icon :if={item[:icon]} name={item[:icon]} />{render_slot(item)}
+            <.item_media item={item} media={media} plush_box={@plush_box} />{render_slot(item)}
           </button>
         </li>
       </ul>
@@ -529,6 +541,18 @@ defmodule Setzkasten.Components.Navigation do
         }
       }
     </script>
+    """
+  end
+
+  attr :item, :map, required: true
+  attr :media, :atom, required: true
+  attr :plush_box, :boolean, required: true
+
+  defp item_media(assigns) do
+    ~H"""
+    <.plush :if={@media == :plush} name={@item.plush} size={:md} class="-my-0.5" />
+    <.icon :if={@media == :icon} name={@item.icon} class={@plush_box && "mx-1"} />
+    <span :if={@media == nil and @plush_box} class="w-6 h-4 shrink-0" aria-hidden="true"></span>
     """
   end
 

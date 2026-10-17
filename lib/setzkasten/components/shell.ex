@@ -88,9 +88,10 @@ defmodule Setzkasten.Components.Shell do
 
   `:area` entries (`layout={:sidebar}`): with more than one, a segmented switch between the
   app's areas tops the sidebar and its dialog (icon and label) and the rail (icons, the label as
-  tooltip; an area without `icon` shows its initial). `current_area` is the current entry's key
-  (`aria-current="page"`), `area_label` the switch's accessible name. Entries take `key`,
-  `label`, `icon`, `navigate`/`href` and `id` (suffixed `-sidebar`, `-dialog`, `-rail`). The dock
+  tooltip; an area without `icon` or `plush` shows its initial). `current_area` is the current
+  entry's key (`aria-current="page"`), `area_label` the switch's accessible name. Entries take
+  `key`, `label`, `icon` (Lucide) or `plush` (20px, falls back to `icon` when the plush module has
+  no image for it), `navigate`/`href` and `id` (suffixed `-sidebar`, `-dialog`, `-rail`). The dock
   leaves it out: on phones the app keeps its own area menu, e.g. in the brand.
 
   `:back` puts the sidebar in a mode of its own, such as the settings: a way back (`label`,
@@ -165,6 +166,7 @@ defmodule Setzkasten.Components.Shell do
     attr :id, :string, doc: "renders as `<id>-sidebar`, `-dialog`, `-rail`"
     attr :label, :string, required: true
     attr :icon, :string
+    attr :plush, :string, doc: "falls back to `icon` without an image"
     attr :navigate, :string
     attr :href, :string
   end
@@ -595,7 +597,7 @@ defmodule Setzkasten.Components.Shell do
         current={@current_area}
         class="btn-sm min-w-0 flex-1 px-2"
       >
-        <.icon :if={area[:icon]} name={area[:icon]} class="size-4 shrink-0" />
+        {nav_icon(area, :sm)}
         <span class="truncate">{area.label}</span>
       </.area_target>
     </nav>
@@ -706,16 +708,14 @@ defmodule Setzkasten.Components.Shell do
 
   attr :area, :map, required: true
 
-  defp area_icon(%{area: %{icon: icon}} = assigns) when is_binary(icon) do
-    ~H"""
-    <.icon name={@area.icon} class="size-5" />
-    """
-  end
-
   defp area_icon(assigns) do
-    ~H"""
-    <span class="size-5 leading-5" aria-hidden="true">{String.first(@area.label)}</span>
-    """
+    if media?(assigns.area) do
+      ~H"{nav_icon(@area)}"
+    else
+      ~H"""
+      <span class="size-5 leading-5" aria-hidden="true">{String.first(@area.label)}</span>
+      """
+    end
   end
 
   # A link closes the sidebar dialog by replacing the view; a button has to close it itself.
@@ -893,22 +893,12 @@ defmodule Setzkasten.Components.Shell do
     end
   end
 
-  # A plush without an image falls back to the entry's icon, then to its glyph.
-  defp media_kind(item) do
-    cond do
-      is_binary(item[:plush]) and Setzkasten.Plush.available?(item[:plush]) -> :plush
-      is_binary(item[:icon]) -> :icon
-      is_binary(item[:glyph]) -> :glyph
-      true -> nil
-    end
-  end
+  defp media?(item), do: Setzkasten.Plush.media(item) != nil
 
-  defp media?(item), do: media_kind(item) != nil
-
-  defp nav_icon(item, size \\ :lg), do: nav_icon(media_kind(item), item, size)
+  defp nav_icon(item, size \\ :lg), do: nav_icon(Setzkasten.Plush.media(item), item, size)
 
   # Plush artwork needs 24px to read in the top-bar menu and the dock; Lucide icons keep 16/20px.
-  @nav_plush_sizes %{lg: :sm, md: :md, menu: :md}
+  @nav_plush_sizes %{lg: :sm, sm: :sm, md: :md, menu: :md}
 
   defp nav_icon(:plush, item, size) do
     # In the top-bar menu it overhangs the item's padding, so the 21px line keeps the bar's height.
@@ -945,6 +935,7 @@ defmodule Setzkasten.Components.Shell do
 
   # In the dock a 20px icon keeps the 24px box of a plush, so every label sits on one line.
   defp nav_icon_class(:menu), do: "size-4"
+  defp nav_icon_class(:sm), do: "size-4 shrink-0"
   defp nav_icon_class(:md), do: "size-5 m-0.5"
   defp nav_icon_class(_size), do: "size-5"
 end
