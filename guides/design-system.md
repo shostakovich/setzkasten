@@ -246,7 +246,7 @@ Tailwind's 4px scale; steps in use `1` `1.5` `2` `3` `4` `6` `8` `12`.
 | Between cards, grid gutter | `gap-4 md:gap-6` |
 | Above a section heading | `mt-8`; none as the first child (page, card, dialog, its own `<section>`) |
 | Between wrapped sections | `gap-8` on the parent (`flex flex-col gap-8`, `space-y-8` or the grid's gap) |
-| Page padding | `px-4 sm:px-6 lg:px-8`, `py-6` |
+| Page padding | `px-4 sm:px-6 lg:px-8` (`:full`: `px-4`), `py-6` |
 
 ### 2.7 Breakpoints and widths
 
@@ -265,6 +265,7 @@ Tailwind's 4px scale; steps in use `1` `1.5` `2` `3` `4` `6` `8` `12`.
 Shell). Its top bar row follows the page's `width` unless `bar_width` gives it one of its own: an app whose pages
 differ in width (`:narrow` forms, `:default` dashboards) sets `bar_width` once in its layout, so the header keeps
 its width from page to page and its menu does not scroll on narrow pages.
+`:full` keeps the 16px side gutter at every breakpoint, in column and top bar, so dense tables get the room.
 
 ### 2.8 Icons
 

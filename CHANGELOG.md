@@ -127,3 +127,5 @@
   accessible description.
 - `button` with `href`, `navigate` or `patch` and `disabled`: an `<a>` without its target, `aria-disabled` and in the
   disabled look, instead of a link that still navigates.
+- `app_shell` `width={:full}`: a 16px side gutter at every breakpoint for the column and the top bar, so dense tables
+  get the room; the other widths keep `px-4 sm:px-6 lg:px-8`.
