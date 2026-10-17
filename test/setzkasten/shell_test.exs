@@ -50,6 +50,54 @@ defmodule Setzkasten.ShellTest do
     end
   end
 
+  test "full-width pages keep a 16px gutter in bar and column, the others widen it" do
+    wide_gutter = ~w(px-4 sm:px-6 lg:px-8)
+
+    for layout <- [:topbar, :sidebar] do
+      assigns = %{layout: layout}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout} width={:full}>
+          <:brand>App</:brand>
+          <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+        </.app_shell>
+        """)
+
+      for selector <- ["main#main", "header .navbar"] do
+        assert "px-4" in classes(doc, selector)
+        refute Enum.any?(~w(sm:px-6 lg:px-8), &(&1 in classes(doc, selector)))
+      end
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout}>
+          <:brand>App</:brand>
+          <:nav key={:a} label="A" icon="list" navigate="/a" /> x
+        </.app_shell>
+        """)
+
+      for selector <- ["main#main", "header .navbar"] do
+        assert Enum.all?(wide_gutter, &(&1 in classes(doc, selector)))
+      end
+    end
+  end
+
+  test "a full-width top bar's menu bleeds into the 16px gutter below md" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell dock={false} width={:full}>
+        <:brand>App</:brand><:nav key={:a} label="A" navigate="/a" />x
+      </.app_shell>
+      """)
+
+    nav = classes(doc, "header nav")
+    assert Enum.all?(["max-md:-mx-4", "max-md:w-[calc(100%+2rem)]", "max-md:px-4"], &(&1 in nav))
+    refute "sm:max-md:-mx-6" in nav
+  end
+
   test "the top-bar menu shows a plush at 24px without growing the bar, an icon at 16px" do
     assigns = %{}
 
