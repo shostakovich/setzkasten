@@ -88,6 +88,25 @@ defmodule Setzkasten.Components.Shell do
   `<:brand :let={place}><.live_component id={"switcher-\#{place}"} … /></:brand>`,
   `<:account :let={place}><.dropdown id={"account-\#{place}"} position={if place == :sidebar, do: :top, else: :bottom} …>`.
 
+  `:area` entries (`layout={:sidebar}`): with more than one, a segmented switch between the
+  app's areas tops the sidebar and its dialog (icon and label) and the rail (icons, the label as
+  tooltip; an area without `icon` or `plush` shows its initial). `current_area` is the current
+  entry's key (`aria-current="page"`), `area_label` the switch's accessible name. Entries take
+  `key`, `label`, `icon` (Lucide) or `plush` (20px, falls back to `icon` when the plush module has
+  no image for it), `navigate`/`href` and `id` (suffixed `-sidebar`, `-dialog`, `-rail`). The dock
+  leaves it out: on phones the app keeps its own area menu, e.g. in the brand.
+
+  `:back` puts the sidebar in a mode of its own, such as the settings: a way back (`label`,
+  `navigate`/`href`, `id` suffixed per place) in place of the area switch, at the top of the
+  sidebar, its dialog and the rail, then the page's `:nav` entries with their sections. The dock
+  leaves out such a page, so on phones the top bar's `expand_label` button opens the sidebar.
+
+      <.app_shell layout={:sidebar} current={:access}>
+        <:back label="Zurück zu Finanzen" navigate={~p"/budget"} />
+        <:nav key={:access} label="Zugang" icon="key-round" section="Allgemein" navigate={…} />
+        …
+      </.app_shell>
+
   `:bar` is for detail pages: it takes the brand's place in the top bar (breadcrumbs, then a
   status), the bar sticks to the top, and with `layout={:sidebar}` it also shows from `lg`
   (without the account while the expanded sidebar holds it). `:bar_actions` holds the page's own
@@ -138,9 +157,28 @@ defmodule Setzkasten.Components.Shell do
     values: [false, :negative],
     doc: "`:negative`: nav and section amounts toned as `<.amount tone={:negative}>`"
 
+  attr :current_area, :any, default: nil, doc: "the current `:area` entry's key"
+  attr :area_label, :string, default: "Bereich"
   attr :class, :any, default: nil
   slot :inner_block, required: true
   slot :brand, required: true
+
+  slot :area, doc: "with more than one: the sidebar's area switch" do
+    attr :key, :any, required: true
+    attr :id, :string, doc: "renders as `<id>-sidebar`, `-dialog`, `-rail`"
+    attr :label, :string, required: true
+    attr :icon, :string
+    attr :plush, :string, doc: "falls back to `icon` without an image"
+    attr :navigate, :string
+    attr :href, :string
+  end
+
+  slot :back, doc: "a sidebar mode with the page's own navigation: the way back at its top" do
+    attr :label, :string, required: true
+    attr :id, :string, doc: "renders as `<id>-sidebar`, `-dialog`, `-rail`"
+    attr :navigate, :string
+    attr :href, :string
+  end
 
   slot :nav do
     attr :key, :any, required: true
@@ -176,6 +214,7 @@ defmodule Setzkasten.Components.Shell do
   slot :fab
 
   def app_shell(assigns) do
+    assigns = assign_sidebar_mode(assigns)
     {dock_items, more?, more_items} = dock_split(assigns)
 
     rail_items = rail_items(assigns.nav)
@@ -201,7 +240,7 @@ defmodule Setzkasten.Components.Shell do
         more_items: more_items,
         bar_expand?:
           assigns.layout == :sidebar and dock_items == [] and assigns.bar == [] and
-            assigns.nav != []
+            (assigns.nav != [] or assigns.back != nil)
       )
 
     ~H"""
@@ -251,6 +290,30 @@ defmodule Setzkasten.Components.Shell do
             "bg-sidebar text-sidebar-content sticky top-0 z-30 h-dvh"
           ]}
         >
+          <.link
+            :if={@back}
+            id={@back[:id] && "#{@back[:id]}-rail"}
+            navigate={@back[:navigate]}
+            href={@back[:href]}
+            class={[rail_button(), "tooltip tooltip-right mb-3"]}
+            data-tip={@back.label}
+            aria-label={@back.label}
+          >
+            <.icon name="chevron-left" class="size-5" />
+          </.link>
+          <nav :if={@areas?} aria-label={@area_label} class="join join-vertical mb-3">
+            <.area_target
+              :for={area <- @area}
+              area={area}
+              place={:rail}
+              current={@current_area}
+              class="btn-square tooltip tooltip-right"
+              data-tip={area.label}
+              aria-label={area.label}
+            >
+              <.area_icon area={area} />
+            </.area_target>
+          </nav>
           <.nav_target
             :for={{item, gap?} <- @rail_items}
             item={item}
@@ -510,6 +573,14 @@ defmodule Setzkasten.Components.Shell do
     """
   end
 
+  defp assign_sidebar_mode(%{layout: :sidebar, back: [back | _]} = assigns),
+    do: assign(assigns, back: back, areas?: false)
+
+  defp assign_sidebar_mode(%{layout: :sidebar} = assigns),
+    do: assign(assigns, back: nil, areas?: length(assigns.area) > 1)
+
+  defp assign_sidebar_mode(assigns), do: assign(assigns, back: nil, areas?: false)
+
   defp sidebar(assigns) do
     ~H"""
     <%!-- One inner edge (20px) for everything in the sidebar: ghost buttons in the brand and the
@@ -518,6 +589,31 @@ defmodule Setzkasten.Components.Shell do
     <div class="flex items-center gap-2 px-5 py-4 text-lg font-semibold [&_.btn-ghost]:-ms-2 [&_.btn-ghost]:px-2">
       {render_slot(@brand, @place)}
     </div>
+    <ul :if={@back} class="menu w-full pb-0">
+      <li>
+        <.link
+          id={@back[:id] && "#{@back[:id]}-#{@place}"}
+          navigate={@back[:navigate]}
+          href={@back[:href]}
+          class="text-sidebar-muted hover:bg-white/10 hover:text-sidebar-content focus-visible:outline-sidebar-accent"
+        >
+          <.icon name="chevron-left" class="size-5" />
+          <span class="min-w-0 flex-1 truncate" title={@back.label}>{@back.label}</span>
+        </.link>
+      </li>
+    </ul>
+    <nav :if={@areas?} aria-label={@area_label} class="join flex px-5 pb-2">
+      <.area_target
+        :for={area <- @area}
+        area={area}
+        place={@place}
+        current={@current_area}
+        class="btn-sm min-w-0 flex-1 px-2"
+      >
+        {nav_icon(area, :sm)}
+        <span class="truncate">{area.label}</span>
+      </.area_target>
+    </nav>
     <nav aria-label={@nav_label} class="flex-1">
       <ul class="menu w-full flex-nowrap gap-0.5">
         <%= for {item, index} <- Enum.with_index(@nav) do %>
@@ -599,6 +695,42 @@ defmodule Setzkasten.Components.Shell do
     """
   end
 
+  attr :area, :map, required: true
+  attr :place, :atom, required: true
+  attr :current, :any, required: true
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  defp area_target(assigns) do
+    assigns = assign(assigns, :current?, assigns.area.key == assigns.current)
+
+    ~H"""
+    <.link
+      id={@area[:id] && "#{@area[:id]}-#{@place}"}
+      navigate={@area[:navigate]}
+      href={@area[:href]}
+      class={["join-item btn", @class, @current? && "setzkasten-selected"]}
+      aria-current={@current? && "page"}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
+
+  attr :area, :map, required: true
+
+  defp area_icon(assigns) do
+    if media?(assigns.area) do
+      ~H"{nav_icon(@area)}"
+    else
+      ~H"""
+      <span class="size-5 leading-5" aria-hidden="true">{String.first(@area.label)}</span>
+      """
+    end
+  end
+
   # A link closes the sidebar dialog by replacing the view; a button has to close it itself.
   attr :item, :map, required: true
   attr :place, :atom, required: true
@@ -663,7 +795,7 @@ defmodule Setzkasten.Components.Shell do
   defp amount_class(_tone, _amount), do: "text-sidebar-muted"
 
   # Detail pages (a `:bar`) go back through the bar, so they keep the screen without the dock.
-  defp dock_split(%{dock: true, bar: [], nav: nav} = assigns) do
+  defp dock_split(%{dock: true, bar: [], back: nil, nav: nav} = assigns) do
     entries = Enum.filter(nav, &shown?(&1, :dock))
     # The sidebar dialog behind "more" is the only place a phone shows the nav footer.
     footer? = assigns.layout == :sidebar and assigns.nav_footer != []
@@ -777,22 +909,12 @@ defmodule Setzkasten.Components.Shell do
     end
   end
 
-  # A plush without an image falls back to the entry's icon, then to its glyph.
-  defp media_kind(item) do
-    cond do
-      is_binary(item[:plush]) and Setzkasten.Plush.available?(item[:plush]) -> :plush
-      is_binary(item[:icon]) -> :icon
-      is_binary(item[:glyph]) -> :glyph
-      true -> nil
-    end
-  end
+  defp media?(item), do: Setzkasten.Plush.media(item) != nil
 
-  defp media?(item), do: media_kind(item) != nil
-
-  defp nav_icon(item, size \\ :lg), do: nav_icon(media_kind(item), item, size)
+  defp nav_icon(item, size \\ :lg), do: nav_icon(Setzkasten.Plush.media(item), item, size)
 
   # Plush artwork needs 24px to read in the top-bar menu and the dock; Lucide icons keep 16/20px.
-  @nav_plush_sizes %{lg: :sm, md: :md, menu: :md}
+  @nav_plush_sizes %{lg: :sm, sm: :sm, md: :md, menu: :md}
 
   defp nav_icon(:plush, item, size) do
     # In the top-bar menu it overhangs the item's padding, so the 21px line keeps the bar's height.
@@ -829,6 +951,7 @@ defmodule Setzkasten.Components.Shell do
 
   # In the dock a 20px icon keeps the 24px box of a plush, so every label sits on one line.
   defp nav_icon_class(:menu), do: "size-4"
+  defp nav_icon_class(:sm), do: "size-4 shrink-0"
   defp nav_icon_class(:md), do: "size-5 m-0.5"
   defp nav_icon_class(_size), do: "size-5"
 end

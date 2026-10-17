@@ -673,9 +673,12 @@ Visible and accessible default strings are German; each has an attr:
   parent and the current page. Goes into the `:bar` of `app_shell`, followed by the page's status badge (a dot on
   phones; a neutral badge only for screen readers there).
 - **`dropdown`** – menu behind a button (`<details>`). `:trigger`, `:header`, `:item` (`navigate`/`patch`/`href`/
-  `method` or `on_click` (+ `phx-target` for an event name), `icon`, `active` (links and buttons), `danger`, `divider`, `id`, `disabled`, `confirm`
+  `method` or `on_click` (+ `phx-target` for an event name), `icon`, `plush` (`:md` 24px as in the top-bar menu, e.g.
+  an area menu; falls back to `icon` without an image), `active` (links and buttons), `danger`, `divider`, `id`, `disabled`, `confirm`
   (+ `confirm_text`, `confirm_label`) for the shared confirmation dialog, `class`), `align`, `position` (`:top` opens upwards),
   `variant`, `chevron`, `trigger_class`. The menu sets its own text colour and weight (readable in the sidebar).
+  Once an item shows a plush, all labels share one text column: icons and items without one keep a 24px place, and
+  every item keeps the height of its text row. Without a plush, items show their icon only where given.
   Closes on outside click, Escape and item choice; Escape and item choice return focus to the trigger; Escape in the
   open menu leaves a `<dialog>` around it open; survives LiveView patches.
 
@@ -792,7 +795,18 @@ plain CSS identifiers, without `.` or `:`.
     `on_click`; a link closes it by replacing the view.
   - An entry renders once per place, so its `id` is suffixed: `<id>-sidebar`, `-dialog`, `-rail`, `-menu` (top-bar
     menu), `-more` (top-bar sheet), `-dock`; without `id` no ids.
-  - Slots `:brand` (required), `:nav_footer`, `:account`, `:bar`, `:bar_actions`, `:fab`. `:bar` (detail pages:
+  - `:area` entries (`layout={:sidebar}`, more than one): a segmented switch between the app's areas under the
+    brand in the sidebar and its dialog (`btn-sm` segments, icon and label, equal width) and at the top of the rail
+    (`join-vertical` of square icon segments, the label as tooltip and name; without `icon` or `plush` the label's
+    initial). The current one (`current_area`) is `setzkasten-selected` with `aria-current="page"`; `area_label`
+    names the switch ("Bereich"). Entries: `key`, `label`, `icon` or `plush` (`:sm` 20px in sidebar, dialog and rail;
+    falls back to `icon` without an image), `navigate`/`href`, `id` (`-sidebar`, `-dialog`, `-rail`).
+    Not in the dock: on phones an area menu in the brand stays the app's. With one area there is nothing to switch.
+  - `:back` (sidebar mode, e.g. the settings): the page brings its own `:nav` with sections, and the sidebar starts
+    with a quiet `chevron-left` link back (`label`, `navigate`/`href`, `id`) in place of the area switch, in the
+    sidebar, its dialog and the rail (icon, label as tooltip). Such a page has no dock; on phones the top bar's
+    `expand_label` button opens the sidebar.
+  - Slots `:brand` (required), `:area`, `:back`, `:nav_footer`, `:account`, `:bar`, `:bar_actions`, `:fab`. `:bar` (detail pages:
     breadcrumbs and status) replaces the brand in the top bar, sticks to the top and with `:sidebar` also shows from
     `lg`. `:bar_actions` (the page's own actions, e.g. a `⋮` dropdown) follow it. Below `sm` a page with a bar
     leaves the `:account` (global actions, account menu) out of the top bar, so its actions sit at the right edge.

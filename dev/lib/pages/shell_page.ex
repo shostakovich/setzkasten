@@ -39,7 +39,10 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
         neben einem Betrag
         wird ein Badge. Ein Eintrag mit <code>on_click</code>
         ist ein leiser Knopf an seiner Stelle
-        („Konto hinzufügen“ in <code>/screens/budget</code>). Die Vorschauen sind
+        („Konto hinzufügen“ in <code>/screens/budget</code>). Mehrere <code>:area</code>-Einträge
+        geben der Seitenleiste oben einen Bereichswechsel, auch in der Icon-Leiste; <code>:back</code>
+        schaltet sie in einen eigenen Modus wie die Einstellungen, mit einem Weg zurück oben und
+        ohne Dock. Die Vorschauen sind
         die echten Screens in festen Breiten.
       </:intro>
       <.demo
@@ -50,7 +53,9 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
             {"posts", ":topbar mit FAB"},
             {"settings", ":topbar ohne Dock"},
             {"dashboard", ":topbar mit Plüsch-Dock"},
-            {"budget", ":sidebar mit Kontogruppen, Summen, negativen Salden und Knopf-Eintrag"}
+            {"budget",
+             ":sidebar mit Plüsch-Bereichswechsel, Kontogruppen, Summen, negativen Salden und Knopf-Eintrag"},
+            {"budget?m=settings", ":sidebar im Einstellungsmodus mit :back"}
           ]
         }
         title={"#{label} – /screens/#{slug}"}

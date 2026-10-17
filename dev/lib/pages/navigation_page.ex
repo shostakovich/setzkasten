@@ -212,7 +212,9 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
     >
       <:intro>
         Konto-Menü, Zeilen-Menü, Website-Wechsler. Natives <code>&lt;details&gt;</code>; schließt
-        bei Klick daneben, Escape und nach der Auswahl.
+        bei Klick daneben, Escape und nach der Auswahl. Einträge mit <code>plush</code> zeigen ihr
+        Plüsch in 24px, ohne Bild ihr <code>icon</code>; mit Plüsch stehen alle Beschriftungen in
+        einer Spalte.
       </:intro>
       <.demo
         title="Website-Wechsler (offen) und Konto"
@@ -233,6 +235,16 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           <:item patch="/navigation" icon="settings">Einstellungen</:item>
           <:item patch="/navigation" icon="key-round">Passkeys</:item>
           <:item patch="/navigation" icon="log-out">Abmelden</:item>
+        </.dropdown>
+      </.demo>
+      <.demo title="Bereichsmenü mit Plüsch (offen)" class="flex h-56 items-start">
+        <.dropdown id="area-menu" variant={:ghost} open>
+          <:trigger><.plush name="piggy" size={:sm} />Finanzen</:trigger>
+          <:item patch="/navigation" plush="piggy" icon="wallet" active>Finanzen</:item>
+          <:item patch="/navigation" plush="receipt" icon="receipt">Kasse</:item>
+          <:item patch="/navigation" plush="settings" icon="settings" divider>
+            Einstellungen
+          </:item>
         </.dropdown>
       </.demo>
       <.demo title="Buttons mit aktivem Eintrag (Sortierung)" class="flex h-56 items-start">
@@ -295,6 +307,11 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       <:trigger><.avatar initials="JM" size={:sm} /> jonas@…</:trigger>
       <:item navigate={~p"/users/settings"} icon="settings">Einstellungen</:item>
       <:item href={~p"/users/log-out"} method="delete" icon="log-out">Abmelden</:item>
+    </.dropdown>
+    <.dropdown id="area-menu" variant={:ghost}>
+      <:trigger><.plush name="piggy" size={:sm} />Finanzen</:trigger>
+      <:item navigate={~p"/budget"} plush="piggy" icon="wallet" active>Finanzen</:item>
+      <:item navigate={~p"/kasse"} plush="receipt" icon="receipt">Kasse</:item>
     </.dropdown>
     """
   end
