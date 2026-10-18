@@ -995,9 +995,17 @@
   }
 }
 
-/* What a bar fixed to the bottom stands on: the dock or, while typing, the on-screen keyboard. */
+/* What a bar fixed to the bottom stands on: the dock or, while typing, the on-screen keyboard. The
+   floating action button and the selection bar keep 16px above the bars at the bottom (dock,
+   composer) or the safe area. */
 :root {
   --setzkasten-bottom-offset: max(var(--setzkasten-dock-offset, 0px), var(--setzkasten-keyboard-inset, 0px));
+  --setzkasten-bars-top: max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom), var(--setzkasten-composer-top, 0px));
+}
+
+/* The top of a composer, from the height its hook measures. */
+:root:has(.setzkasten-composer) {
+  --setzkasten-composer-top: calc(var(--setzkasten-bottom-offset) + var(--setzkasten-composer-height, 4.5rem));
 }
 
 /* Motion (guides/design-system.md 2.9); replaces daisyUI's timings, which ignore reduced motion for dialogs. */

@@ -1292,6 +1292,41 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "#back-rail") == 1
   end
 
+  test "the shell exports the page column's width, gutter and alignment from the classes' values" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.app_shell width={:narrow}><:brand>A</:brand>x</.app_shell>|)
+
+    shell = classes(doc, "#app-shell")
+    assert "max-w-3xl" in classes(doc, "main#main")
+    assert Enum.all?(~w(px-4 sm:px-6 lg:px-8), &(&1 in classes(doc, "main#main")))
+
+    assert Enum.all?(
+             ~w|[--setzkasten-column:var(--container-3xl)] [--setzkasten-gutter:--spacing(4)] sm:[--setzkasten-gutter:--spacing(6)] lg:[--setzkasten-gutter:--spacing(8)]|,
+             &(&1 in shell)
+           )
+
+    # A centred column is the composer's fallback.
+    refute Enum.any?(shell, &(&1 =~ "column-align"))
+
+    doc =
+      parse(~H|<.app_shell layout={:sidebar} width={:full}><:brand>A</:brand>x</.app_shell>|)
+
+    shell = classes(doc, "#app-shell")
+    assert "[--setzkasten-gutter:--spacing(4)]" in shell
+    assert "[--setzkasten-column-align:0px]" in shell
+    refute Enum.any?(shell, &(&1 =~ "--setzkasten-column:"))
+    refute Enum.any?(shell, &String.starts_with?(&1, "sm:[--setzkasten-gutter"))
+
+    for {width, size} <- [default: "5xl", wide: "7xl"] do
+      assigns = %{width: width}
+      doc = parse(~H|<.app_shell width={@width}><:brand>A</:brand>x</.app_shell>|)
+      assert "max-w-#{size}" in classes(doc, "main#main")
+      assert "[--setzkasten-column:var(--container-#{size})]" in classes(doc, "#app-shell")
+    end
+  end
+
   test "the dock publishes its offset on the root, so bars outside the shell clear it" do
     assigns = %{}
 

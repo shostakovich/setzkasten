@@ -1,5 +1,5 @@
 defmodule Setzkasten.Components.Actions do
-  @moduledoc "Buttons, the floating action button and the selection bar."
+  @moduledoc "Buttons, the floating action button, the selection bar and the composer."
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
@@ -395,8 +395,8 @@ defmodule Setzkasten.Components.Actions do
   (with `phx-target`) or a `%JS{}`.
 
   It keeps to the content area: beside the sidebar or rail of `app_shell/1` (also collapsed),
-  above the dock and the bottom safe area, with a spacer at its place so the last rows can
-  scroll above it. Dropdowns inside open upwards; popovers flip above by themselves. While it
+  above the dock, a `<.composer>` and the bottom safe area, with a
+  spacer at its place so the last rows can scroll above it. Dropdowns inside open upwards; popovers flip above by themselves. While it
   shows, the floating action button steps back. It enters from below (a fade with reduced motion).
 
       <.selection_bar id="selection" count={length(@selected)} on_clear="clear_selection"
@@ -434,7 +434,7 @@ defmodule Setzkasten.Components.Actions do
           "setzkasten-selection-bar fixed z-40 flex justify-center pointer-events-none",
           "start-(--setzkasten-shell-start,0px) end-0 px-4",
           "pe-[calc(1rem+env(safe-area-inset-right))]",
-          "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]"
+          "bottom-[calc(var(--setzkasten-bars-top)+1rem)]"
         ]}
         hidden={@count == 0}
       >
@@ -483,8 +483,8 @@ defmodule Setzkasten.Components.Actions do
   end
 
   @doc """
-  The one main action on phones (`md:hidden`): 16px above the dock inside `<.app_shell>`
-  (`--setzkasten-dock-offset`), 16px above the bottom safe edge without one.
+  The one main action on phones (`md:hidden`): 16px above the dock inside `<.app_shell>` or a
+  `<.composer>`, 16px above the bottom safe edge without them.
 
       <.fab navigate={~p"/ausgaben/neu"} icon="plus" label="Ausgabe" />
   """
@@ -498,7 +498,7 @@ defmodule Setzkasten.Components.Actions do
       assign(assigns, :classes, [
         "setzkasten-fab btn btn-primary btn-lg btn-circle shadow-lg fixed z-40 md:hidden",
         "end-[calc(1rem+env(safe-area-inset-right))]",
-        "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]",
+        "bottom-[calc(var(--setzkasten-bars-top)+1rem)]",
         assigns.class
       ])
 
@@ -513,5 +513,85 @@ defmodule Setzkasten.Components.Actions do
       </button>
       """
     end
+  end
+
+  @doc """
+  A bar pinned to the bottom of the page column, for a form that is only the bar: a search or
+  add field at the foot of a list. It replaces `<.action_bar sticky>` there, which pins only
+  inside a parent taller than itself. The bar is fixed, so it pins wherever it is placed; a
+  spacer at its place lets the last content scroll clear of it.
+
+      <.composer id="add-entry-bar">
+        <.form for={@form} id="add-entry" phx-submit="add">
+          <.input field={@form[:name]} label="Was brauchst du?" inline>
+            <.button type="submit" variant={:primary} class="join-item">Hinzufügen</.button>
+          </.input>
+        </.form>
+      </.composer>
+
+  It keeps to the content column of `<.app_shell>`: beside the sidebar or rail, its content in
+  the page column's width and side gutter (centred with `layout={:topbar}`, at the content
+  edge with `:sidebar`). On phones its surface spans the screen, the content keeps the 16px
+  gutter; from `sm` surface and hairline align with the content edge, like tables and lists.
+  `bg-base-100` with a hairline on top, 12px above and below the content on phones and 16px
+  from `sm`, plus the bottom safe area when nothing is below it.
+
+  It sits above the dock and, while the on-screen keyboard is up, right on top of the keyboard
+  (the dock gives way then), which `<.theme_script>` measures. Its hook publishes the bar's
+  height as `--setzkasten-composer-height` on `<html>`, which lifts the floating action button
+  above the bar. One composer per page.
+  """
+  attr :id, :string, required: true
+  attr :class, :any, default: nil, doc: "on the bar's content box"
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def composer(assigns) do
+    ~H"""
+    <script :type={ColocatedHook} name=".Composer">
+      const root = document.documentElement
+      let owner = null
+      export default {
+        mounted() {
+          owner = this
+          const bar = this.el.querySelector(".setzkasten-composer")
+          this.resize = new ResizeObserver(() => {
+            root.style.setProperty("--setzkasten-composer-height", `${bar.offsetHeight}px`)
+          })
+          this.resize.observe(bar)
+        },
+        destroyed() {
+          this.resize.disconnect()
+          // A composer on the next page may have mounted first.
+          if (owner !== this) return
+          owner = null
+          root.style.removeProperty("--setzkasten-composer-height")
+        }
+      }
+    </script>
+    <div id={@id} phx-hook=".Composer" {@rest}>
+      <div class="h-(--setzkasten-composer-height,4.5rem)" aria-hidden="true"></div>
+      <div class={[
+        "setzkasten-composer fixed z-30",
+        "start-[max(var(--setzkasten-shell-start,0px),env(safe-area-inset-left))]",
+        "end-[env(safe-area-inset-right)]",
+        "bottom-(--setzkasten-bottom-offset)",
+        "max-sm:bg-base-100 max-sm:border-t max-sm:border-base-content/10 sm:pointer-events-none"
+      ]}>
+        <div class={[
+          "ms-(--setzkasten-column-align,auto) me-auto max-w-(--setzkasten-column,none)",
+          "px-(--setzkasten-gutter,1rem)"
+        ]}>
+          <div class={[
+            "sm:bg-base-100 sm:border-t sm:border-base-content/10 sm:pointer-events-auto",
+            Setzkasten.Components.Forms.bar_padding(),
+            @class
+          ]}>
+            {render_slot(@inner_block)}
+          </div>
+        </div>
+      </div>
+    </div>
+    """
   end
 end

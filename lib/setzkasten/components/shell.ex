@@ -8,7 +8,13 @@ defmodule Setzkasten.Components.Shell do
   import Setzkasten.Click, only: [click_js: 2]
   import Setzkasten.Components.Overlays, only: [modal: 1, show_modal: 1, hide_modal: 1]
 
-  @widths %{narrow: "max-w-3xl", default: "max-w-5xl", wide: "max-w-7xl", full: nil}
+  # A width's cap as a class and as the variable that bars fixed to the column read (gutter/1 alike).
+  @widths %{
+    narrow: {"max-w-3xl", "[--setzkasten-column:var(--container-3xl)]"},
+    default: {"max-w-5xl", "[--setzkasten-column:var(--container-5xl)]"},
+    wide: {"max-w-7xl", "[--setzkasten-column:var(--container-7xl)]"},
+    full: {nil, nil}
+  }
 
   @doc """
   Page shell with skip link, navigation and `<main id="main">`.
@@ -31,6 +37,8 @@ defmodule Setzkasten.Components.Shell do
   same width. With `layout={:topbar}` the column and the navbar row are centred together.
   `:full` keeps a 16px side gutter at every width, the others widen it to 24px from `sm` and
   32px from `lg`.
+  The shell exports the column as `--setzkasten-column`, `--setzkasten-gutter` and
+  `--setzkasten-column-align` for bars fixed to it, such as `<.composer>`.
   `bar_width` gives the top bar row a width of its own (default: `width`), so an app whose
   pages differ in width can keep one header: `<.app_shell bar_width={:wide} width={@width}>`.
 
@@ -222,10 +230,10 @@ defmodule Setzkasten.Components.Shell do
 
     assigns =
       assign(assigns,
-        width_class: @widths[assigns.width],
-        bar_width_class: @widths[assigns.bar_width || assigns.width],
-        gutter_class: gutter(assigns.width),
-        bar_gutter_class: gutter(assigns.bar_width || assigns.width),
+        width_class: width_class(assigns.width),
+        bar_width_class: width_class(assigns.bar_width || assigns.width),
+        gutter_class: gutter_class(assigns.width),
+        bar_gutter_class: gutter_class(assigns.bar_width || assigns.width),
         bar_full?: (assigns.bar_width || assigns.width) == :full,
         dock_items: dock_items,
         rail_items: rail_items,
@@ -263,6 +271,7 @@ defmodule Setzkasten.Components.Shell do
           ],
           else: "pl-[env(safe-area-inset-left)]"
         ),
+        column_vars(@width, @layout),
         @class
       ]}
     >
@@ -785,8 +794,23 @@ defmodule Setzkasten.Components.Shell do
     """
   end
 
-  defp gutter(:full), do: "px-4"
-  defp gutter(_width), do: "px-4 sm:px-6 lg:px-8"
+  defp gutter(:full), do: {"px-4", "[--setzkasten-gutter:--spacing(4)]"}
+
+  defp gutter(_width),
+    do:
+      {"px-4 sm:px-6 lg:px-8",
+       "[--setzkasten-gutter:--spacing(4)] sm:[--setzkasten-gutter:--spacing(6)] lg:[--setzkasten-gutter:--spacing(8)]"}
+
+  defp width_class(width), do: elem(@widths[width], 0)
+  defp gutter_class(width), do: elem(gutter(width), 0)
+
+  defp column_vars(width, layout) do
+    [
+      elem(@widths[width], 1),
+      elem(gutter(width), 1),
+      layout == :sidebar && "[--setzkasten-column-align:0px]"
+    ]
+  end
 
   defp amount_class(:negative, amount) when amount < 0, do: "text-sidebar-negative"
   defp amount_class(:negative, amount) when amount > 0, do: "text-sidebar-content"
