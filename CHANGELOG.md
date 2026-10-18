@@ -42,6 +42,8 @@
 - `list_row` `muted` for done or secondary rows: title at the meta's 70 % and normal weight, leading content faded.
 - `list_row` `exit={:strike}`: a tap strikes the title through at once, a row LiveView removes strikes and then
   collapses (`phx-remove` and a colocated hook; needs `id`).
+- `list_row` `exit={:strike}` keeps a removed row in its place in a `:for` list too, where morphdom moved the rows
+  below it in front of it when comments (HEEx debug annotations) or text sat between the rows.
 - `modal`: the title row and `:actions` stay in place while a long body scrolls between them, with a hairline
   while content runs under them. A `:center` modal box (and `confirm_dialog`'s) is at most the dynamic viewport
   high less 5em, at every width; a `max-h-*` class still wins.

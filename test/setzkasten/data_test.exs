@@ -1318,7 +1318,18 @@ defmodule Setzkasten.DataTest do
     assert hook =~ "e.detail && e.detail.done"
     assert hook =~ ~r/const timer = setTimeout\(done, \d+\)/
     assert hook =~ ~r/finally \{\s*clearTimeout\(timer\)\s*done\(\)/
-    assert hook =~ ~r/if \(main && !main\.el\.isConnected\) return\s*el\.classList\.add/
+
+    assert hook =~
+             ~r/if \(main && !main\.el\.isConnected\) return\s*this\.restore\(\)\s*el\.classList\.add/
+  end
+
+  test "a strike exit row keeps its place in a :for list, where morphdom moves the rows below it" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ "new MutationObserver(() => this.remember())"
+    assert hook =~ "this.observer.observe(parent, {childList: true})"
+    assert hook =~ ~r/destroyed\(\) \{\s*this\.observer\.disconnect\(\)/
+    assert hook =~ "this.prev = this.el.previousElementSibling"
+    assert hook =~ "el.after(...ahead)"
   end
 
   test "a strike exit row hands focus inside it to the next row, the previous, the list or main" do

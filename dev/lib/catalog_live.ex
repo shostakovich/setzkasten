@@ -20,6 +20,8 @@ defmodule Setzkasten.Dev.CatalogLive do
     {"shell", Pages.ShellPage}
   ]
 
+  @basket [{1, "Äpfel"}, {2, "Hafermilch"}, {3, "Kaffee"}, {4, "Spülmittel"}]
+
   def pages, do: @pages
 
   @impl true
@@ -34,6 +36,7 @@ defmodule Setzkasten.Dev.CatalogLive do
        cover: nil,
        picked: [],
        sort: "date",
+       basket: @basket,
        combo: to_form(%{"category" => "groceries"}, as: :booking),
        form: Pages.FormsPage.build_form(%{})
      )}
@@ -88,6 +91,12 @@ defmodule Setzkasten.Dev.CatalogLive do
   def handle_event("pick", %{"id" => id}, socket) do
     {:noreply, update(socket, :picked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
   end
+
+  def handle_event("basket_check", %{"id" => id}, socket),
+    do: {:noreply, update(socket, :basket, &List.keydelete(&1, id, 0))}
+
+  def handle_event("basket_reset", _params, socket),
+    do: {:noreply, assign(socket, basket: @basket)}
 
   def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
 
