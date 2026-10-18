@@ -1327,7 +1327,7 @@ defmodule Setzkasten.ShellTest do
     end
   end
 
-  test "the dock publishes its offset on the root, so bars outside the shell clear it" do
+  test "the dock publishes its offset on the root, so toasts outside the shell clear it" do
     assigns = %{}
 
     doc =

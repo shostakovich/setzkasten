@@ -979,8 +979,8 @@
   }
 }
 
-/* The dock's height on the root, so bars outside the shell clear it too. The dock gives way to the
-   on-screen keyboard (date and time fields open a picker instead), leaving nothing to clear. */
+/* The dock's height on the root, so bars and toasts outside the shell clear it too. The dock gives
+   way to the on-screen keyboard (date and time fields open a picker instead), leaving nothing to clear. */
 @media (width < 48rem) {
   :root:has(.setzkasten-dock) {
     --setzkasten-dock-offset: calc(4rem + env(safe-area-inset-bottom));
@@ -1003,9 +1003,27 @@
   --setzkasten-bars-top: max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom), var(--setzkasten-composer-top, 0px));
 }
 
-/* The top of a composer, from the height its hook measures. */
+/* The tops of a composer, a pinned action bar (12px or 16px above and below 44px buttons, plus its
+   hairline) and a shown selection bar, whose hook measures it as it wraps. */
 :root:has(.setzkasten-composer) {
   --setzkasten-composer-top: calc(var(--setzkasten-bottom-offset) + var(--setzkasten-composer-height, 4.5rem));
+}
+:root:has(.setzkasten-action-bar-pinned:not(.modal-box *)) {
+  --setzkasten-pinned-top: calc(max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom)) + 4.25rem + 1px);
+  @media (width >= 40rem) {
+    --setzkasten-pinned-top: calc(max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom)) + 4.75rem + 1px);
+  }
+}
+:root:has(.setzkasten-selection-bar:not([hidden])) {
+  --setzkasten-selection-top: calc(var(--setzkasten-bars-top) + 1rem + var(--setzkasten-selection-height, 3.5rem));
+}
+
+/* Toasts sit 16px above whatever holds the bottom: the dock, the keyboard, a composer, a pinned
+   action bar, a selection bar or the safe area. */
+@layer utilities.setzkasten {
+  .setzkasten-toasts {
+    bottom: calc(max(var(--setzkasten-bottom-offset), env(safe-area-inset-bottom), var(--setzkasten-composer-top, 0px), var(--setzkasten-pinned-top, 0px), var(--setzkasten-selection-top, 0px)) + 1rem);
+  }
 }
 
 /* Motion (guides/design-system.md 2.9); replaces daisyUI's timings, which ignore reduced motion for dialogs. */
@@ -1028,6 +1046,13 @@
     opacity: 0;
     translate: var(--setzkasten-enter-from, 0 0);
     scale: var(--setzkasten-enter-scale, 1);
+  }
+}
+
+/* Toasts rise without a fade: opaque from the first frame. */
+@keyframes setzkasten-rise {
+  from {
+    translate: 0 0.5rem;
   }
 }
 
@@ -1268,11 +1293,7 @@
   }
 
   .toast > * {
-    --setzkasten-enter-from: 0 0.5rem;
-    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
-  }
-  .toast-top > * {
-    --setzkasten-enter-from: 0 -0.5rem;
+    animation: setzkasten-rise var(--setzkasten-duration) var(--setzkasten-ease-out);
   }
 
   .tabs-border > .tab::before {
@@ -1372,12 +1393,13 @@
     .modal .modal-box,
     .setzkasten-popover[popover],
     .dropdown:is(details) > .dropdown-content,
-    .collapse:is(details) > .collapse-content,
-    .toast > *,
-    .toast-top > * {
+    .collapse:is(details) > .collapse-content {
       --setzkasten-enter-from: 0 0;
       --setzkasten-enter-scale: 1;
       --setzkasten-enter-opacity: 0;
+    }
+    .toast > * {
+      animation: none;
     }
     :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab,
     .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {

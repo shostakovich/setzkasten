@@ -1,8 +1,10 @@
 defmodule Setzkasten.Components.Feedback do
   @moduledoc "Flash toasts, alerts, status badges and empty states."
   use Phoenix.Component
+  alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
+  import Setzkasten.Click, only: [click_js: 2]
 
   @tone_icons %{
     info: "info",
@@ -145,10 +147,15 @@ defmodule Setzkasten.Components.Feedback do
   defp close_click(event) when is_binary(event), do: JS.push(event)
 
   @doc """
-  Phoenix's flash as a toast at the top (the dock and sticky action bars use the bottom),
-  below the top bar and the safe area; full width within the 16px gutter on phones, 384px at
-  the end from `sm`. Toasts float over content, so they carry a shadow (as dropdown menus).
-  Same API as Phoenix's generated `<.flash>`. Dismiss is a real button.
+  Phoenix's flash as a toast at the bottom: above the dock, the on-screen keyboard (measured by
+  `<.theme_script>`), a `<.composer>`, a pinned `<.action_bar sticky>` or a shown
+  `<.selection_bar>`, else above the bottom safe area; full width within the 16px gutter on
+  phones, 384px at the end from `sm`. Toasts float over content, so they carry a shadow (as
+  dropdown menus). Same API as Phoenix's generated `<.flash>`. Dismiss is a real button.
+
+  An info flash closes itself after 5 s, as its ✕ does; the time pauses while the pointer is
+  over it or focus is inside. An error stays until closed. Slot content (a static message)
+  stays too, and its ✕ only hides it: it never clears the flash.
 
       <.flash kind={:info} flash={@flash} />
   """
@@ -161,6 +168,11 @@ defmodule Setzkasten.Components.Feedback do
   slot :inner_block
 
   def flash(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:id, fn -> "flash-#{assigns.kind}" end)
+      |> assign(:msg, Phoenix.Flash.get(assigns.flash, assigns.kind))
+
     ~H"""
     <div class={toast_class()}>
       {flash_alert(assigns)}
@@ -168,22 +180,46 @@ defmodule Setzkasten.Components.Feedback do
     """
   end
 
-  attr :id, :string
-  attr :flash, :map, default: %{}
-  attr :title, :string, default: nil
+  attr :id, :string, required: true
   attr :kind, :atom, required: true
+  attr :msg, :string, default: nil
+  attr :title, :string, default: nil
   attr :close_label, :string, default: "Schließen"
   attr :rest, :global
   slot :inner_block
 
-  defp flash_alert(assigns) do
-    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+  defp flash_alert(%{msg: nil, inner_block: []} = assigns), do: ~H""
 
+  # Every expression reads only attributes, so an unchanged flash is skipped in a diff and its timer runs on.
+  defp flash_alert(assigns) do
     ~H"""
+    <script :type={ColocatedHook} name=".AutoDismiss">
+      export default {
+        mounted() {
+          const hold = () => clearTimeout(this.timer)
+          this.el.addEventListener("pointerenter", () => { this.pointer = true; hold() })
+          this.el.addEventListener("pointerleave", () => { this.pointer = false; this.resume() })
+          this.el.addEventListener("focusin", hold)
+          this.el.addEventListener("focusout", (e) => this.resume(e.relatedTarget))
+          this.start()
+        },
+        updated() { this.resume() },
+        // Not :hover, which sticks to a tapped element on touch screens.
+        resume(focused = document.activeElement) {
+          if (!this.pointer && !this.el.contains(focused)) this.start()
+        },
+        start() {
+          clearTimeout(this.timer)
+          this.timer = setTimeout(() => this.js().exec(this.el.dataset.dismiss), 5000)
+        },
+        destroyed() { clearTimeout(this.timer) }
+      }
+    </script>
     <div
-      :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       role={if @kind == :error, do: "alert", else: "status"}
+      phx-hook={@kind == :info && @inner_block == [] && "Setzkasten.Components.Feedback.AutoDismiss"}
+      data-dismiss={@kind == :info && @inner_block == [] && clear_flash(@kind, @id)}
       class={[
         "alert alert-soft text-base-content shadow-lg w-full sm:w-96",
         @kind == :info && "alert-info",
@@ -195,13 +231,15 @@ defmodule Setzkasten.Components.Feedback do
       <.icon :if={@kind == :error} name="circle-alert" class="size-5 text-error-ink" />
       <div class="min-w-0 wrap-anywhere">
         <p :if={@title} class="font-semibold">{@title}</p>
-        <p>{msg}</p>
+        <p>{render_slot(@inner_block) || @msg}</p>
       </div>
       <button
         type="button"
         class="btn btn-ghost btn-sm btn-square self-start"
         aria-label={@close_label}
-        phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide_flash("##{@id}")}
+        phx-click={
+          if @inner_block == [], do: clear_flash(@kind, @id), else: hide_flash(%JS{}, "##{@id}")
+        }
       >
         <.icon name="x" />
       </button>
@@ -209,11 +247,42 @@ defmodule Setzkasten.Components.Feedback do
     """
   end
 
-  # 4.5rem clears a sticky page bar (61px).
+  attr :toast, :map, default: nil
+
+  defp toast(%{toast: nil} = assigns), do: ~H""
+
+  defp toast(assigns) do
+    ~H"""
+    <div
+      id={@toast.id}
+      role="status"
+      phx-hook="Setzkasten.Components.Feedback.AutoDismiss"
+      data-dismiss={hide_flash(%JS{}, "##{@toast.id}")}
+      class={[
+        "flex items-center gap-3 rounded-box border border-base-content/10 bg-popover px-4 py-3",
+        "text-sm shadow-lg w-full sm:w-96"
+      ]}
+    >
+      <p class="min-w-0 flex-1 wrap-anywhere">{@toast.message}</p>
+      <button
+        :if={@toast.action}
+        type="button"
+        class="btn btn-ghost btn-sm -my-1.5 -me-2 shrink-0"
+        phx-click={clear_flash(:toast, @toast.id) |> JS.concat(click_js(@toast.on_action, nil))}
+      >
+        {@toast.action}
+      </button>
+    </div>
+    """
+  end
+
+  defp clear_flash(kind, id),
+    do: JS.push("lv:clear-flash", value: %{key: kind}) |> hide_flash("##{id}")
+
   defp toast_class do
     [
-      "toast toast-top toast-center sm:toast-end z-50 top-[calc(env(safe-area-inset-top)+4.5rem)]",
-      "max-sm:inset-x-4 max-sm:w-auto max-sm:[--toast-x:0]",
+      "toast setzkasten-toasts z-50",
+      "max-sm:inset-x-4 max-sm:w-auto",
       "sm:end-[calc(1rem+env(safe-area-inset-right))]"
     ]
   end
@@ -224,12 +293,46 @@ defmodule Setzkasten.Components.Feedback do
       time: 150,
       transition:
         {"transition ease-(--setzkasten-ease-in) duration-(--setzkasten-duration-exit)",
-         "opacity-100 translate-y-0", "opacity-0 motion-safe:-translate-y-2"}
+         "opacity-100 translate-y-0", "opacity-0 motion-safe:translate-y-2"}
     )
   end
 
   @doc """
-  All flashes of a page in one toast stack, plus the connection-lost messages.
+  A toast for a done action, from a LiveView or a controller (`Plug.Conn`): `message`, and
+  with `action` (its label) and `on_action` (an event name for the LiveView, or a `%JS{}`) one
+  ghost button at its end that closes the toast and runs `on_action` (a toast that `on_action`
+  puts stays). `<.flash_group>` shows it at the bottom on the popover surface; it closes itself
+  after 5 s (paused while the pointer is over it or focus is inside). It is a flash (key
+  `:toast`), so it survives a `push_navigate` or redirect; a newer toast replaces it, and
+  enters, counts and is announced afresh. An `on_action` event name goes to the LiveView that
+  shows the toast: after a `push_navigate` that LiveView must handle it, or pass a `%JS{}` that
+  needs no handler there (such as `JS.navigate/1`).
+
+      {:noreply,
+       put_toast(socket, "Bananen abgehakt",
+         action: "Rückgängig", on_action: JS.push("undo", value: %{id: item.id}))}
+
+      put_toast(socket, "Milch hinzugefügt")
+  """
+  def put_toast(socket_or_conn, message, opts \\ []) when is_binary(message) do
+    toast = %{
+      id: "toast-#{System.unique_integer([:positive])}",
+      message: message,
+      action: opts[:action],
+      on_action: opts[:on_action]
+    }
+
+    store_toast(socket_or_conn, toast)
+  end
+
+  defp store_toast(%Plug.Conn{} = conn, toast),
+    do: Phoenix.Controller.put_flash(conn, :toast, toast)
+
+  defp store_toast(socket, toast), do: Phoenix.LiveView.put_flash(socket, :toast, toast)
+
+  @doc """
+  All flashes of a page in one toast stack at the bottom, in a polite live region: info, error,
+  the toast of `put_toast/3`, and the connection-lost messages.
 
       <.flash_group flash={@flash} />
   """
@@ -247,8 +350,9 @@ defmodule Setzkasten.Components.Feedback do
       aria-live="polite"
       class={toast_class()}
     >
-      <.flash_alert kind={:info} flash={@flash} close_label={@close_label} />
-      <.flash_alert kind={:error} flash={@flash} close_label={@close_label} />
+      <.flash_alert id="flash-info" kind={:info} msg={@flash["info"]} close_label={@close_label} />
+      <.flash_alert id="flash-error" kind={:error} msg={@flash["error"]} close_label={@close_label} />
+      <.toast toast={@flash["toast"]} />
       <.flash_alert
         id="client-error"
         kind={:error}

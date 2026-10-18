@@ -481,9 +481,26 @@ defmodule Setzkasten.ActionsTest do
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
-    # Above a composer.
+    # Above a composer, and toasts above the bar while it shows.
     assert css =~
              ~r/--setzkasten-bars-top: max\(var\(--setzkasten-dock-offset, 0px\), env\(safe-area-inset-bottom\), var\(--setzkasten-composer-top, 0px\)\);/
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-selection-bar:not\(\[hidden\]\)\) \{\s*--setzkasten-selection-top: calc\(var\(--setzkasten-bars-top\) \+ 1rem \+ var\(--setzkasten-selection-height, 3\.5rem\)\);/
+
+    # The bar wraps on phones, so its hook measures it for the toasts; its id keeps the measured element.
+    assigns = %{}
+    doc = parse(~H|<.selection_bar id="sel" count={1} on_clear="clear" />|)
+    assert attr(doc, "#sel-bar", "class") =~ "setzkasten-selection-bar"
+    hook = colocated_js("Setzkasten.Components.Actions")
+
+    assert hook =~
+             ~s|root.style.setProperty("--setzkasten-selection-height", `${bar.offsetHeight}px`)|
+
+    assert hook =~ ~s|root.style.removeProperty("--setzkasten-selection-height")|
+
+    assert css =~
+             ~r/\.setzkasten-toasts \{\s*bottom: calc\(max\([^;]*var\(--setzkasten-selection-top, 0px\)\) \+ 1rem\);/
 
     doc = parse(~H|<.app_shell layout={:sidebar}><:brand>A</:brand>x</.app_shell>|)
     shell = classes(doc, "#app-shell")

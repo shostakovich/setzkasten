@@ -27,6 +27,15 @@ defmodule Setzkasten.CatalogTest do
     refute html =~ "Einstellungen gespeichert"
   end
 
+  test "the feedback page triggers a toast with an action" do
+    {:ok, view, _} = live(build_conn(), "/feedback")
+    view |> element("#toast-action-demo") |> render_click()
+    assert has_element?(view, "#flash-group [role=status] button", "Rückgängig")
+    render_click(view, "toast", %{"kind" => "undone"})
+    assert has_element?(view, "#flash-group [role=status]", "Bananen wieder auf der Liste")
+    refute has_element?(view, "#flash-group [role=status] button")
+  end
+
   test "the delights page changes its live values up and down" do
     {:ok, view, html} = live(build_conn(), "/delights")
     assert html =~ "63.279"

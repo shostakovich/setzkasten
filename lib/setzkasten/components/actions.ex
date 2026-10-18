@@ -395,7 +395,7 @@ defmodule Setzkasten.Components.Actions do
   (with `phx-target`) or a `%JS{}`.
 
   It keeps to the content area: beside the sidebar or rail of `app_shell/1` (also collapsed),
-  above the dock, a `<.composer>` and the bottom safe area, with a
+  above the dock, a `<.composer>` and the bottom safe area (toasts rise above it), with a
   spacer at its place so the last rows can scroll above it. Dropdowns inside open upwards; popovers flip above by themselves. While it
   shows, the floating action button steps back. It enters from below (a fade with reduced motion).
 
@@ -429,7 +429,9 @@ defmodule Setzkasten.Components.Actions do
     <div id={@id} phx-hook=".SelectionBar" {@rest}>
       <p id={"#{@id}-status"} class="sr-only" role="status">{if @count > 0, do: @text}</p>
       <div :if={@count > 0} class="h-20" aria-hidden="true"></div>
+      <%!-- The id keeps this element when the spacer comes and goes, so the hook measures it. --%>
       <div
+        id={"#{@id}-bar"}
         class={[
           "setzkasten-selection-bar fixed z-40 flex justify-center pointer-events-none",
           "start-(--setzkasten-shell-start,0px) end-0 px-4",
@@ -468,7 +470,19 @@ defmodule Setzkasten.Components.Actions do
       </div>
     </div>
     <script :type={ColocatedHook} name=".SelectionBar">
+      const root = document.documentElement
       export default {
+        mounted() {
+          const bar = this.el.querySelector(".setzkasten-selection-bar")
+          this.resize = new ResizeObserver(() => {
+            root.style.setProperty("--setzkasten-selection-height", `${bar.offsetHeight}px`)
+          })
+          this.resize.observe(bar)
+        },
+        destroyed() {
+          this.resize.disconnect()
+          root.style.removeProperty("--setzkasten-selection-height")
+        },
         beforeUpdate() { this.focused = this.el.contains(document.activeElement) },
         updated() {
           if (!this.focused || !this.el.querySelector(".setzkasten-selection-bar").hidden) return
@@ -539,7 +553,7 @@ defmodule Setzkasten.Components.Actions do
   It sits above the dock and, while the on-screen keyboard is up, right on top of the keyboard
   (the dock gives way then), which `<.theme_script>` measures. Its hook publishes the bar's
   height as `--setzkasten-composer-height` on `<html>`, which lifts the floating action button
-  above the bar. One composer per page.
+  and the toasts above the bar. One composer per page.
   """
   attr :id, :string, required: true
   attr :class, :any, default: nil, doc: "on the bar's content box"

@@ -481,8 +481,8 @@ defmodule Setzkasten.Components.Layout do
   the app sends one.
 
   On every page it publishes the on-screen keyboard's height as `--setzkasten-keyboard-inset`
-  on `<html>` (0 unless a field that takes typing has focus on a touch screen), so bars at the
-  bottom can sit above the keyboard.
+  on `<html>` (0 unless a field that takes typing has focus on a touch screen), so toasts and
+  `<.composer>` sit above the keyboard.
 
       <.theme_script nonce={assigns[:csp_nonce]} />
   """
