@@ -764,8 +764,54 @@
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
+  .modal-bottom > .modal-box {
+    max-height: calc(100dvh - 5em);
+  }
   .modal-box:focus-visible {
     outline: none;
+  }
+}
+
+/* A focused field scrolls clear of a modal's pinned title row (up to two lines) and actions. The
+   room is a scroll margin on the content: as scroll padding on the box, focusing a pinned button
+   would scroll the body too. */
+@layer utilities.setzkasten {
+  .modal-box > :not(.setzkasten-modal-head, .setzkasten-modal-foot),
+  .modal-box > :not(.setzkasten-modal-head, .setzkasten-modal-foot) * {
+    scroll-margin-block: var(--setzkasten-modal-head-room, 0px) var(--setzkasten-modal-foot-room, 0px);
+  }
+  .modal-box:has(> .setzkasten-modal-head) {
+    --setzkasten-modal-head-room: 5.5rem;
+  }
+  .modal-box:has(> .setzkasten-modal-foot) {
+    --setzkasten-modal-foot-room: 6rem;
+  }
+}
+
+/* A modal's pinned title row and actions take a hairline only while content scrolls under them;
+   the scroll timeline is inactive when nothing scrolls. */
+@keyframes setzkasten-modal-scrolled {
+  from {
+    box-shadow: 0 var(--setzkasten-hairline-y) 0 transparent;
+  }
+  to {
+    box-shadow: 0 var(--setzkasten-hairline-y) 0 color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  }
+}
+@layer utilities.setzkasten {
+  @supports (animation-timeline: scroll()) {
+    .setzkasten-modal-head {
+      animation: setzkasten-modal-scrolled linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: 0 0.5rem;
+      --setzkasten-hairline-y: 1px;
+    }
+    .setzkasten-modal-foot {
+      animation: setzkasten-modal-scrolled reverse linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: calc(100% - 0.5rem) 100%;
+      --setzkasten-hairline-y: -1px;
+    }
   }
 }
 

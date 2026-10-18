@@ -66,6 +66,87 @@ defmodule Setzkasten.OverlaysTest do
     assert count(doc, ".modal-box > div:first-child:not(:has(*))") == 0
   end
 
+  test "a modal pins its title row and actions while the body between them scrolls" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="m" title="Kategorie">
+        Body<:actions><.button>Speichern</.button></:actions>
+      </.modal>
+      """)
+
+    head = classes(doc, ".modal-box > div:first-child")
+    assert "setzkasten-modal-head" in head
+    assert Enum.all?(~w(sticky -top-6 -mt-6 pt-6 -mx-6 px-6 bg-inherit z-30), &(&1 in head))
+
+    foot = classes(doc, ".modal-action")
+    assert "setzkasten-modal-foot" in foot
+    assert Enum.all?(~w(sticky -bottom-6 -mb-6 pb-6 -mx-6 px-6 bg-inherit z-30), &(&1 in foot))
+
+    box = classes(doc, ".modal-box")
+    assert "modal-bottom" in classes(doc, "dialog")
+    refute Enum.any?(box, &String.starts_with?(&1, "max-h-"))
+    refute Enum.any?(box, &String.starts_with?(&1, "scroll-p"))
+
+    doc = parse(~H|<.modal id="p" placement={:end}>Body</.modal>|)
+    assert "setzkasten-modal-head" in classes(doc, ".modal-box > div:first-child")
+    refute "modal-bottom" in classes(doc, "dialog")
+    assert count(doc, ".modal-action") == 0
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    # In the setzkasten layer, so an app's max-h-* class on the modal still wins.
+    assert [_, layer] =
+             Regex.run(
+               ~r/@layer (\S+) \{(?:(?!\n@layer)[\s\S])*?\n  \.modal-bottom > \.modal-box \{\s*max-height: calc\(100dvh - 5em\);/,
+               css
+             )
+
+    assert layer == "utilities.setzkasten"
+
+    # Scroll room on the content, not the box, so focusing a pinned button scrolls nothing.
+    assert css =~
+             ~r/\.modal-box > :not\(\.setzkasten-modal-head, \.setzkasten-modal-foot\) \* \{\s*scroll-margin-block: var\(--setzkasten-modal-head-room, 0px\) var\(--setzkasten-modal-foot-room, 0px\);/
+
+    assert css =~
+             ~r/\.modal-box:has\(> \.setzkasten-modal-head\) \{\s*--setzkasten-modal-head-room: 5\.5rem;/
+
+    assert css =~
+             ~r/\.modal-box:has\(> \.setzkasten-modal-foot\) \{\s*--setzkasten-modal-foot-room: 6rem;/
+
+    assert css =~ ~r/\.setzkasten-modal-head \{\s*animation: setzkasten-modal-scrolled/
+    assert css =~ ~r/\.setzkasten-modal-foot \{\s*animation: setzkasten-modal-scrolled reverse/
+  end
+
+  test "a modal's pinned parts stack above row actions and open row menus scrolling under them" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="m" title="Kategorie">
+        <.list>
+          <.list_row id="r" title="Obst"><:action label="Löschen" on_click="delete" /></.list_row>
+        </.list>
+        <:actions><.button>Speichern</.button></:actions>
+      </.modal>
+      """)
+
+    z = fn selector ->
+      for class <- classes(doc, selector),
+          [_, n] <- Regex.scan(~r/^(?:open:)?z-(\d+)$/, class),
+          do: String.to_integer(n)
+    end
+
+    row_z = z.("li details") ++ z.("li > div.relative")
+    assert row_z != []
+
+    for part <- [".setzkasten-modal-head", ".setzkasten-modal-foot"] do
+      assert [own] = z.(part)
+      assert own > Enum.max(row_z)
+    end
+  end
+
   test "show and hide modal dispatch to the dialog" do
     assert Jason.encode!(Setzkasten.Components.Overlays.show_modal("m")) =~
              "setzkasten:show-modal"

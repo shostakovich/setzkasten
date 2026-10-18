@@ -36,6 +36,12 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button phx-click={show_modal("long-form")} aria-haspopup="dialog">
           Langes Formular (sticky action_bar)
         </.button>
+        <.button phx-click={show_modal("long-choice")} aria-haspopup="dialog">
+          Lange Auswahl (:actions)
+        </.button>
+        <.button phx-click={show_modal("long-choice-panel")} aria-haspopup="dialog">
+          Lange Auswahl im Seitenpanel
+        </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
@@ -113,6 +119,8 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           </.action_bar>
         </form>
       </.modal>
+      <.long_choice id="long-choice" placement={:center} />
+      <.long_choice id="long-choice-panel" placement={:end} />
       <.modal id="category-panel" title="Kategorie Lebensmittel" placement={:end}>
         <p class="py-4 text-sm">
           Budget Oktober <.amount value={45_000} />, ausgegeben <.amount value={31_248} />.
@@ -351,6 +359,38 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </.tooltip>
       </.demo>
     </.showcase>
+    """
+  end
+
+  @categories ~w(Lebensmittel Drogerie Getränke Haushalt Kinder Haustier Garten Baumarkt Apotheke
+                  Kleidung Geschenke Freizeit Sonstiges)
+
+  attr :id, :string, required: true
+  attr :placement, :atom, required: true
+
+  defp long_choice(assigns) do
+    assigns = assign(assigns, :categories, @categories)
+
+    ~H"""
+    <.modal id={@id} title="Kategorie wählen" placement={@placement}>
+      <form id={"#{@id}-form"} class="pt-2" phx-submit="noop">
+        <.input
+          type="radio_group"
+          id={"#{@id}-category"}
+          name="category"
+          label="Kategorie"
+          hide_label
+          value="Lebensmittel"
+          options={Enum.map(@categories, &{&1, &1})}
+        />
+      </form>
+      <:actions>
+        <.button phx-click={hide_modal(@id)}>Abbrechen</.button>
+        <.button type="submit" form={"#{@id}-form"} variant={:primary} phx-click={hide_modal(@id)}>
+          Speichern
+        </.button>
+      </:actions>
+    </.modal>
     """
   end
 
