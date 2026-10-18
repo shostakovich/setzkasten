@@ -413,15 +413,15 @@ defmodule Setzkasten.Components.Data do
   `muted` quiets a done or secondary row: the title takes the meta's 70 % at normal weight,
   trailing values follow it, the leading content fades. Hover and tap stay as they are.
 
-  `exit={:strike}` (needs `id`) animates every row LiveView removes: the title strikes through
-  (if not yet struck), then the row collapses, and LiveView applies the next patches once it is
-  gone. That includes rows that only leave the view (a stream reset for a filter, a stream
-  `limit`), so use it on lists whose rows leave by being done, e.g. checked-off items. A tap on
-  an `on_click` title strikes at once, before the app's own click runs; a link row's tap opens
-  its page and does not strike. On a live navigation the rows go at once. A row the server
-  keeps stays struck until it renders the row again. The row's colocated hook holds its
-  removal, so the app must register Setzkasten's hooks (README step 3); otherwise LiveView
-  waits for the hook.
+  `exit={:strike}` (needs `id`) animates every row LiveView removes, in a stream or a `:for` list:
+  the title strikes through (if not yet struck), then the row collapses in its place, and LiveView
+  applies the next patches once it is gone. That includes rows that only leave the view (a stream
+  reset for a filter, a stream `limit`), so use it on lists whose rows leave by being done, e.g.
+  checked-off items. A tap on an `on_click` title strikes at once, before the app's own click
+  runs; a link row's tap opens its page and does not strike. On a live navigation the rows go at
+  once. A row the server keeps stays struck until it renders the row again. The row's colocated
+  hook holds its removal, so the app must register Setzkasten's hooks (README step 3); otherwise
+  LiveView waits for the hook.
 
       <.list_row :for={{id, item} <- @streams.items} id={id} title={item.name} exit={:strike}
                  on_click={JS.push("check", value: %{id: item.id})} />
@@ -529,6 +529,34 @@ defmodule Setzkasten.Components.Data do
           // Not a JS command: those stick across patches, and a row the server renders again drops its strike.
           this.el.addEventListener("setzkasten:strike", () => this.el.classList.add("setzkasten-struck"))
           this.el.addEventListener("setzkasten:exit", (e) => this.exit((e.detail && e.detail.done) || (() => {})))
+          this.observer = new MutationObserver(() => this.remember())
+          this.remember()
+        },
+        destroyed() {
+          this.observer.disconnect()
+        },
+        // Runs after each patch, so exit() inside the next one still sees the neighbour from before it.
+        remember() {
+          const parent = this.el.parentNode
+          if (parent !== this.parent) {
+            this.observer.disconnect()
+            if (parent) this.observer.observe(parent, {childList: true})
+            this.parent = parent
+          }
+          this.prev = this.el.previousElementSibling
+        },
+        // morphdom moves the rows below in front of a removed row when comments or text sit between rows.
+        restore() {
+          const el = this.el
+          if (el.parentNode !== this.parent || (this.prev && this.prev.parentNode !== this.parent)) return
+          const ahead = []
+          let n = this.prev ? this.prev.nextSibling : this.parent.firstChild
+          for (; n && n !== el; n = n.nextSibling) ahead.push(n)
+          if (!n || !ahead.some((node) => node.nodeType === Node.ELEMENT_NODE)) return
+          // Moving the others, not this row, keeps its focus and its running strike transition.
+          const focused = document.activeElement
+          el.after(...ahead)
+          if (focused !== document.activeElement && focused && focused.isConnected) focused.focus({preventScroll: true})
         },
         // LiveView holds every patch until done(), so it runs whatever happens.
         async exit(done) {
@@ -538,6 +566,7 @@ defmodule Setzkasten.Components.Data do
             // On a live navigation LiveView removes every row, and the new main view is still detached.
             const main = this.liveSocket.main
             if (main && !main.el.isConnected) return
+            this.restore()
             el.classList.add("setzkasten-struck")
             const line = el.querySelector(".setzkasten-strike")
             await settled(line ? line.getAnimations() : [])

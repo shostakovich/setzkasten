@@ -268,6 +268,24 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           >/screens/shopping</.link>.
         </:note>
       </.demo>
+      <.demo title="Abhaken in einer Liste ohne Stream (:for mit :key)">
+        <.list id="basket" size={:dense}>
+          <.list_row
+            :for={{id, name} <- @basket}
+            :key={id}
+            id={"basket-#{id}"}
+            title={name}
+            exit={:strike}
+            on_click={JS.push("basket_check", value: %{id: id})}
+          />
+        </.list>
+        <.button size={:sm} variant={:ghost} phx-click="basket_reset" class="mt-2">
+          Zurücksetzen
+        </.button>
+        <:note>
+          Die abgehakte Zeile bleibt an ihrem Platz, bis sie zugeklappt ist.
+        </:note>
+      </.demo>
     </.showcase>
     """
   end

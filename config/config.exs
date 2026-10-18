@@ -39,6 +39,9 @@ if config_env() == :dev do
       env: node_path
     ]
 
+  # As in a generated Phoenix app: the comments between list rows change how morphdom moves them.
+  config :phoenix_live_view, debug_heex_annotations: true
+
   config :setzkasten, Setzkasten.Dev.Endpoint,
     http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT", "4110"))],
     server: true,
