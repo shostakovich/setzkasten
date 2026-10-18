@@ -294,12 +294,16 @@ defmodule Setzkasten.Components.Data do
   `class` goes on the value, as a trailing's does (`md:w-40`). It takes the list's `id` with
   `-foot`, so in a stream LiveView keeps it and adds rows above it.
 
+  `size={:dense}` makes every row 53px tall, as a one-line `:md` row, also with one meta line
+  or a 40px leading tile, e.g. for a shopping list.
+
       <.list>
         <.list_row :for={b <- @bookings} title={b.title}>…<:action label="Löschen" … /></.list_row>
         <:foot label="Summe" actions={1}><.amount value={@total} /></:foot>
       </.list>
   """
   attr :id, :string, default: nil
+  attr :size, :atom, default: :md, values: [:md, :dense]
   attr :flush, :boolean, default: false
   attr :class, :any, default: nil
   attr :rest, :global
@@ -315,7 +319,12 @@ defmodule Setzkasten.Components.Data do
 
   def list(assigns) do
     ~H"""
-    <ul id={@id} class={["list", !@flush && flat(), @class]} data-focus-fallback {@rest}>
+    <ul
+      id={@id}
+      class={["list", @size == :dense && "setzkasten-list-dense", !@flush && flat(), @class]}
+      data-focus-fallback
+      {@rest}
+    >
       {render_slot(@inner_block)}
       <li
         :for={{foot, i} <- Enum.with_index(@foot)}
@@ -401,6 +410,22 @@ defmodule Setzkasten.Components.Data do
   the icon buttons' column (e.g. `md:w-20 justify-end`), so trailing columns line up across
   lists whose rows have a different number of actions.
 
+  `muted` quiets a done or secondary row: the title takes the meta's 70 % at normal weight,
+  trailing values follow it, the leading content fades. Hover and tap stay as they are.
+
+  `exit={:strike}` (needs `id`) animates every row LiveView removes: the title strikes through
+  (if not yet struck), then the row collapses, and LiveView applies the next patches once it is
+  gone. That includes rows that only leave the view (a stream reset for a filter, a stream
+  `limit`), so use it on lists whose rows leave by being done, e.g. checked-off items. A tap on
+  an `on_click` title strikes at once, before the app's own click runs; a link row's tap opens
+  its page and does not strike. On a live navigation the rows go at once. A row the server
+  keeps stays struck until it renders the row again. The row's colocated hook holds its
+  removal, so the app must register Setzkasten's hooks (README step 3); otherwise LiveView
+  waits for the hook.
+
+      <.list_row :for={{id, item} <- @streams.items} id={id} title={item.name} exit={:strike}
+                 on_click={JS.push("check", value: %{id: item.id})} />
+
       <.list_row title={post.title} navigate={~p"/posts/\#{post}"}>
         <:leading><.icon name="file-text" class="size-5 text-base-content/70" /></:leading>
         <:meta>{join_meta(["Geändert am 07.10.2026", "1.240 Wörter"])}</:meta>
@@ -426,6 +451,8 @@ defmodule Setzkasten.Components.Data do
   attr :trailing_on_phone, :atom, default: :line, values: [:line, :meta, :title]
   attr :actions_class, :any, default: nil, doc: "the icon buttons' column, e.g. a fixed width"
   attr :confirm_id, :string, default: "confirm-delete"
+  attr :muted, :boolean, default: false, doc: "a done or secondary row"
+  attr :exit, :atom, default: :none, values: [:none, :strike], doc: "`:strike` needs `id`"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
@@ -454,11 +481,20 @@ defmodule Setzkasten.Components.Data do
     attr :inline, :boolean, doc: "with `menu={:always}`: also an icon button from `md`"
   end
 
+  def list_row(%{exit: :strike, id: nil}) do
+    raise ArgumentError,
+          "<.list_row exit={:strike}> needs an id: LiveView hooks run on elements with one"
+  end
+
   def list_row(assigns) do
+    link? = Enum.any?([assigns.navigate, assigns.patch, assigns.href])
+
     assigns =
       assign(assigns,
-        link?: Enum.any?([assigns.navigate, assigns.patch, assigns.href]),
-        title_click: assigns.on_click && click_js(assigns.on_click, assigns[:"phx-target"]),
+        link?: link?,
+        title_click: title_click(assigns, link?),
+        title_class:
+          if(assigns.muted, do: "font-normal text-base-content/70", else: "font-medium"),
         menu_label:
           if(assigns.title,
             do: "#{assigns.actions_label}: #{assigns.title}",
@@ -478,6 +514,60 @@ defmodule Setzkasten.Components.Data do
       )
 
     ~H"""
+    <script :type={ColocatedHook} name=".RowExit">
+      const settled = (animations) => Promise.all(animations.map((a) => a.finished.catch(() => null)))
+      const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled], [type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"
+      const visible = (el) => el.getClientRects().length > 0
+      const focusIn = (row) => {
+        if (row.classList.contains("setzkasten-row-collapse") || !visible(row)) return false
+        const target = [...row.querySelectorAll(FOCUSABLE)].find(visible)
+        if (target) target.focus()
+        return !!target
+      }
+      export default {
+        mounted() {
+          // Not a JS command: those stick across patches, and a row the server renders again drops its strike.
+          this.el.addEventListener("setzkasten:strike", () => this.el.classList.add("setzkasten-struck"))
+          this.el.addEventListener("setzkasten:exit", (e) => this.exit((e.detail && e.detail.done) || (() => {})))
+        },
+        // LiveView holds every patch until done(), so it runs whatever happens.
+        async exit(done) {
+          const el = this.el
+          const timer = setTimeout(done, 1000)
+          try {
+            // On a live navigation LiveView removes every row, and the new main view is still detached.
+            const main = this.liveSocket.main
+            if (main && !main.el.isConnected) return
+            el.classList.add("setzkasten-struck")
+            const line = el.querySelector(".setzkasten-strike")
+            await settled(line ? line.getAnimations() : [])
+            el.style.setProperty("--setzkasten-row-height", `${el.offsetHeight}px`)
+            el.classList.add("setzkasten-row-collapse")
+            await settled(el.getAnimations())
+            if (el.contains(document.activeElement)) this.refocus()
+            el.hidden = true
+          } finally {
+            clearTimeout(timer)
+            done()
+          }
+        },
+        // The next row, else the previous one, else the list or #main, as the modal's return.
+        refocus() {
+          const scope = this.el.closest("[data-focus-fallback]")
+          const row = (scope && [...scope.children].find((child) => child.contains(this.el))) || this.el
+          const siblings = (key) => {
+            const list = []
+            for (let n = row[key]; n; n = n[key]) list.push(n)
+            return list
+          }
+          if ([...siblings("nextElementSibling"), ...siblings("previousElementSibling")].some(focusIn)) return
+          const target = scope && visible(scope) ? scope : document.getElementById("main")
+          if (!target) return
+          if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
+          target.focus()
+        }
+      }
+    </script>
     <li
       id={@id}
       class={[
@@ -488,11 +578,17 @@ defmodule Setzkasten.Components.Data do
         @class
       ]}
       phx-target={!@on_click && assigns[:"phx-target"]}
+      phx-hook={@exit == :strike && "Setzkasten.Components.Data.RowExit"}
+      phx-remove={@exit == :strike && row_exit()}
       {@rest}
     >
       <div
         :if={@leading != []}
-        class={["flex items-center", @wrap? && "max-md:row-[1/span_2] max-md:self-start"]}
+        class={[
+          "flex items-center",
+          @wrap? && "max-md:row-[1/span_2] max-md:self-start",
+          @muted && "opacity-70"
+        ]}
       >
         {render_slot(@leading)}
       </div>
@@ -501,7 +597,10 @@ defmodule Setzkasten.Components.Data do
              formatting context) takes the full width below it, or sits beside a second line. --%>
         <div
           :if={@title_trailing?}
-          class="float-end ms-3 flex flex-col items-end text-end tabular-nums md:hidden"
+          class={[
+            "float-end ms-3 flex flex-col items-end text-end tabular-nums md:hidden",
+            @muted && "text-base-content/70"
+          ]}
         >
           {render_slot(@trailing, :title)}
         </div>
@@ -510,20 +609,20 @@ defmodule Setzkasten.Components.Data do
           navigate={@navigate}
           patch={@patch}
           href={@href}
-          class={["font-medium wrap-anywhere", stretched()]}
+          class={[@title_class, "wrap-anywhere", stretched()]}
         >
-          {@title}{render_slot(@inner_block)}
+          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
         </.link>
         <button
           :if={!@link? && @title_click}
           type="button"
-          class={["block cursor-pointer text-start font-medium wrap-anywhere", stretched()]}
+          class={["block cursor-pointer text-start wrap-anywhere", @title_class, stretched()]}
           phx-click={@title_click}
         >
-          {@title}{render_slot(@inner_block)}
+          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
         </button>
-        <p :if={!@link? && !@title_click} class="font-medium wrap-anywhere">
-          {@title}{render_slot(@inner_block)}
+        <p :if={!@link? && !@title_click} class={[@title_class, "wrap-anywhere"]}>
+          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
         </p>
         <p :for={line <- @meta_lines} class="text-sm text-base-content/70 truncate">
           {render_slot(line)}
@@ -551,6 +650,7 @@ defmodule Setzkasten.Components.Data do
               @grow_column
             ]
           ),
+          @muted && "text-base-content/70",
           trailing[:class]
         ]}
       >
@@ -655,6 +755,24 @@ defmodule Setzkasten.Components.Data do
     </li>
     """
   end
+
+  attr :strike, :boolean, required: true
+  slot :inner_block, required: true
+
+  defp row_title(%{strike: true} = assigns),
+    do: ~H|<span class="setzkasten-strike">{render_slot(@inner_block)}</span>|
+
+  defp row_title(assigns), do: ~H|{render_slot(@inner_block)}|
+
+  defp title_click(assigns, link?) do
+    click = if assigns.on_click && !link?, do: click_js(assigns.on_click, assigns[:"phx-target"])
+
+    if assigns.exit == :strike and click,
+      do: JS.dispatch("setzkasten:strike", to: {:closest, "li"}) |> JS.concat(click),
+      else: click
+  end
+
+  defp row_exit, do: JS.dispatch("setzkasten:exit", blocking: true)
 
   # With the trailing content at the end of the meta line, the last line renders beside it.
   defp meta_lines(%{trailing: [_ | _], trailing_on_phone: :meta, meta: meta}),

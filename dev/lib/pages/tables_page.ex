@@ -247,6 +247,24 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           über die ganze Zeile, Hover-Fläche wie bei Links; der Tastaturfokus umrandet die Zeile.
         </:note>
       </.demo>
+      <.demo title="Kompakt (size={:dense}) und gedämpft (muted)">
+        <.list size={:dense}>
+          <.list_row title="Bananen" on_click="noop">
+            <:leading><.plush name="cart" size={:lg} /></:leading>
+            <:meta>6 Stück, nicht zu reif</:meta>
+          </.list_row>
+          <.list_row title="Brot" on_click="noop">
+            <:leading><.plush name="utensils" size={:lg} /></:leading>
+          </.list_row>
+          <.list_row title="Butter" on_click="noop" muted>
+            <:leading><.plush name="utensils" size={:lg} /></:leading>
+          </.list_row>
+        </.list>
+        <:note>
+          Zeilen 53px, auch mit Meta-Zeile. Beim Abhaken mit <code>exit={"{:strike}"}</code>
+          streicht der Titel durch, dann klappt die Zeile zu.
+        </:note>
+      </.demo>
     </.showcase>
     """
   end
@@ -322,6 +340,19 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
 
     <%!-- the title as a button: on_click takes an event name (+ phx-target) or %JS{} --%>
     <.list_row title={account.name} on_click={JS.push("edit", value: %{id: account.id})} />
+
+    <%!-- shopping list: 53px rows, a tap strikes the title, the removed row collapses --%>
+    <.list id="items" size={:dense} phx-update="stream">
+      <.list_row :for={{id, item} <- @streams.items} id={id} title={item.name} exit={:strike}
+                 on_click={JS.push("check", value: %{id: item.id})}>
+        <:leading><.plush name={item.plush} size={:lg} /></:leading>
+        <:meta :if={item.note}>{item.note}</:meta>
+      </.list_row>
+    </.list>
+    <.list id="recent" size={:dense}>
+      <.list_row :for={item <- @recent} id={"recent-#{item.id}"} title={item.name} muted
+                 on_click={JS.push("uncheck", value: %{id: item.id})} />
+    </.list>
     """
   end
 end

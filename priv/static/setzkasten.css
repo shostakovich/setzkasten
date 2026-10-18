@@ -719,6 +719,15 @@
   }
 }
 
+/* <.list size={:dense}>: every row 53px, as tall as a one-line :md row, also with a meta line
+   (21px title, 20px meta) or a 40px leading tile. */
+@layer utilities.setzkasten {
+  .setzkasten-list-dense > .list-row {
+    min-height: 3.3125rem;
+    padding-block: 0.375rem;
+  }
+}
+
 /* The page bar of detail pages (app_shell's :bar) on phones: a badge shows as its dot only,
    the label stays for screen readers, so the title keeps the room. A neutral badge has no
    dot that says anything on its own, so it is left to screen readers entirely. */
@@ -1364,6 +1373,49 @@
     }
     .toggle {
       transition: color var(--setzkasten-duration);
+    }
+  }
+}
+
+/* <.list_row exit={:strike}>: the title's strike line draws from its start, across wrapped lines
+   (an inline background); the row hook then collapses the row from its measured height. */
+@keyframes setzkasten-row-collapse {
+  from {
+    height: var(--setzkasten-row-height);
+  }
+  to {
+    height: 0;
+    min-height: 0;
+    padding-block: 0;
+    opacity: 0;
+  }
+}
+@keyframes setzkasten-row-fade {
+  to {
+    opacity: 0;
+  }
+}
+@layer utilities.setzkasten {
+  .setzkasten-strike {
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 0.65em / 0% max(1px, 0.075em);
+    transition:
+      background-size var(--setzkasten-duration-overlay) var(--setzkasten-ease-out),
+      color var(--setzkasten-duration-overlay) var(--setzkasten-ease-out);
+  }
+  .setzkasten-struck .setzkasten-strike {
+    background-size: 100% max(1px, 0.075em);
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  .setzkasten-row-collapse {
+    overflow: hidden;
+    animation: setzkasten-row-collapse var(--setzkasten-duration) var(--setzkasten-ease-in) forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .setzkasten-strike {
+      transition: none;
+    }
+    .setzkasten-row-collapse {
+      animation: setzkasten-row-fade var(--setzkasten-duration-press) linear forwards;
     }
   }
 }
