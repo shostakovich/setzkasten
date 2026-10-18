@@ -542,4 +542,14 @@ defmodule Setzkasten.ActionsTest do
 
     assert "btn-sm" in classes(doc, ".join-item")
   end
+
+  test "the dock offset is 0 while the on-screen keyboard is up" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-dock\) \{\s*--setzkasten-dock-offset: calc\(4rem \+ env\(safe-area-inset-bottom\)\);/
+
+    assert css =~
+             ~s|:root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {\n    --setzkasten-dock-offset: 0px;|
+  end
 end

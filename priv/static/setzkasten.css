@@ -979,11 +979,25 @@
   }
 }
 
-/* The dock gives way to the on-screen keyboard; date and time fields open a picker instead. */
-@media (pointer: coarse) {
-  body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {
-    display: none;
+/* The dock's height on the root, so bars outside the shell clear it too. The dock gives way to the
+   on-screen keyboard (date and time fields open a picker instead), leaving nothing to clear. */
+@media (width < 48rem) {
+  :root:has(.setzkasten-dock) {
+    --setzkasten-dock-offset: calc(4rem + env(safe-area-inset-bottom));
   }
+}
+@media (pointer: coarse) {
+  :root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {
+    --setzkasten-dock-offset: 0px;
+    .dock {
+      display: none;
+    }
+  }
+}
+
+/* What a bar fixed to the bottom stands on: the dock or, while typing, the on-screen keyboard. */
+:root {
+  --setzkasten-bottom-offset: max(var(--setzkasten-dock-offset, 0px), var(--setzkasten-keyboard-inset, 0px));
 }
 
 /* Motion (guides/design-system.md 2.9); replaces daisyUI's timings, which ignore reduced motion for dialogs. */

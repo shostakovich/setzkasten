@@ -480,6 +480,10 @@ defmodule Setzkasten.Components.Layout do
   `theme-color` at an explicit choice (a `data-theme` set by the store or the server). Put it in the root layout's `<head>` after `<.theme_meta />`; pass the CSP nonce if
   the app sends one.
 
+  On every page it publishes the on-screen keyboard's height as `--setzkasten-keyboard-inset`
+  on `<html>` (0 unless a field that takes typing has focus on a touch screen), so bars at the
+  bottom can sit above the keyboard.
+
       <.theme_script nonce={assigns[:csp_nonce]} />
   """
   attr :nonce, :string, default: nil
@@ -487,7 +491,8 @@ defmodule Setzkasten.Components.Layout do
   def theme_script(assigns) do
     ~H"""
     <script nonce={@nonce}>
-      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t); if (localStorage.getItem("setzkasten:sidebar") === "collapsed") r.setAttribute("data-sidebar", "collapsed") } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })()
+      (() => { const r = document.documentElement; try { const t = localStorage.getItem("setzkasten:theme"); if (t === "light" || t === "dark") r.setAttribute("data-theme", "zipfel-" + t); if (localStorage.getItem("setzkasten:sidebar") === "collapsed") r.setAttribute("data-sidebar", "collapsed") } catch (_) {} const v = (r.getAttribute("data-theme") || "").match(/(light|dark)$/); const s = v && document.querySelector('meta[name="theme-color"][media*="' + v[1] + '"]'); if (s) { const m = document.createElement("meta"); m.id = "setzkasten-theme-color"; m.name = "theme-color"; m.content = s.content; s.parentNode.insertBefore(m, document.querySelector('meta[name="theme-color"]')) } })();
+      (() => { const v = window.visualViewport; if (!v) return; const touch = matchMedia("(pointer: coarse)"); const typing = ':read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus'; let f; const follow = () => { cancelAnimationFrame(f); f = requestAnimationFrame(() => { const k = touch.matches && document.querySelector(typing) ? Math.max(0, Math.round(innerHeight - v.height - v.offsetTop)) : 0; document.documentElement.style.setProperty("--setzkasten-keyboard-inset", k + "px") }) }; v.addEventListener("resize", follow); v.addEventListener("scroll", follow); addEventListener("focusin", follow); addEventListener("focusout", follow) })()
     </script>
     """
   end

@@ -1205,7 +1205,7 @@ defmodule Setzkasten.Components.Forms do
       "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10",
       "max-sm:-mx-4 max-sm:px-4",
       "[--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem] pt-(--setzkasten-bar-pad)",
-      "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset,0px)))]"
+      "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-bottom-offset)))]"
     ]
   end
 end

@@ -263,8 +263,6 @@ defmodule Setzkasten.Components.Shell do
           ],
           else: "pl-[env(safe-area-inset-left)]"
         ),
-        @dock_items != [] &&
-          "max-md:[--setzkasten-dock-offset:calc(4rem+env(safe-area-inset-bottom))]",
         @class
       ]}
     >
@@ -523,7 +521,7 @@ defmodule Setzkasten.Components.Shell do
       <nav
         :if={@dock_items != []}
         aria-label={@nav_label}
-        class="dock md:hidden z-30 border-t border-base-content/10"
+        class="setzkasten-dock dock md:hidden z-30 border-t border-base-content/10"
       >
         <.nav_target
           :for={item <- @dock_items}

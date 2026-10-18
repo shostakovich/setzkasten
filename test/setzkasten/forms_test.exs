@@ -344,7 +344,11 @@ defmodule Setzkasten.FormsTest do
              &(&1 in bar)
            )
 
-    assert Enum.any?(bar, &(&1 =~ "env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset"))
+    assert Enum.any?(
+             bar,
+             &(&1 =~ "env(safe-area-inset-bottom)_-_var(--setzkasten-bottom-offset)")
+           )
+
     refute "max-sm:-mx-4" in classes(parse(~H|<.action_bar>x</.action_bar>|), "div")
   end
 

@@ -886,7 +886,7 @@ defmodule Setzkasten.ShellTest do
 
     # :read-write leaves out sliders, colour and file inputs, buttons, checkboxes and read-only fields.
     assert css =~
-             ~s|body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {\n    display: none;|
+             ~s|:root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {\n    --setzkasten-dock-offset: 0px;\n    .dock {\n      display: none;|
   end
 
   test "a sidebar nav footer brings the more button, so phones reach it in the sidebar" do
@@ -1290,5 +1290,19 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "#back-sidebar") == 1
     assert count(doc, "#back-dialog") == 1
     assert count(doc, "#back-rail") == 1
+  end
+
+  test "the dock publishes its offset on the root, so bars outside the shell clear it" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>A</:brand><:nav key={:a} label="A" icon="list" navigate="/a" />x
+      </.app_shell>
+      """)
+
+    assert "setzkasten-dock" in classes(doc, "nav.dock")
+    refute Enum.any?(classes(doc, "#app-shell"), &(&1 =~ "dock-offset"))
   end
 end
