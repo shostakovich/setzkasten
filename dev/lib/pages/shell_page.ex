@@ -55,7 +55,8 @@ defmodule Setzkasten.Dev.Pages.ShellPage do
             {"dashboard", ":topbar mit Plüsch-Dock"},
             {"budget",
              ":sidebar mit Plüsch-Bereichswechsel, Kontogruppen, Summen, negativen Salden und Knopf-Eintrag"},
-            {"budget?m=settings", ":sidebar im Einstellungsmodus mit :back"}
+            {"budget?m=settings", ":sidebar im Einstellungsmodus mit :back"},
+            {"shopping", ":topbar mit Dock und Composer"}
           ]
         }
         title={"#{label} – /screens/#{slug}"}

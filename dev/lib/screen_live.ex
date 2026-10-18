@@ -3,7 +3,7 @@ defmodule Setzkasten.Dev.ScreenLive do
   use Phoenix.LiveView
   use Setzkasten
   alias Phoenix.LiveView.JS
-  alias Setzkasten.Dev.{Budget, Dashboard, Data, Holdings}
+  alias Setzkasten.Dev.{Budget, Dashboard, Data, Holdings, Shopping}
 
   @screens [
     {"posts", "Beiträge (CMS)",
@@ -17,7 +17,9 @@ defmodule Setzkasten.Dev.ScreenLive do
     {"dashboard", "Startseite (Hausautomation)",
      "Live-Kacheln, Raumluft, Energiefluss, Steckdosen und Diagramme, Plüsch-Dock."},
     {"budget", "Konto (Haushaltsbuch)",
-     "Seitenleiste mit Kontogruppen, Summen und negativen Salden; Auswahlleiste mit Kategorisieren."}
+     "Seitenleiste mit Kontogruppen, Summen und negativen Salden; Auswahlleiste mit Kategorisieren."},
+    {"shopping", "Einkaufsliste (Haushalt)",
+     "Kompakte Liste mit Abhaken, „Zuletzt verwendet“, Composer über dem Dock; Toasts mit Aktion."}
   ]
 
   # Allocation tab, its URL parameter and label; the first is the default.
@@ -42,8 +44,14 @@ defmodule Setzkasten.Dev.ScreenLive do
        live_step: 0,
        ticking: false,
        transactions: Budget.transactions(),
-       selected: []
-     )}
+       selected: [],
+       shopping: Map.new(Shopping.open() ++ Shopping.recent(), &{&1.id, &1}),
+       open_ids: Enum.map(Shopping.open(), & &1.id),
+       recent_ids: Enum.map(Shopping.recent(), & &1.id),
+       entry: ""
+     )
+     |> stream_configure(:items, dom_id: &"item-#{&1.id}")
+     |> stream(:items, Shopping.open())}
   end
 
   @impl true
@@ -137,7 +145,82 @@ defmodule Setzkasten.Dev.ScreenLive do
   def handle_event("add_account", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Konto hinzufügen“.")}
 
+  def handle_event("check", %{"id" => id}, socket) do
+    if id in socket.assigns.open_ids do
+      item = socket.assigns.shopping[id]
+
+      {:noreply,
+       socket
+       |> check(item)
+       |> put_toast("#{item.name} abgehakt",
+         action: "Rückgängig",
+         on_action: JS.push("uncheck", value: %{id: id})
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("check_elsewhere", _params, %{assigns: %{open_ids: [id | _]}} = socket),
+    do: {:noreply, check(socket, socket.assigns.shopping[id])}
+
+  def handle_event("uncheck", %{"id" => id}, socket) do
+    if id in socket.assigns.recent_ids do
+      item = socket.assigns.shopping[id]
+      open_ids = Shopping.put_back(socket.assigns.open_ids, id)
+
+      {:noreply,
+       socket
+       |> assign(open_ids: open_ids)
+       |> update(:recent_ids, &List.delete(&1, id))
+       |> stream_insert(:items, item, at: Enum.find_index(open_ids, &(&1 == id)))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("entry", %{"entry" => %{"name" => name}}, socket),
+    do: {:noreply, assign(socket, entry: name)}
+
+  def handle_event("add_entry", %{"entry" => %{"name" => name}}, socket) do
+    case String.trim(name) do
+      "" ->
+        {:noreply, socket}
+
+      name ->
+        item = Shopping.item(name)
+
+        {:noreply,
+         socket
+         |> update(:shopping, &Map.put(&1, item.id, item))
+         |> update(:open_ids, &(&1 ++ [item.id]))
+         |> stream_insert(:items, item)
+         |> assign(entry: "")
+         |> put_toast("#{name} hinzugefügt",
+           action: "Angabe",
+           on_action: JS.push("entry_detail", value: %{id: item.id})
+         )}
+    end
+  end
+
+  def handle_event("entry_detail", %{"id" => id}, socket) do
+    case socket.assigns.shopping[id] do
+      nil ->
+        {:noreply, socket}
+
+      item ->
+        {:noreply, put_flash(socket, :info, "Hier öffnet die App die Angaben zu „#{item.name}“.")}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  defp check(socket, item) do
+    socket
+    |> update(:open_ids, &List.delete(&1, item.id))
+    |> update(:recent_ids, &[item.id | &1])
+    |> stream_delete(:items, item)
+  end
 
   @impl true
   def render(%{screen: "posts"} = assigns) do
@@ -768,6 +851,80 @@ defmodule Setzkasten.Dev.ScreenLive do
           </:item>
         </.dropdown>
       </.selection_bar>
+    </.app_shell>
+    <.flash_group flash={@flash} />
+    <.confirm_dialog />
+    """
+  end
+
+  def render(%{screen: "shopping"} = assigns) do
+    ~H"""
+    <.app_shell layout={:topbar} current={:list} width={:narrow}>
+      <:brand><.icon name="list" class="size-5 text-primary" />Schmaus</:brand>
+      <:nav key={:list} label="Liste" icon="list" navigate="/screens/shopping" />
+      <:nav key={:stock} label="Vorrat" icon="archive" navigate="/screens/shopping" />
+      <:nav key={:recipes} label="Rezepte" icon="book-open" navigate="/screens/shopping" />
+      <:nav key={:settings} label="Einstellungen" icon="settings" navigate="/screens/shopping" />
+      <.header>
+        Einkaufsliste
+        <:subtitle>{length(@open_ids)} Dinge · Wocheneinkauf</:subtitle>
+        <:actions>
+          <.button size={:sm} phx-click="check_elsewhere" disabled={@open_ids == []}>
+            Auf anderem Gerät abhaken
+          </.button>
+        </:actions>
+      </.header>
+      <.list id="shopping" size={:dense} phx-update="stream">
+        <.list_row
+          :for={{dom_id, item} <- @streams.items}
+          id={dom_id}
+          title={item.name}
+          exit={:strike}
+          on_click={JS.push("check", value: %{id: item.id})}
+        >
+          <:leading><.plush name={item.plush} size={:lg} /></:leading>
+          <:meta :if={item.note}>{item.note}</:meta>
+        </.list_row>
+      </.list>
+      <.empty_state :if={@open_ids == []} icon="check" title="Alles im Korb">
+        Was noch fehlt, kommt unten ins Feld.
+      </.empty_state>
+      <.section_heading :if={@recent_ids != []} id="recent-heading" size={:sm} class="pt-6">
+        Zuletzt verwendet
+      </.section_heading>
+      <.list :if={@recent_ids != []} id="recent" size={:dense} aria-labelledby="recent-heading">
+        <.list_row
+          :for={item <- Enum.map(Enum.take(@recent_ids, 5), &@shopping[&1])}
+          id={"recent-#{item.id}"}
+          title={item.name}
+          muted
+          on_click={JS.push("uncheck", value: %{id: item.id})}
+        >
+          <:leading><.plush name={item.plush} size={:lg} /></:leading>
+          <:meta :if={item.note}>{item.note}</:meta>
+        </.list_row>
+      </.list>
+      <.composer id="add-entry-bar">
+        <form
+          id="add-entry"
+          phx-change="entry"
+          phx-submit="add_entry"
+          class="flex items-end gap-2"
+        >
+          <div class="min-w-0 flex-1">
+            <.input
+              name="entry[name]"
+              id="entry-name"
+              value={@entry}
+              label="Was brauchst du?"
+              hide_label
+              placeholder="Was brauchst du?"
+              autocomplete="off"
+            />
+          </div>
+          <.button type="submit" variant={:primary} icon="plus" icon_only label="Hinzufügen" />
+        </form>
+      </.composer>
     </.app_shell>
     <.flash_group flash={@flash} />
     <.confirm_dialog />

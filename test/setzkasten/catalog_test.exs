@@ -20,11 +20,64 @@ defmodule Setzkasten.CatalogTest do
     end
   end
 
+  test "the actions page shows the shopping screen in one phone frame" do
+    {:ok, view, _} = live(build_conn(), "/actions")
+    assert has_element?(view, ~s|#composer iframe[src="/screens/shopping"][width="390"]|)
+    refute has_element?(view, ~s|#composer iframe[src="/screens/shopping"]:not([width="390"])|)
+  end
+
   test "the settings screen confirms a save on its button instead of a flash" do
     {:ok, view, _} = live(build_conn(), "/screens/settings")
     html = view |> element("#settings-form") |> render_submit()
     assert_push_event(view, "setzkasten:saved", %{id: "settings-save"})
     refute html =~ "Einstellungen gespeichert"
+  end
+
+  test "the shopping screen checks an item off with an undo toast and adds an entry" do
+    {:ok, view, _} = live(build_conn(), "/screens/shopping")
+    assert has_element?(view, "#add-entry-bar #add-entry")
+    assert has_element?(view, "#shopping[phx-update=stream] #item-1 img.plush.size-8")
+
+    html = view |> element("#item-1 button") |> render_click()
+    refute has_element?(view, "#item-1")
+    assert has_element?(view, "#recent li:first-child#recent-1")
+    assert html =~ "Bananen abgehakt"
+    assert has_element?(view, "#flash-group [role=status] button", "Rückgängig")
+
+    render_click(view, "uncheck", %{"id" => "1"})
+    assert has_element?(view, "#shopping li:first-child#item-1")
+    refute has_element?(view, "#recent-1")
+
+    html = view |> form("#add-entry", entry: %{name: "Milch"}) |> render_submit()
+    assert html =~ "Milch hinzugefügt"
+    assert has_element?(view, "#flash-group [role=status] button", "Angabe")
+    assert has_element?(view, "#shopping li", "Milch")
+  end
+
+  test "the shopping screen puts a recent item back and checks one off from elsewhere" do
+    {:ok, view, _} = live(build_conn(), "/screens/shopping")
+    assert has_element?(view, "#recent li.list-row", "Butter")
+
+    view |> element("#recent-13 button") |> render_click()
+    assert has_element?(view, "#shopping #item-13", "Butter")
+    refute has_element?(view, "#recent-13")
+
+    view |> element("button", "Auf anderem Gerät abhaken") |> render_click()
+    refute has_element?(view, "#item-1")
+    assert has_element?(view, "#recent-1")
+  end
+
+  test "the shopping screen ignores a second undo and details of an unknown entry" do
+    {:ok, view, _} = live(build_conn(), "/screens/shopping")
+    view |> element("#item-1 button") |> render_click()
+    render_click(view, "uncheck", %{"id" => "1"})
+    render_click(view, "uncheck", %{"id" => "1"})
+    render_click(view, "check", %{"id" => "1"})
+    render_click(view, "check", %{"id" => "1"})
+    assert has_element?(view, "#recent-1")
+
+    html = render_click(view, "entry_detail", %{"id" => "new-0"})
+    refute html =~ "Hier öffnet die App die Angaben"
   end
 
   test "the feedback page triggers a toast with an action" do

@@ -261,8 +261,11 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           </.list_row>
         </.list>
         <:note>
-          Zeilen 53px, auch mit Meta-Zeile. Beim Abhaken mit <code>exit={"{:strike}"}</code>
-          streicht der Titel durch, dann klappt die Zeile zu.
+          Zeilen 53px, auch mit Meta-Zeile. Abhaken mit <code>exit={"{:strike}"}</code>,
+          „Zuletzt verwendet“ und Eingabeleiste zeigt die Einkaufsliste: <.link
+            navigate="/screens/shopping"
+            class="link"
+          >/screens/shopping</.link>.
         </:note>
       </.demo>
     </.showcase>
