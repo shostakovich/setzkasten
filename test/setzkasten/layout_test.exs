@@ -180,6 +180,29 @@ defmodule Setzkasten.LayoutTest do
     assert script =~ ~s[r.setAttribute("data-sidebar", "collapsed")]
   end
 
+  test "the early script publishes the keyboard inset on every page, only while typing on a touch screen" do
+    assigns = %{}
+    script = rendered_to_string(~H|<.theme_script />|)
+    assert script =~ ~s|v.addEventListener("resize", follow)|
+    assert script =~ ~s|v.addEventListener("scroll", follow)|
+    assert script =~ ~s|addEventListener("focusin", follow)|
+    assert script =~ ~s|addEventListener("focusout", follow)|
+    assert script =~ ~s|setProperty("--setzkasten-keyboard-inset"|
+    assert script =~ "innerHeight - v.height - v.offsetTop"
+
+    # The same condition as the CSS rule that hides the dock, so a pinch-zoom or a scrollbar lifts nothing.
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    [typing] =
+      Regex.run(~r/@media \(pointer: coarse\) \{\s*:root:has\((.+)\) \{/, css,
+        capture: :all_but_first
+      )
+
+    assert script =~ ~s|const touch = matchMedia("(pointer: coarse)")|
+    assert script =~ "const typing = '#{typing}'"
+    assert script =~ "touch.matches && document.querySelector(typing) ?"
+  end
+
   test "an explicit theme choice wins over the media theme-color metas" do
     assigns = %{}
     script = rendered_to_string(~H|<.theme_script />|)

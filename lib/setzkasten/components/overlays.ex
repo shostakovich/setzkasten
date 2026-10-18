@@ -86,7 +86,9 @@ defmodule Setzkasten.Components.Overlays do
   bottom safe area, and centred from `sm` (`placement={:center}`),
   or a side panel (`placement={:end}` or `{:start}`, with a ✕ close button unless
   `close_button={false}`, for content that brings its own). Escape, the backdrop and `<form method="dialog">`
-  close it; focus moves in and back natively; `on_cancel` runs after every close.
+  close it; focus moves in and back natively; `on_cancel` runs after every close. The title
+  row and `:actions` stay in place while a long body scrolls between them; they reach into the
+  box's 24px padding, so a `class` should leave the padding as it is.
 
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
@@ -131,7 +133,13 @@ defmodule Setzkasten.Components.Overlays do
         @placement in [:start, :end] && "h-full max-h-none rounded-none",
         @class
       ]}>
-        <div :if={@title || @close?} class="flex items-start justify-between gap-2">
+        <div
+          :if={@title || @close?}
+          class={[
+            "setzkasten-modal-head flex items-start justify-between gap-2",
+            "sticky -top-6 z-30 -mx-6 -mt-6 bg-inherit px-6 pt-6"
+          ]}
+        >
           <h2 :if={@title} id={"#{@id}-title"} class="min-w-0 text-lg font-semibold wrap-anywhere">
             {@title}
           </h2>
@@ -142,7 +150,15 @@ defmodule Setzkasten.Components.Overlays do
           </form>
         </div>
         {render_slot(@inner_block)}
-        <div :if={@actions != []} class="modal-action">{render_slot(@actions)}</div>
+        <div
+          :if={@actions != []}
+          class={[
+            "modal-action setzkasten-modal-foot",
+            "sticky -bottom-6 z-30 -mx-6 mt-2 -mb-6 bg-inherit px-6 pt-4 pb-6"
+          ]}
+        >
+          {render_slot(@actions)}
+        </div>
       </div>
       <form method="dialog" class="modal-backdrop">
         <button tabindex="-1">{@close_label}</button>

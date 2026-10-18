@@ -1213,6 +1213,155 @@ defmodule Setzkasten.DataTest do
     assert attr(doc, "li", "aria-live") == "polite"
   end
 
+  defp css, do: File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+  defp ops(js), do: Enum.map(Jason.decode!(js), fn [op, args] -> {op, args} end)
+
+  test "a dense list sizes its rows through a class on the list" do
+    assigns = %{}
+    assert "setzkasten-list-dense" in classes(parse(~H|<.list size={:dense}>x</.list>|), "ul")
+    refute "setzkasten-list-dense" in classes(parse(~H|<.list>x</.list>|), "ul")
+
+    assert css() =~
+             ~r/\.setzkasten-list-dense > \.list-row \{\s*min-height: 3\.3125rem;\s*padding-block: 0\.375rem;/
+  end
+
+  test "a muted row quiets its title, leading content and trailing values" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Milch" on_click="add" muted>
+        <:leading><.avatar initials="M" /></:leading>
+        <:meta>Zuletzt am 12.10.</:meta>
+        <:trailing>2 l</:trailing>
+      </.list_row>
+      """)
+
+    title = classes(doc, ".list-col-grow button")
+    assert "text-base-content/70" in title
+    assert "font-normal" in title
+    refute "font-medium" in title
+    assert "opacity-70" in classes(doc, "li > div:first-child")
+    assert "text-base-content/70" in classes(doc, "li > div:nth-child(3)")
+    assert "md:hover:bg-base-200" in classes(doc, "li.list-row")
+
+    plain = parse(~H|<.list_row title="Milch" navigate="/m">
+  <:leading>x</:leading>
+</.list_row>|)
+    assert "font-medium" in classes(plain, ".list-col-grow a")
+    refute "opacity-70" in classes(plain, "li > div:first-child")
+  end
+
+  test "a strike exit row strikes its title on tap, before the app's own click" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
+
+    doc =
+      parse(~H"""
+      <.list_row id="item-1" title="Milch" exit={:strike} on_click="check" phx-target={@myself} />
+      """)
+
+    click = attr(doc, ".list-col-grow button", "phx-click")
+
+    assert [{"dispatch", %{"event" => "setzkasten:strike", "to" => %{"closest" => "li"}}}, push] =
+             ops(click)
+
+    assert push == {"push", %{"event" => "check", "target" => 3}}
+    assert text(doc, ".list-col-grow button > span.setzkasten-strike") == "Milch"
+
+    doc =
+      parse(~H"""
+      <.list_row id="item-1" title="Milch" exit={:strike} on_click={JS.push("check")} />
+      """)
+
+    assert [{"dispatch", _}, {"push", %{"event" => "check"}}] =
+             ops(attr(doc, ".list-col-grow button", "phx-click"))
+  end
+
+  test "a strike exit link row does not strike on tap, so a new-tab click leaves it as it is" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H|<.list_row id="item-1" title="Milch" exit={:strike} patch="/l" />|),
+          parse(~H|<.list_row id="item-1" title="Milch" exit={:strike} navigate="/l" />|),
+          parse(~H|<.list_row id="item-1" title="Milch" exit={:strike} href="/l" />|)
+        ] do
+      assert attr(doc, "a", "phx-click") == nil
+      assert text(doc, "a > span.setzkasten-strike") == "Milch"
+      assert [{"dispatch", %{"event" => "setzkasten:exit"}}] = ops(attr(doc, "li", "phx-remove"))
+    end
+  end
+
+  test "a strike exit row strikes and collapses when LiveView removes it" do
+    assigns = %{}
+    doc = parse(~H|<.list_row id="item-1" title="Milch" exit={:strike} />|)
+
+    assert attr(doc, "li", "phx-hook") == "Setzkasten.Components.Data.RowExit"
+
+    assert [{"dispatch", %{"event" => "setzkasten:exit", "blocking" => true}}] =
+             ops(attr(doc, "li", "phx-remove"))
+
+    assert text(doc, "p > span.setzkasten-strike") == "Milch"
+
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ "setzkasten:strike"
+    assert hook =~ "getAnimations()"
+    assert hook =~ "--setzkasten-row-height"
+
+    assert css() =~ ~r/\n  \.setzkasten-struck \.setzkasten-strike \{\s*background-size: 100%/
+    assert css() =~ ~r/@keyframes setzkasten-row-collapse \{/
+    assert css() =~ ~r/\.setzkasten-row-collapse \{[^}]*animation: setzkasten-row-fade/
+  end
+
+  test "a strike exit row releases LiveView's hold once settled, at once on navigation" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ "e.detail && e.detail.done"
+    assert hook =~ ~r/const timer = setTimeout\(done, \d+\)/
+    assert hook =~ ~r/finally \{\s*clearTimeout\(timer\)\s*done\(\)/
+    assert hook =~ ~r/if \(main && !main\.el\.isConnected\) return\s*el\.classList\.add/
+  end
+
+  test "a strike exit row hands focus inside it to the next row, the previous, the list or main" do
+    assigns = %{}
+    assert attr(parse(~H|<.list>x</.list>|), "ul", "data-focus-fallback") == ""
+
+    hook = colocated_js("Setzkasten.Components.Data")
+
+    assert hook =~
+             ~r/if \(el\.contains\(document\.activeElement\)\) this\.refocus\(\)\s*el\.hidden = true/
+
+    assert hook =~ ~s|closest("[data-focus-fallback]")|
+
+    assert hook =~
+             ~r/\[\.\.\.siblings\("nextElementSibling"\), \.\.\.siblings\("previousElementSibling"\)\]\.some\(focusIn\)/
+
+    assert hook =~ ~s|scope && visible(scope) ? scope : document.getElementById("main")|
+  end
+
+  test "a list row has a single root, so LiveView skips unchanged rows in a diff" do
+    assigns = %{}
+
+    for rendered <- [
+          ~H|<.list_row id="item-1" title="Milch" exit={:strike} on_click="check" />|,
+          ~H|<.list_row title="Milch" />|
+        ] do
+      assert [%Phoenix.LiveView.Rendered{root: true}] = rendered.dynamic.(false)
+    end
+  end
+
+  test "a row without exit has no remove transition, and exit needs an id" do
+    assigns = %{}
+    doc = parse(~H|<.list_row title="Milch" on_click="check" />|)
+    assert attr(doc, "li", "phx-remove") == nil
+    assert attr(doc, "li", "phx-hook") == nil
+    assert [{"push", _}] = ops(attr(doc, "button", "phx-click"))
+    assert count(doc, ".setzkasten-strike") == 0
+
+    assert_raise ArgumentError, ~r/needs an id/, fn ->
+      parse(~H|<.list_row title="Milch" exit={:strike} />|)
+    end
+  end
+
   test "amount can show the ISO code instead of the symbol" do
     assigns = %{}
     doc = parse(~H|<.amount value={110} currency="USD" currency_display={:code} />|)

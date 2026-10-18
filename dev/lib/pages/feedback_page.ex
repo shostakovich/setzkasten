@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Rückmeldung"
-  def summary, do: "alert, flash, flash_group, badge, empty_state"
+  def summary, do: "alert, flash, flash_group, put_toast, badge, empty_state"
 
   def render(assigns) do
     ~H"""
@@ -64,16 +64,25 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
 
     <.showcase
       id="flash"
-      name="<.flash>, <.flash_group>"
+      name="<.flash>, <.flash_group>, put_toast"
       title="Rückmeldung"
       code={code(1)}
     >
       <:intro>
-        Phoenix-Flash als Toast oben (unten liegen Dock und Aktionsleiste).
+        Phoenix-Flash als Toast unten, über Dock, Tastatur, Composer und Aktionsleiste; deckend
+        von Anfang an, steigt 8px ein. Info und Toast schließen sich nach 5 s (Pause, solange
+        Zeiger oder Fokus darauf liegen), Fehler bleiben. <code>put_toast</code>
+        meldet eine erledigte Aktion mit einer Aktion zum Zurücknehmen; ein neuer ersetzt den alten.
       </:intro>
       <.demo title="Echt auslösen" class="flex flex-wrap gap-3">
         <.button phx-click="flash" phx-value-kind="info" icon="check">Info-Flash</.button>
         <.button phx-click="flash" phx-value-kind="error" icon="circle-alert">Fehler-Flash</.button>
+        <.button id="toast-action-demo" phx-click="toast" phx-value-kind="action" icon="check">
+          Toast mit Aktion
+        </.button>
+        <.button id="toast-plain-demo" phx-click="toast" phx-value-kind="plain" icon="plus">
+          Toast ohne Aktion
+        </.button>
       </.demo>
       <.demo
         title="Vorschau in Rahmen (sie halten den fest positionierten Toast)"
@@ -88,7 +97,7 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
           }
           class="relative h-40 overflow-hidden border-y border-base-content/10 bg-base-200 translate-z-0"
         >
-          <.flash id={"preview-#{kind}"} kind={kind} title={title} flash={%{to_string(kind) => msg}} />
+          <.flash id={"preview-#{kind}"} kind={kind} title={title}>{msg}</.flash>
         </div>
       </.demo>
     </.showcase>
@@ -180,6 +189,11 @@ defmodule Setzkasten.Dev.Pages.FeedbackPage do
     ~S"""
     <.flash_group flash={@flash} />
     <.flash kind={:info} title="Gespeichert" flash={@flash} />
+
+    {:noreply,
+     put_toast(socket, "Bananen abgehakt",
+       action: "Rückgängig", on_action: JS.push("uncheck", value: %{id: item.id}))}
+    {:noreply, put_toast(socket, "Milch hinzugefügt")}
     """
   end
 

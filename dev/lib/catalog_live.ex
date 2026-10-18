@@ -134,6 +134,20 @@ defmodule Setzkasten.Dev.CatalogLive do
     {:noreply, put_flash(socket, kind, msg)}
   end
 
+  def handle_event("toast", %{"kind" => "action"}, socket) do
+    {:noreply,
+     put_toast(socket, "Bananen abgehakt",
+       action: "Rückgängig",
+       on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "undone"})
+     )}
+  end
+
+  def handle_event("toast", %{"kind" => "undone"}, socket),
+    do: {:noreply, put_toast(socket, "Bananen wieder auf der Liste")}
+
+  def handle_event("toast", _params, socket),
+    do: {:noreply, put_toast(socket, "Milch hinzugefügt")}
+
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   @impl true

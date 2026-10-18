@@ -886,7 +886,7 @@ defmodule Setzkasten.ShellTest do
 
     # :read-write leaves out sliders, colour and file inputs, buttons, checkboxes and read-only fields.
     assert css =~
-             ~s|body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {\n    display: none;|
+             ~s|:root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {\n    --setzkasten-dock-offset: 0px;\n    .dock {\n      display: none;|
   end
 
   test "a sidebar nav footer brings the more button, so phones reach it in the sidebar" do
@@ -1290,5 +1290,54 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "#back-sidebar") == 1
     assert count(doc, "#back-dialog") == 1
     assert count(doc, "#back-rail") == 1
+  end
+
+  test "the shell exports the page column's width, gutter and alignment from the classes' values" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.app_shell width={:narrow}><:brand>A</:brand>x</.app_shell>|)
+
+    shell = classes(doc, "#app-shell")
+    assert "max-w-3xl" in classes(doc, "main#main")
+    assert Enum.all?(~w(px-4 sm:px-6 lg:px-8), &(&1 in classes(doc, "main#main")))
+
+    assert Enum.all?(
+             ~w|[--setzkasten-column:var(--container-3xl)] [--setzkasten-gutter:--spacing(4)] sm:[--setzkasten-gutter:--spacing(6)] lg:[--setzkasten-gutter:--spacing(8)]|,
+             &(&1 in shell)
+           )
+
+    # A centred column is the composer's fallback.
+    refute Enum.any?(shell, &(&1 =~ "column-align"))
+
+    doc =
+      parse(~H|<.app_shell layout={:sidebar} width={:full}><:brand>A</:brand>x</.app_shell>|)
+
+    shell = classes(doc, "#app-shell")
+    assert "[--setzkasten-gutter:--spacing(4)]" in shell
+    assert "[--setzkasten-column-align:0px]" in shell
+    refute Enum.any?(shell, &(&1 =~ "--setzkasten-column:"))
+    refute Enum.any?(shell, &String.starts_with?(&1, "sm:[--setzkasten-gutter"))
+
+    for {width, size} <- [default: "5xl", wide: "7xl"] do
+      assigns = %{width: width}
+      doc = parse(~H|<.app_shell width={@width}><:brand>A</:brand>x</.app_shell>|)
+      assert "max-w-#{size}" in classes(doc, "main#main")
+      assert "[--setzkasten-column:var(--container-#{size})]" in classes(doc, "#app-shell")
+    end
+  end
+
+  test "the dock publishes its offset on the root, so toasts outside the shell clear it" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell>
+        <:brand>A</:brand><:nav key={:a} label="A" icon="list" navigate="/a" />x
+      </.app_shell>
+      """)
+
+    assert "setzkasten-dock" in classes(doc, "nav.dock")
+    refute Enum.any?(classes(doc, "#app-shell"), &(&1 =~ "dock-offset"))
   end
 end

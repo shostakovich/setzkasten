@@ -719,6 +719,15 @@
   }
 }
 
+/* <.list size={:dense}>: every row 53px, as tall as a one-line :md row, also with a meta line
+   (21px title, 20px meta) or a 40px leading tile. */
+@layer utilities.setzkasten {
+  .setzkasten-list-dense > .list-row {
+    min-height: 3.3125rem;
+    padding-block: 0.375rem;
+  }
+}
+
 /* The page bar of detail pages (app_shell's :bar) on phones: a badge shows as its dot only,
    the label stays for screen readers, so the title keeps the room. A neutral badge has no
    dot that says anything on its own, so it is left to screen readers entirely. */
@@ -764,8 +773,54 @@
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
+  .modal-bottom > .modal-box {
+    max-height: calc(100dvh - 5em);
+  }
   .modal-box:focus-visible {
     outline: none;
+  }
+}
+
+/* A focused field scrolls clear of a modal's pinned title row (up to two lines) and actions. The
+   room is a scroll margin on the content: as scroll padding on the box, focusing a pinned button
+   would scroll the body too. */
+@layer utilities.setzkasten {
+  .modal-box > :not(.setzkasten-modal-head, .setzkasten-modal-foot),
+  .modal-box > :not(.setzkasten-modal-head, .setzkasten-modal-foot) * {
+    scroll-margin-block: var(--setzkasten-modal-head-room, 0px) var(--setzkasten-modal-foot-room, 0px);
+  }
+  .modal-box:has(> .setzkasten-modal-head) {
+    --setzkasten-modal-head-room: 5.5rem;
+  }
+  .modal-box:has(> .setzkasten-modal-foot) {
+    --setzkasten-modal-foot-room: 6rem;
+  }
+}
+
+/* A modal's pinned title row and actions take a hairline only while content scrolls under them;
+   the scroll timeline is inactive when nothing scrolls. */
+@keyframes setzkasten-modal-scrolled {
+  from {
+    box-shadow: 0 var(--setzkasten-hairline-y) 0 transparent;
+  }
+  to {
+    box-shadow: 0 var(--setzkasten-hairline-y) 0 color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  }
+}
+@layer utilities.setzkasten {
+  @supports (animation-timeline: scroll()) {
+    .setzkasten-modal-head {
+      animation: setzkasten-modal-scrolled linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: 0 0.5rem;
+      --setzkasten-hairline-y: 1px;
+    }
+    .setzkasten-modal-foot {
+      animation: setzkasten-modal-scrolled reverse linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: calc(100% - 0.5rem) 100%;
+      --setzkasten-hairline-y: -1px;
+    }
   }
 }
 
@@ -924,10 +979,50 @@
   }
 }
 
-/* The dock gives way to the on-screen keyboard; date and time fields open a picker instead. */
+/* The dock's height on the root, so bars and toasts outside the shell clear it too. The dock gives
+   way to the on-screen keyboard (date and time fields open a picker instead), leaving nothing to clear. */
+@media (width < 48rem) {
+  :root:has(.setzkasten-dock) {
+    --setzkasten-dock-offset: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
 @media (pointer: coarse) {
-  body:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) .dock {
-    display: none;
+  :root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {
+    --setzkasten-dock-offset: 0px;
+    .dock {
+      display: none;
+    }
+  }
+}
+
+/* What a bar fixed to the bottom stands on: the dock or, while typing, the on-screen keyboard. The
+   floating action button and the selection bar keep 16px above the bars at the bottom (dock,
+   composer) or the safe area. */
+:root {
+  --setzkasten-bottom-offset: max(var(--setzkasten-dock-offset, 0px), var(--setzkasten-keyboard-inset, 0px));
+  --setzkasten-bars-top: max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom), var(--setzkasten-composer-top, 0px));
+}
+
+/* The tops of a composer, a pinned action bar (12px or 16px above and below 44px buttons, plus its
+   hairline) and a shown selection bar, whose hook measures it as it wraps. */
+:root:has(.setzkasten-composer) {
+  --setzkasten-composer-top: calc(var(--setzkasten-bottom-offset) + var(--setzkasten-composer-height, 4.5rem));
+}
+:root:has(.setzkasten-action-bar-pinned:not(.modal-box *)) {
+  --setzkasten-pinned-top: calc(max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom)) + 4.25rem + 1px);
+  @media (width >= 40rem) {
+    --setzkasten-pinned-top: calc(max(var(--setzkasten-dock-offset, 0px), env(safe-area-inset-bottom)) + 4.75rem + 1px);
+  }
+}
+:root:has(.setzkasten-selection-bar:not([hidden])) {
+  --setzkasten-selection-top: calc(var(--setzkasten-bars-top) + 1rem + var(--setzkasten-selection-height, 3.5rem));
+}
+
+/* Toasts sit 16px above whatever holds the bottom: the dock, the keyboard, a composer, a pinned
+   action bar, a selection bar or the safe area. */
+@layer utilities.setzkasten {
+  .setzkasten-toasts {
+    bottom: calc(max(var(--setzkasten-bottom-offset), env(safe-area-inset-bottom), var(--setzkasten-composer-top, 0px), var(--setzkasten-pinned-top, 0px), var(--setzkasten-selection-top, 0px)) + 1rem);
   }
 }
 
@@ -951,6 +1046,13 @@
     opacity: 0;
     translate: var(--setzkasten-enter-from, 0 0);
     scale: var(--setzkasten-enter-scale, 1);
+  }
+}
+
+/* Toasts rise without a fade: opaque from the first frame. */
+@keyframes setzkasten-rise {
+  from {
+    translate: 0 0.5rem;
   }
 }
 
@@ -1191,11 +1293,7 @@
   }
 
   .toast > * {
-    --setzkasten-enter-from: 0 0.5rem;
-    animation: setzkasten-enter var(--setzkasten-duration) var(--setzkasten-ease-out);
-  }
-  .toast-top > * {
-    --setzkasten-enter-from: 0 -0.5rem;
+    animation: setzkasten-rise var(--setzkasten-duration) var(--setzkasten-ease-out);
   }
 
   .tabs-border > .tab::before {
@@ -1295,12 +1393,13 @@
     .modal .modal-box,
     .setzkasten-popover[popover],
     .dropdown:is(details) > .dropdown-content,
-    .collapse:is(details) > .collapse-content,
-    .toast > *,
-    .toast-top > * {
+    .collapse:is(details) > .collapse-content {
       --setzkasten-enter-from: 0 0;
       --setzkasten-enter-scale: 1;
       --setzkasten-enter-opacity: 0;
+    }
+    .toast > * {
+      animation: none;
     }
     :root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab,
     .btn:active:not(.btn-active, .btn-link, :disabled, [disabled], .btn-disabled) {
@@ -1318,6 +1417,49 @@
     }
     .toggle {
       transition: color var(--setzkasten-duration);
+    }
+  }
+}
+
+/* <.list_row exit={:strike}>: the title's strike line draws from its start, across wrapped lines
+   (an inline background); the row hook then collapses the row from its measured height. */
+@keyframes setzkasten-row-collapse {
+  from {
+    height: var(--setzkasten-row-height);
+  }
+  to {
+    height: 0;
+    min-height: 0;
+    padding-block: 0;
+    opacity: 0;
+  }
+}
+@keyframes setzkasten-row-fade {
+  to {
+    opacity: 0;
+  }
+}
+@layer utilities.setzkasten {
+  .setzkasten-strike {
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 0.65em / 0% max(1px, 0.075em);
+    transition:
+      background-size var(--setzkasten-duration-overlay) var(--setzkasten-ease-out),
+      color var(--setzkasten-duration-overlay) var(--setzkasten-ease-out);
+  }
+  .setzkasten-struck .setzkasten-strike {
+    background-size: 100% max(1px, 0.075em);
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+  .setzkasten-row-collapse {
+    overflow: hidden;
+    animation: setzkasten-row-collapse var(--setzkasten-duration) var(--setzkasten-ease-in) forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .setzkasten-strike {
+      transition: none;
+    }
+    .setzkasten-row-collapse {
+      animation: setzkasten-row-fade var(--setzkasten-duration-press) linear forwards;
     }
   }
 }

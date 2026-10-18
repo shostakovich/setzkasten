@@ -56,20 +56,186 @@ defmodule Setzkasten.FeedbackTest do
     assert count(parse(~H|<.alert icon={false}>x</.alert>|), "svg") == 0
   end
 
-  test "flash info is alert-info in a top toast with a real dismiss button" do
+  test "flash info is alert-info in a bottom toast with a real dismiss button" do
     assigns = %{flash: %{"info" => "Gespeichert"}}
     doc = parse(~H|<.flash kind={:info} flash={@flash} />|)
-    assert "toast-top" in classes(doc, ".toast")
+    assert "setzkasten-toasts" in classes(doc, ".toast")
+    refute "toast-top" in classes(doc, ".toast")
     assert "alert-info" in classes(doc, "#flash-info")
     assert attr(doc, "#flash-info", "role") == "status"
     assert "text-info-ink" in classes(doc, "#flash-info svg")
     assert attr(doc, "button", "aria-label") == "Schließen"
     assert attr(doc, "button", "phx-click") =~ "lv:clear-flash"
-    # Leaves in the exit time on the motion tokens, without movement under reduced motion.
     click = attr(doc, "button", "phx-click")
     assert click =~ "duration-(--setzkasten-duration-exit)"
-    assert click =~ "motion-safe:-translate-y-2"
+    assert click =~ "motion-safe:translate-y-2"
+    refute click =~ "-translate-y-2"
     assert click =~ ~s("time":150)
+  end
+
+  test "an info flash closes itself as its ✕ does, an error flash stays" do
+    assigns = %{flash: %{"info" => "Gespeichert", "error" => "Kaputt"}}
+    doc = parse(~H|<.flash_group flash={@flash} />|)
+    assert attr(doc, "#flash-info", "phx-hook") == "Setzkasten.Components.Feedback.AutoDismiss"
+
+    assert attr(doc, "#flash-info", "data-dismiss") ==
+             attr(doc, "#flash-info button", "phx-click")
+
+    assert attr(doc, "#flash-error", "phx-hook") == nil
+    assert attr(doc, "#client-error", "phx-hook") == nil
+
+    hook = colocated_js("Setzkasten.Components.Feedback")
+    assert hook =~ "this.timer = setTimeout(() => this.js().exec(this.el.dataset.dismiss), 5000)"
+    assert Enum.all?(~w(pointerenter pointerleave focusin focusout), &(hook =~ &1))
+
+    # Resuming restarts the full 5 s, unless the pointer is still over it or focus is still inside.
+    assert hook =~ "if (!this.pointer && !this.el.contains(focused)) this.start()"
+    assert hook =~ ~s|this.el.addEventListener("focusout", (e) => this.resume(e.relatedTarget))|
+    refute hook =~ ~s|matches(":hover|
+  end
+
+  test "each toast is a single root and a diff skips the ones that did not change, so no timer restarts" do
+    toast = %{id: "toast-1", message: "Milch hinzugefügt", action: nil, on_action: nil}
+    old = %{"info" => "Gespeichert", "toast" => toast}
+
+    rendered = flash_group(%{flash: old}).dynamic.(false)
+    alerts = for %Phoenix.LiveView.Rendered{static: [_, _ | _]} = r <- rendered, do: r
+    assert length(alerts) == 4
+    assert Enum.all?(alerts, & &1.root)
+
+    diff =
+      flash_group(%{flash: Map.delete(old, "toast"), __changed__: %{flash: old}}).dynamic.(true)
+
+    assert [%Phoenix.LiveView.Rendered{static: [""]}] = Enum.reject(diff, &is_nil/1)
+  end
+
+  test "a flash with slot content stays and its ✕ only hides it, never clearing the real flash" do
+    assigns = %{flash: %{"info" => "Echte Meldung"}}
+    doc = parse(~H|<.flash kind={:info} flash={@flash}>Vorschau</.flash>|)
+
+    assert text(doc, "#flash-info p") == "Vorschau"
+    assert attr(doc, "#flash-info", "phx-hook") == nil
+    assert attr(doc, "#flash-info", "data-dismiss") == nil
+
+    click = attr(doc, "#flash-info button", "phx-click")
+    assert pushes(click) == []
+    assert click =~ ~s("to":"#flash-info")
+
+    doc = parse(~H|<.flash_group flash={%{}} />|)
+    assert pushes(attr(doc, "#client-error button", "phx-click")) == []
+  end
+
+  test "put_toast stores the message, the action and a fresh key under :toast" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, flash: %{}}}
+    undo = JS.push("undo", value: %{id: 1})
+    socket = put_toast(socket, "Bananen abgehakt", action: "Rückgängig", on_action: undo)
+
+    assert %{message: "Bananen abgehakt", action: "Rückgängig", on_action: ^undo, id: id} =
+             Phoenix.Flash.get(socket.assigns.flash, :toast)
+
+    assert id =~ ~r/^toast-\d+$/
+
+    socket = put_toast(socket, "Milch hinzugefügt")
+    toast = Phoenix.Flash.get(socket.assigns.flash, :toast)
+    assert %{message: "Milch hinzugefügt", action: nil, on_action: nil} = toast
+    assert toast.id != id
+    assert Map.keys(socket.assigns.flash) == ["toast"]
+  end
+
+  test "put_toast works on a conn, so a controller can redirect with it" do
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Plug.Test.init_test_session(%{})
+      |> Phoenix.Controller.fetch_flash([])
+      |> put_toast("Liste geleert", action: "Rückgängig", on_action: "restore")
+
+    assert %{message: "Liste geleert", on_action: "restore"} =
+             Phoenix.Flash.get(conn.assigns.flash, :toast)
+  end
+
+  test "an action toast: neutral surface, its text and one ghost action, no ✕" do
+    assigns = %{
+      flash: %{
+        "toast" => %{
+          message: "Bananen abgehakt",
+          action: "Rückgängig",
+          on_action: JS.push("undo", value: %{id: 1}),
+          id: "toast-7"
+        }
+      }
+    }
+
+    doc = parse(~H|<.flash_group flash={@flash} />|)
+    toast = "#flash-group #toast-7"
+    assert attr(doc, toast, "role") == "status"
+
+    assert Enum.all?(
+             ~w(bg-popover border border-base-content/10 shadow-lg rounded-box w-full sm:w-96),
+             &(&1 in classes(doc, toast))
+           )
+
+    assert count(doc, "#{toast} svg") == 0
+    assert count(doc, "#{toast} button") == 1
+    assert text(doc, "#{toast} button") == "Rückgängig"
+    assert attr(doc, "#{toast} button", "aria-label") == nil
+    assert Enum.all?(~w(btn btn-ghost btn-sm), &(&1 in classes(doc, "#{toast} button")))
+    assert text(doc, "#{toast} p") == "Bananen abgehakt"
+
+    click = attr(doc, "#{toast} button", "phx-click")
+
+    assert [%{"event" => "lv:clear-flash", "value" => %{"key" => "toast"}}, undo] =
+             pushes(click)
+
+    assert undo == %{"event" => "undo", "value" => %{"id" => 1}}
+    assert click =~ ~s("to":"#toast-7")
+
+    assert attr(doc, toast, "phx-hook") == "Setzkasten.Components.Feedback.AutoDismiss"
+    # Only hidden: a clear by key would wipe a newer toast that the next action puts meanwhile.
+    dismiss = attr(doc, toast, "data-dismiss")
+    assert pushes(dismiss) == []
+    assert dismiss =~ ~s("to":"#toast-7")
+  end
+
+  test "an action toast takes an event name, and without action it is plain text" do
+    assigns = %{
+      flash: %{
+        "toast" => %{id: "toast-1", message: "Gelöscht", action: "Rückgängig", on_action: "undo"}
+      }
+    }
+
+    doc = parse(~H|<.flash_group flash={@flash} />|)
+    assert [_clear, %{"event" => "undo"}] = pushes(attr(doc, "#toast-1 button", "phx-click"))
+
+    assigns = %{
+      flash: %{
+        "toast" => %{id: "toast-2", message: "Milch hinzugefügt", action: nil, on_action: nil}
+      }
+    }
+
+    doc = parse(~H|<.flash_group flash={@flash} />|)
+    assert text(doc, "#toast-2") == "Milch hinzugefügt"
+    assert count(doc, "#toast-2 button") == 0
+  end
+
+  test "toasts sit at the bottom, rise opaque and leave downward" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/@keyframes setzkasten-rise \{\s*from \{\s*translate: 0 0\.5rem;\s*\}\s*\}/
+    assert css =~ ~r/\.toast > \* \{\s*animation: setzkasten-rise /
+    refute css =~ ".toast-top"
+
+    # Reduced motion: a toast appears at once (the rule sits inside a reduced-motion block).
+    assert css =~
+             ~r/@media \(prefers-reduced-motion: reduce\) \{(?:(?!\n  \}\n).)*?\.toast > \* \{\s*animation: none;/s
+
+    # One rule takes the highest of everything at the bottom, so a composer and a pinned action bar on one
+    # page do not fight over specificity, and the keyboard covers a pinned bar.
+    assert css =~
+             ~r/\.setzkasten-toasts \{\s*bottom: calc\(max\(var\(--setzkasten-bottom-offset\), env\(safe-area-inset-bottom\), var\(--setzkasten-composer-top, 0px\), var\(--setzkasten-pinned-top, 0px\), var\(--setzkasten-selection-top, 0px\)\) \+ 1rem\);/
+
+    assert length(Regex.scan(~r/\.setzkasten-toasts \{/, css)) == 1
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-action-bar-pinned:not\(\.modal-box \*\)\) \{\s*--setzkasten-pinned-top: calc\(max\(var\(--setzkasten-dock-offset, 0px\), env\(safe-area-inset-bottom\)\) \+ 4\.25rem \+ 1px\);/
   end
 
   test "alert with a close button keeps it at the end on phones" do
@@ -130,9 +296,10 @@ defmodule Setzkasten.FeedbackTest do
     assert "motion-reduce:hidden" in classes(doc, "#client-error .loading")
 
     group = classes(doc, "#flash-group")
+    assert attr(doc, "#flash-group", "aria-live") == "polite"
 
     assert Enum.all?(
-             ["top-[calc(env(safe-area-inset-top)+4.5rem)]", "max-sm:inset-x-4", "max-sm:w-auto"],
+             ["setzkasten-toasts", "max-sm:inset-x-4", "max-sm:w-auto"],
              &(&1 in group)
            )
 

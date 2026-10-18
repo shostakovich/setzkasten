@@ -189,8 +189,8 @@ defmodule Setzkasten.ActionsTest do
     assert Enum.all?(~w(btn-primary btn-circle fixed md:hidden), &(&1 in c))
     # setzkasten.css hides it while a dialog is open.
     assert "setzkasten-fab" in c
-    # 16px above the dock, or above the bottom safe edge without one.
-    assert "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]" in c
+    # 16px above the dock or a composer, or above the bottom safe edge without one.
+    assert "bottom-[calc(var(--setzkasten-bars-top)+1rem)]" in c
     assert "end-[calc(1rem+env(safe-area-inset-right))]" in c
     assert attr(doc, "a", "aria-label") == "Ausgabe"
   end
@@ -473,11 +473,34 @@ defmodule Setzkasten.ActionsTest do
                "fixed",
                "start-(--setzkasten-shell-start,0px)",
                "end-0",
-               "bottom-[calc(max(var(--setzkasten-dock-offset,0px),env(safe-area-inset-bottom))+1rem)]",
+               "bottom-[calc(var(--setzkasten-bars-top)+1rem)]",
                "pe-[calc(1rem+env(safe-area-inset-right))]"
              ],
              &(&1 in bar)
            )
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    # Above a composer, and toasts above the bar while it shows.
+    assert css =~
+             ~r/--setzkasten-bars-top: max\(var\(--setzkasten-dock-offset, 0px\), env\(safe-area-inset-bottom\), var\(--setzkasten-composer-top, 0px\)\);/
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-selection-bar:not\(\[hidden\]\)\) \{\s*--setzkasten-selection-top: calc\(var\(--setzkasten-bars-top\) \+ 1rem \+ var\(--setzkasten-selection-height, 3\.5rem\)\);/
+
+    # The bar wraps on phones, so its hook measures it for the toasts; its id keeps the measured element.
+    assigns = %{}
+    doc = parse(~H|<.selection_bar id="sel" count={1} on_clear="clear" />|)
+    assert attr(doc, "#sel-bar", "class") =~ "setzkasten-selection-bar"
+    hook = colocated_js("Setzkasten.Components.Actions")
+
+    assert hook =~
+             ~s|root.style.setProperty("--setzkasten-selection-height", `${bar.offsetHeight}px`)|
+
+    assert hook =~ ~s|root.style.removeProperty("--setzkasten-selection-height")|
+
+    assert css =~
+             ~r/\.setzkasten-toasts \{\s*bottom: calc\(max\([^;]*var\(--setzkasten-selection-top, 0px\)\) \+ 1rem\);/
 
     doc = parse(~H|<.app_shell layout={:sidebar}><:brand>A</:brand>x</.app_shell>|)
     shell = classes(doc, "#app-shell")
@@ -541,5 +564,90 @@ defmodule Setzkasten.ActionsTest do
       parse(~H|<.segmented label="Zeitraum" size={:sm} options={[{"1M", "1m"}]} value="1m" />|)
 
     assert "btn-sm" in classes(doc, ".join-item")
+  end
+
+  test "composer: a fixed bar in the content column above dock and keyboard, a spacer at its place" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.composer id="add-entry-bar" class="gap-2">
+        <form id="add-entry"><input name="q" /></form>
+      </.composer>
+      """)
+
+    assert attr(doc, "#add-entry-bar", "phx-hook") == "Setzkasten.Components.Actions.Composer"
+    assert count(doc, "#add-entry-bar .setzkasten-composer #add-entry input") == 1
+
+    spacer = classes(doc, "#add-entry-bar > div[aria-hidden]")
+    assert "h-(--setzkasten-composer-height,4.5rem)" in spacer
+
+    bar = classes(doc, "#add-entry-bar .setzkasten-composer")
+
+    assert Enum.all?(
+             [
+               "fixed",
+               "z-30",
+               "start-[max(var(--setzkasten-shell-start,0px),env(safe-area-inset-left))]",
+               "end-[env(safe-area-inset-right)]",
+               "bottom-(--setzkasten-bottom-offset)",
+               "max-sm:bg-base-100",
+               "max-sm:border-t",
+               "sm:pointer-events-none"
+             ],
+             &(&1 in bar)
+           )
+
+    column = classes(doc, ".setzkasten-composer > div")
+
+    assert Enum.all?(
+             ~w[max-w-(--setzkasten-column,none) px-(--setzkasten-gutter,1rem) ms-(--setzkasten-column-align,auto) me-auto],
+             &(&1 in column)
+           )
+
+    surface = classes(doc, ".setzkasten-composer > div > div")
+
+    assert Enum.all?(
+             ~w(sm:bg-base-100 sm:border-t sm:border-base-content/10 sm:pointer-events-auto gap-2),
+             &(&1 in surface)
+           )
+
+    # The sticky action bar's padding: one formula for both bars.
+    padding = Setzkasten.Components.Forms.bar_padding() |> Enum.join(" ") |> String.split()
+    assert "pt-(--setzkasten-bar-pad)" in padding
+    assert Enum.all?(padding, &(&1 in surface))
+  end
+
+  test "the composer is a single root, so LiveView skips it in a diff that leaves it alone" do
+    assigns = %{}
+    rendered = ~H|<.composer id="bar">x</.composer>|
+    assert [%Phoenix.LiveView.Rendered{root: true}] = rendered.dynamic.(false)
+  end
+
+  test "the composer hook publishes only its height; the keyboard inset comes from theme_script" do
+    hook = colocated_js("Setzkasten.Components.Actions")
+    assert hook =~ "new ResizeObserver"
+    assert hook =~ ~s|setProperty("--setzkasten-composer-height"|
+    assert hook =~ ~s|removeProperty("--setzkasten-composer-height")|
+    refute hook =~ "visualViewport"
+    refute hook =~ "--setzkasten-keyboard-inset"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/:root \{\s*--setzkasten-bottom-offset: max\(var\(--setzkasten-dock-offset, 0px\), var\(--setzkasten-keyboard-inset, 0px\)\);/
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-composer\) \{\s*--setzkasten-composer-top: calc\(var\(--setzkasten-bottom-offset\) \+ var\(--setzkasten-composer-height, 4\.5rem\)\);/
+  end
+
+  test "the dock offset is 0 while the on-screen keyboard is up" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-dock\) \{\s*--setzkasten-dock-offset: calc\(4rem \+ env\(safe-area-inset-bottom\)\);/
+
+    assert css =~
+             ~s|:root:has(:read-write:not([inputmode="none"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus) {\n    --setzkasten-dock-offset: 0px;|
   end
 end

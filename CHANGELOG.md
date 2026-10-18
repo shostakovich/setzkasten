@@ -3,6 +3,17 @@
 ## 0.1.0 (unreleased)
 
 - First version.
+- `composer`: a bar fixed to the bottom of the page column for a form that is only the bar, above the dock and
+  right on top of the on-screen keyboard; `app_shell` exports the column's width, gutter and alignment for it.
+- Toasts (`flash`, `flash_group`) sit at the bottom, above dock, keyboard, composer, a pinned action bar and a
+  shown selection bar; they rise opaque and leave downward. `fab` and `selection_bar` sit above a composer. Info
+  flashes close themselves after 5 s, paused under the pointer or focus; a `flash` with slot content stays, and
+  its ✕ only hides it.
+- `put_toast/3`: a toast for a done action with an optional action button ("Rückgängig"), for LiveViews and
+  controllers.
+- `--setzkasten-dock-offset` is set on `<html>` and is 0 while the on-screen keyboard is up.
+- `theme_script` publishes the on-screen keyboard's height as `--setzkasten-keyboard-inset` on every page, so toasts
+  clear the keyboard also without a composer; it belongs in every root layout.
 - `app_shell` nav entries: long labels end in an ellipsis (full label as `title`), `glyph`, `section_amount`,
   a count next to an amount as a badge, `amount_tone={:negative}` with the `sidebar-negative` token, and button entries
   (`on_click`); `id` on entries, suffixed per place.
@@ -27,6 +38,13 @@
 - `input type="radio_group"` is a `radiogroup` that carries `aria-invalid` with errors, so screen readers and
   `FocusInvalid` find it.
 - `table` `size={:dense}` for data grids: 36px rows (44px on coarse pointers), 32px controls in cells.
+- `list` `size={:dense}`: 53px rows, also with a meta line or a 40px leading tile (a shopping list).
+- `list_row` `muted` for done or secondary rows: title at the meta's 70 % and normal weight, leading content faded.
+- `list_row` `exit={:strike}`: a tap strikes the title through at once, a row LiveView removes strikes and then
+  collapses (`phx-remove` and a colocated hook; needs `id`).
+- `modal`: the title row and `:actions` stay in place while a long body scrolls between them, with a hairline
+  while content runs under them. A `:center` modal box (and `confirm_dialog`'s) is at most the dynamic viewport
+  high less 5em, at every width; a `max-h-*` class still wins.
 - `row-selected` token (`bg-row-selected`): `table` rows with `aria-current` or `aria-selected="true"` take it with a 3px `selected` bar at their start.
 - A proper minus sign: U+2212 comes from a one-glyph Figtree face built from its plus (0.45em, plus-sign height and side bearings) instead of Figtree's short minus.
 - `btn-sm` (small buttons, `segmented size={:sm}`) sets its label in 13px instead of daisyUI's 12px.

@@ -1099,6 +1099,8 @@ defmodule Setzkasten.Components.Forms do
   8px to the forms' `gap-4`. A margin in `class` (`mt-0`, `mt-8`) replaces these.
 
   `sticky` pins the bar to the bottom of the viewport, above the dock inside `<.app_shell>`.
+  It pins only inside a parent taller than the bar; a form that is only the bar goes in
+  `<.composer>`.
   On phones it spans `main`'s side gutters so nothing shows through beside it; from `sm` the bar
   and its hairline align with the content edge, like tables and lists. It keeps 12px above and
   below the buttons on phones and 16px from `sm`, plus the home indicator
@@ -1202,10 +1204,16 @@ defmodule Setzkasten.Components.Forms do
 
   defp pinned_bar do
     [
-      "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10",
-      "max-sm:-mx-4 max-sm:px-4",
+      "sticky bottom-[var(--setzkasten-dock-offset,0px)] z-10 max-sm:-mx-4 max-sm:px-4",
+      bar_padding()
+    ]
+  end
+
+  @doc false
+  def bar_padding do
+    [
       "[--setzkasten-bar-pad:0.75rem] sm:[--setzkasten-bar-pad:1rem] pt-(--setzkasten-bar-pad)",
-      "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-dock-offset,0px)))]"
+      "pb-[max(var(--setzkasten-bar-pad),calc(var(--setzkasten-bar-pad)_+_env(safe-area-inset-bottom)_-_var(--setzkasten-bottom-offset)))]"
     ]
   end
 end

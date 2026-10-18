@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Aktionen"
-  def summary, do: "button, fab, selection_bar"
+  def summary, do: "button, fab, selection_bar, composer"
 
   def render(assigns) do
     ~H"""
@@ -131,6 +131,29 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
         <:note>Bisher ausgewählt: {length(@picked)}.</:note>
       </.demo>
     </.showcase>
+
+    <.showcase id="composer" name="<.composer>" title="Eingabeleiste" code={code(3)}>
+      <:intro>
+        Ein Formular, das nur aus der Leiste besteht (Suchen, Hinzufügen), fest am Fuß der
+        Seitenspalte: über dem Dock, bei offener Tastatur direkt auf ihr. Auf dem Handy reicht die
+        Fläche von Rand zu Rand, ab <code>sm</code>
+        bündig mit der Spalte. Ein Platzhalter an ihrer Stelle lässt den letzten Eintrag
+        darüber scrollen; schwebende Aktion und Toasts steigen über sie.
+      </:intro>
+      <.demo title="/screens/shopping" class="overflow-x-auto p-1 pb-2">
+        <iframe
+          src="/screens/shopping"
+          width="390"
+          height="640"
+          title="Einkaufsliste mit Composer bei 390px"
+          loading="lazy"
+          class="rounded-box border border-base-content/10 bg-base-100"
+        ></iframe>
+        <:note>
+          Weitere Breiten zeigt das <.link navigate="/shell" class="link">Gerüst</.link>.
+        </:note>
+      </.demo>
+    </.showcase>
     """
   end
 
@@ -156,6 +179,20 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
   defp code(1) do
     ~S"""
         <.fab navigate={~p"/ausgaben/neu"} icon="plus" label="Ausgabe" />
+    """
+  end
+
+  defp code(3) do
+    ~S"""
+    <.composer id="add-entry-bar">
+      <.form for={@entry} id="add-entry" phx-submit="add" class="flex items-end gap-2">
+        <div class="min-w-0 flex-1">
+          <.input field={@entry[:name]} label="Was brauchst du?" hide_label
+                  placeholder="Was brauchst du?" autocomplete="off" />
+        </div>
+        <.button type="submit" variant={:primary} icon="plus" icon_only label="Hinzufügen" />
+      </.form>
+    </.composer>
     """
   end
 

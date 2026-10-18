@@ -294,8 +294,8 @@ page-load sequence. Pure CSS in `setzkasten.css`, replacing daisyUI's timings.
 | `--setzkasten-ease-in-out` | `cubic-bezier(0.65, 0, 0.35, 1)` | theme reveal |
 | `--setzkasten-duration-press` | 100ms | press, tick fade |
 | `--setzkasten-duration-exit` | 150ms | every exit, button colours |
-| `--setzkasten-duration` | 200ms | menus, disclosures, toasts, tabs, checkbox, toggle |
-| `--setzkasten-duration-overlay` | 250ms | dialog entrance |
+| `--setzkasten-duration` | 200ms | menus, disclosures, toasts, tabs, checkbox, toggle, row collapse |
+| `--setzkasten-duration-overlay` | 250ms | dialog entrance, strike line |
 | `--setzkasten-duration-reveal` | 700ms | theme reveal |
 | `--setzkasten-duration-count` | 500ms | rolling numbers |
 
@@ -308,14 +308,19 @@ page-load sequence. Pure CSS in `setzkasten.css`, replacing daisyUI's timings.
 | `popover` | as `dropdown`, from the trigger's corner; a bottom sheet on phones slides up over a fading scrim; the exit stays in the top layer | fades |
 | `disclosure` | opens at once, content settles 4px, the arrow turns | content fades, arrow flips |
 | `selection_bar` | rises 8px into place and fades in (200ms); leaves at once with the selection | fades in |
-| `flash` | enters 8px from the top edge, leaves upward in 150ms (`hide_flash`) | fades |
+| `flash`, toasts | rise 8px into place, opaque from the first frame (no fade); leave 8px downward with a fade in 150ms (`hide_flash`) | appear at once, leave with a fade |
 | `tabs` | the active line grows from its centre, the old one fades | colour fades |
 | checkbox, toggle | tick and knob in 200ms, no delay | tick fades, knob jumps |
 | `tooltip` | daisyUI's: fades in with a 4px shift in 200ms, out after 75ms | appears and disappears at once |
+| `list_row exit={:strike}`, tap | the title's strike line draws from its start in 250ms (`ease-out`), the title takes the meta's 70 %, before the server answers | the line appears at once |
+| `list_row exit={:strike}`, removed | strikes first if not yet struck, then collapses in 200ms (`ease-in`, from its measured height to 0, fading), the rows below move up; LiveView keeps the row until then; a live navigation removes it at once | fades out in 100ms, then the rows below jump up |
 
 Not animated: the sidebar collapse (it changes the layout in three places; following it would mean animating
-widths), list and table rows (instant hover and press colour in dense lists). A disclosure or menu rendered open
-fades its content in once. Animate transform, opacity and colour only, never width, height or position.
+widths), the hover and press colour of list and table rows (instant in dense lists). A disclosure or menu rendered open
+fades its content in once. Animate transform, opacity and colour only, never width, height or position. The
+exceptions are a struck list row's collapse (only its height closes the gap smoothly: measured, then a keyframe
+animation to 0, as Safari lacks `interpolate-size`), its strike line's `background-size` and a modal hairline's
+`box-shadow`. A struck row the server keeps stays struck until the server renders it again.
 
 ### 2.10 Delight
 
@@ -391,8 +396,8 @@ Visible and accessible default strings are German; each has an attr:
   40px on fine pointers, 44px on coarse. `:danger` is filled `error-ink` with white text in light (as strong as
   primary), the error fill in dark. In the dark sidebar a `:neutral` button takes a quiet translucent fill, for a
   global action that should not compete with the page's primary.
-- **`fab`** – the one main action on phones (`md:hidden`), 16px above the dock (`--setzkasten-dock-offset`) or,
-  without one, above the bottom safe edge; `label` becomes `aria-label`.
+- **`fab`** – the one main action on phones (`md:hidden`), 16px above the dock or a `composer`, else above the
+  bottom safe edge; `label` becomes `aria-label`.
 
 - **`selection_bar`** – the actions for a multi-selection (checked table rows): `id`, `count`, `label` (`%{count}`
   is the number; pass a plural form from Gettext), `on_clear` (event name + `phx-target`, or `%JS{}`),
@@ -401,10 +406,22 @@ Visible and accessible default strings are German; each has an attr:
     `<main>`); an always present `sr-only` `role="status"` announces each count
     politely (the visible count is `aria-hidden`, so browse mode reads it once; it names the `role="group"`).
   - Fixed at the bottom of the content area: from the shell's `--setzkasten-shell-start` (sidebar 16rem, rail
-    4.25rem + left inset, also collapsed; 0 in the top-bar layout), 16px above the dock offset or the bottom safe
-    area, the right inset kept. A pill on the popover surface (hairline, `shadow-lg`, `rounded-box`) centred in
+    4.25rem + left inset, also collapsed; 0 in the top-bar layout), 16px above the dock, a `composer` or the bottom
+    safe area, the right inset kept; toasts rise above it. A pill on the popover surface (hairline, `shadow-lg`, `rounded-box`) centred in
     that area, wrapping on phones. A spacer (80px) at its place lets the last rows scroll above it.
   - Dropdowns inside open upwards (CSS); popovers flip above by themselves. The `fab` steps back while it shows.
+- **`composer`** – a bar pinned to the bottom of the page column for a form that is only the bar (search or add
+  at the foot of a list): `id`, `class` (on the content box), inner block (the page's own `<.form>`). One per
+  page. It replaces `<.action_bar sticky>` there, which pins only inside a parent taller than the bar. It pins
+  wherever it is placed; a spacer at its place lets the last content scroll clear of it.
+  - Column: beside sidebar or rail, its content in the page column's width and gutter (centred with `:topbar`, at
+    the content edge with `:sidebar`). On phones the surface spans the screen and the content keeps the 16px
+    gutter; from `sm` surface and hairline align with the content edge, like the sticky `action_bar`.
+  - Surface: `bg-base-100`, hairline on top (`border-base-content/10`), 12px above and below the content on phones,
+    16px from `sm`, plus the bottom safe area when neither dock nor keyboard is below it. `z-30`: above the page,
+    below toasts, menus and dialogs.
+  - Above the dock, and right on top of the on-screen keyboard while it is up (the dock gives way then); needs
+    `<.theme_script>`. The `fab`, a `selection_bar` and toasts keep 16px above it.
 
 ### Forms
 
@@ -478,13 +495,30 @@ Visible and accessible default strings are German; each has an attr:
   follows in a normal row after the bar. `:secondary` renders once (its buttons may carry ids); in a sticky bar it
   comes last in the DOM and tab order, and `class` (spacing like `mt-6`) also lands on the pinned row. In a `modal` (as the box's last element) it takes the box's surface (`bg-popover`) and
   covers the box's bottom padding: 16px above and below the buttons; sticky, it pins to the box's bottom edge
-  without the dock offset.
+  without the dock offset. `sticky` pins only inside a parent taller than the bar: a form that is only the bar goes
+  in a `composer` (Actions).
 
 ### Feedback
 
-- **`flash`, `flash_group`** – Phoenix's flash API, as a toast at the top (the bottom belongs to dock and action bar),
-  72px + safe area from the top, below a sticky page bar (61px on phones). Full width within the 16px gutter on
-  phones, 384px at the end from `sm`; `shadow-lg`, as it floats over content. `flash_group` also shows the connection-lost messages. `role="alert"` for errors, `status` for info.
+- **`flash`, `flash_group`** – Phoenix's flash API, as toasts at the bottom, where the thumb is and the page's
+  title stays clear: 16px above whatever holds the bottom (the dock, the on-screen keyboard, a `composer`, a pinned
+  `action_bar sticky` outside a dialog, a shown `selection_bar`), else above the bottom safe area. Full width within the 16px gutter on
+  phones, 384px at the end from `sm` (16px + right inset from the edge); `shadow-lg`, as they float over content,
+  above the `fab`. `flash_group` is a polite live region with info, error, the `:toast` of `put_toast/3` and the
+  connection-lost messages. `role="alert"` for errors, `status` for info and toasts.
+  - An info flash closes itself after 5 s as its ✕ does (`lv:clear-flash`, then hidden), a toast only hides (a
+    clear would also wipe a newer toast put meanwhile); the time pauses while the pointer is over the toast or
+    focus is inside. That does not meet WCAG 2.2.1 for keyboard and screen-reader users, who may not reach the
+    toast in time: an action toast is a shortcut, never the only way to undo. Errors, also connection lost, stay
+    until closed. A `flash` with slot content (a static message) stays too, and its ✕ only hides it.
+- **`put_toast(socket_or_conn, message, opts)`** – confirms a done action, from a LiveView or a controller:
+  `action` (the button's label) and `on_action` (event name or `%JS{}`, as other `on_*` attrs) add one ghost
+  `btn-sm` at the toast's end ("Bananen abgehakt · Rückgängig"); the click closes the toast, then runs `on_action`.
+  Without `action` a plain neutral toast ("Milch hinzugefügt"). Neutral surface (`bg-popover`, hairline,
+  `shadow-lg`, `rounded-box`), no icon, no ✕: it closes itself, the action is its control. It is the flash key
+  `:toast`, so it survives `push_navigate` and redirects (an `on_action` event then goes to the new LiveView, which
+  must handle it); a newer toast replaces the older one with a fresh element (`toast-<n>`), so it enters, counts
+  and is announced afresh.
 - **`alert`** – `tone` `:info | :success | :warning | :error | :neutral`, `title`, `icon` (`false` hides it),
   `busy` (spinner for the icon, a still ellipsis with reduced motion), `on_close`, `:actions` slot (end of the row
   while the alert's content box is at least 32rem wide, about 34rem with its padding, under the text when narrower: a container query on the alert, so a
@@ -555,6 +589,16 @@ Visible and accessible default strings are German; each has an attr:
   pass their count (`actions`, the buttons from `md`), `menu` and `actions_class`, and it keeps an invisible copy of
   that column, from `md` and on phones with the rows' `trailing_on_phone={:title}`. It takes the list's `id` with
   `-foot`, so a stream keeps it and adds rows above it.
+  - `size={:dense}` (class `setzkasten-list-dense` on the `<ul>`): every row 53px, as tall as a one-line `:md` row,
+    also with one meta line (21px title + 20px meta, 6px block padding) or a 40px leading tile; for checklists such
+    as a shopping list. Dividers, hover and the whole-row tap stay.
+  - `list_row` `muted`: a done or secondary row (a shopping list's "Zuletzt verwendet"): the title takes the meta's
+    `base-content/70` at normal weight, trailing values follow it, the leading content fades to 70 % (avatar
+    initials are text). Hover and tap as on any row. 70 % is the floor for text; nothing goes lower.
+  - `list_row` `exit={:strike}` (needs `id`): a tap on an `on_click` title strikes it through at once, before the
+    app's own click runs; every row LiveView removes strikes (if not yet struck) and collapses (2.9), also rows that
+    only leave the view (a stream reset for a filter, a stream `limit`), so use it on lists whose rows leave by being
+    done.
   - `list_row`: `title`, `:leading` (plush, icon, avatar), `:meta` (truncates; one line per `:meta`), `:trailing` (value, badge; moves to
     a second line below `md`, its lines aligned at the start; with `trailing_on_phone={:meta}` to the end of the
     meta line; with `trailing_on_phone={:title}` a short value (amount, optional small second line such as a
@@ -690,10 +734,14 @@ plain CSS identifiers, without `.` or `:`.
 - **`modal`** – native `<dialog>`. `placement` `:center` (bottom sheet on phones; its content and a sticky
   `action_bar` stay above the bottom safe area, a transparent bottom border outside the scrolling area) | `:end` |
   `:start` (side panel, with a ✕ unless `close_button={false}`; transparent top and bottom borders keep it clear of
-  the safe areas). Open with `show_modal(id)` or `show={true}`; close
-  with `hide_modal(id)`, Escape, backdrop or `<form method="dialog">`. `on_cancel` runs after every close except
-  `show={false}`. `show` acts when it changes, so a modal the user closed stays closed while the server's `show` is
-  still `true`.
+  the safe areas). The title row (with the ✕) stays at the top and `:actions` at the bottom of the box at every
+  placement while a long body scrolls between them, on the box's surface, each with a hairline only while content
+  runs under it (a scroll-driven animation; none where unsupported); a focused field scrolls clear of them (a title
+  of up to two lines), focusing their own buttons scrolls nothing. Both reach into the box's 24px padding, so a modal
+  `class` leaves the padding as it is. A `:center` box (and `confirm_dialog`'s) is at most the dynamic viewport high
+  less 5em at every width. Open with `show_modal(id)` or `show={true}`; close with `hide_modal(id)`, Escape, backdrop
+  or `<form method="dialog">`. `on_cancel` runs after every close except `show={false}`. `show` acts when it changes,
+  so a modal the user closed stays closed while the server's `show` is still `true`.
   While it is open the page does not scroll and does not shift: `:root` keeps the scrollbar's room
   (`scrollbar-gutter: stable`; daisyUI reserves it only where CSS `if()` works). Where scrollbars take room (Windows,
   macOS set to always show them) a page too short to scroll has an empty strip of that width at its end; overlay
@@ -822,8 +870,13 @@ plain CSS identifiers, without `.` or `:`.
     "Mehr" keep 2px around their 20px), so all labels sit on one line. On touch screens it gives way to the on-screen keyboard while a field
     that takes typing has focus (`:read-write`: text-like inputs, text areas, editable content); sliders, colour,
     date and time pickers, buttons, file inputs, read-only fields and `inputmode="none"` keep it. Labels stay on
-    one line and end in an ellipsis (the link keeps the full label as its name). Sticky action bars sit above it
-    via `--setzkasten-dock-offset`.
+    one line and end in an ellipsis (the link keeps the full label as its name). Sticky action bars, the `fab`,
+    the `composer` and toasts sit above it via `--setzkasten-dock-offset`, set on `<html>` while the dock shows
+    (so toasts outside the shell see it too) and 0 while the keyboard is up.
+  - Page column: the shell exports `--setzkasten-column` (the `width`'s cap, unset for `:full`),
+    `--setzkasten-gutter` (16, 24, 32px; 16px for `:full`) and `--setzkasten-column-align` (`0px` with `:sidebar`
+    starts at the content edge; unset, read as `auto`, centres), each from the same table as `main`'s classes, so
+    fixed bars such as the `composer` line up with `main`.
 
 ## 4. Patterns
 
@@ -843,7 +896,8 @@ plain CSS identifiers, without `.` or `:`.
 ### 4.2 Lists
 
 `<.list>` for collections, `<.list_heading>` for groups (e.g. dates). Load more with a stream +
-`phx-viewport-bottom` or a "Mehr laden" button.
+`phx-viewport-bottom` or a "Mehr laden" button. A checklist (shopping list): `size={:dense}`, open rows with
+`exit={:strike}` and `on_click`, done rows `muted` in a list of their own.
 
 ### 4.3 Responsive numeric tables
 
@@ -875,7 +929,8 @@ plain CSS identifiers, without `.` or `:`.
 | Popover | HTML Popover API + CSS anchor positioning; colocated hook for server state and as placement fallback |
 | Disclosure | `<details>` |
 | Tabs, segmented ranges | links with `patch`, server state |
-| Flash | `JS.push("lv:clear-flash")` + `JS.hide` |
+| Flash, toast | `JS.push("lv:clear-flash")` + `JS.hide`; colocated hook for the 5 s auto-dismiss |
+| Composer | `position: fixed` + colocated hook (`ResizeObserver`) publishing its height; keyboard inset from `<.theme_script>` |
 | Confirm | `<.confirm_dialog>` + `show_confirm/3` |
 | Sidebar overlay | `<.modal placement={:start} close_button={false}>` |
 | Sidebar collapse | `data-sidebar` on `<html>` + colocated hook (`localStorage`), `<.theme_script>` before paint |
@@ -899,7 +954,7 @@ The pointer decides, not the viewport.
 | menu items, summaries | ≈ 33px | 44px, label centred |
 | checkbox, radio, toggle | 24px control | 44px label row |
 | table rows | 45px (`:md`), 36px (`:dense`) | 45px (`:md`), 44px (`:dense`) |
-| list rows | ≥ 53px | ≥ 53px |
+| list rows | ≥ 53px (`:md`, `:dense`) | ≥ 53px (`:md`, `:dense`) |
 | dock items | ≈ 48px | ≈ 48px |
 | standalone text links | – | 44px: use `btn btn-ghost btn-sm` or `btn-link` |
 
@@ -925,3 +980,5 @@ Inline links in sentences are exempt (WCAG 2.5.8).
 - `<.theme_meta />`: the two `theme-color` meta tags (`#ffffff` / `#202328`) by `prefers-color-scheme`. With an
   explicit choice, `<.theme_script>` (on load) and `<.theme_toggle>` (on change) put a `theme-color` meta without
   `media` first, in the chosen theme's colour; "System" removes it. Place `<.theme_meta />` before `<.theme_script>`.
+- `<.theme_script>` belongs in every root layout, also with `store={:server}`: it publishes the on-screen
+  keyboard's height (`--setzkasten-keyboard-inset`) that toasts and the `composer` sit on.
