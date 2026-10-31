@@ -135,18 +135,18 @@ defmodule Setzkasten.ShellTest do
     assert count(doc, "nav.dock a:last-child svg") == 0
   end
 
-  test "sidebar dock with more than five entries: four and a more button" do
+  test "sidebar dock with more than six entries: five and a more button" do
     assigns = %{}
 
     doc =
       parse(~H"""
-      <.app_shell layout={:sidebar} current={:f} more_label="More">
+      <.app_shell layout={:sidebar} current={:g} more_label="More">
         <:brand>App</:brand>
-        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+        <:nav :for={k <- ~w(a b c d e f g)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
       </.app_shell>
       """)
 
-    assert count(doc, "nav.dock a") == 4
+    assert count(doc, "nav.dock a") == 5
     assert text(doc, "nav.dock button .dock-label") == "More"
     assert attr(doc, "nav.dock button", "phx-click") =~ "app-shell-sidebar"
     # The current page is behind "more", so the button is the active one.
@@ -154,18 +154,18 @@ defmodule Setzkasten.ShellTest do
     assert attr(doc, "nav.dock button", "aria-current") == "true"
   end
 
-  test "topbar dock with more than five entries: four and a more sheet with the rest" do
+  test "topbar dock with more than six entries: five and a more sheet with the rest" do
     assigns = %{}
 
     doc =
       parse(~H"""
-      <.app_shell current={:f} more_label="More">
+      <.app_shell current={:g} more_label="More">
         <:brand>App</:brand>
-        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+        <:nav :for={k <- ~w(a b c d e f g)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
       </.app_shell>
       """)
 
-    assert count(doc, "nav.dock a") == 4
+    assert count(doc, "nav.dock a") == 5
     more = "nav.dock button[aria-haspopup=dialog]"
     assert text(doc, "#{more} .dock-label") == "More"
     assert attr(doc, more, "phx-click") =~ "#app-shell-more"
@@ -175,22 +175,41 @@ defmodule Setzkasten.ShellTest do
     assert "modal-bottom" in classes(doc, sheet)
     assert attr(doc, sheet, "aria-labelledby") == "app-shell-more-title"
     assert text(doc, "#{sheet} h2") == "More"
-    assert doc |> find("#{sheet} nav a") |> LazyHTML.attribute("href") == ["/e", "/f"]
-    assert attr(doc, "#{sheet} a[href='/f']", "aria-current") == "page"
-    assert "menu-active" in classes(doc, "#{sheet} a[href='/f']")
-    assert attr(doc, "#{sheet} a[href='/e']", "aria-current") == nil
+    assert doc |> find("#{sheet} nav a") |> LazyHTML.attribute("href") == ["/f", "/g"]
+    assert attr(doc, "#{sheet} a[href='/g']", "aria-current") == "page"
+    assert "menu-active" in classes(doc, "#{sheet} a[href='/g']")
+    assert attr(doc, "#{sheet} a[href='/f']", "aria-current") == nil
 
     doc =
       parse(~H"""
       <.app_shell current={:a}>
         <:brand>App</:brand>
-        <:nav :for={k <- ~w(a b c d e)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
       </.app_shell>
       """)
 
-    assert count(doc, "nav.dock a") == 5
+    assert count(doc, "nav.dock a") == 6
     assert count(doc, "nav.dock button") == 0
     assert count(doc, "dialog") == 0
+  end
+
+  test "six dock entries and one left out: five and a more sheet with the sixth and the left-out one" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell current={:a} more_label="More">
+        <:brand>App</:brand>
+        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} />
+        <:nav key={:x} label="x" icon="list" dock={false} navigate="/x" /> x
+      </.app_shell>
+      """)
+
+    assert doc |> find("nav.dock a") |> LazyHTML.attribute("href") == ~w(/a /b /c /d /e)
+    assert text(doc, "nav.dock button[aria-haspopup=dialog] .dock-label") == "More"
+
+    assert doc |> find("dialog#app-shell-more nav a") |> LazyHTML.attribute("href") ==
+             ~w(/f /x)
   end
 
   test "entries left out of the topbar dock are in the more sheet, with icon and count" do
@@ -911,11 +930,11 @@ defmodule Setzkasten.ShellTest do
       <.app_shell layout={:sidebar}>
         <:brand>App</:brand>
         <:nav_footer>Sync</:nav_footer>
-        <:nav :for={k <- ~w(a b c d e)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
+        <:nav :for={k <- ~w(a b c d e f)a} key={k} label={"#{k}"} icon="list" navigate={"/#{k}"} /> x
       </.app_shell>
       """)
 
-    assert count(doc, "nav.dock a") == 4
+    assert count(doc, "nav.dock a") == 5
     assert count(doc, "nav.dock button") == 1
 
     doc =

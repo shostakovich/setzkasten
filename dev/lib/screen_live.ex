@@ -938,13 +938,7 @@ defmodule Setzkasten.Dev.ScreenLive do
       <:nav key={:home} label="Home" plush="nav-dashboard" navigate="/screens/dashboard" />
       <:nav key={:pv} label="PV" plush="nav-solar" navigate="/screens/dashboard" />
       <:nav key={:switches} label="Schalten" plush="nav-switches" navigate="/screens/dashboard" />
-      <:nav
-        key={:reports}
-        label="Berichte"
-        plush="nav-reports"
-        dock={false}
-        navigate="/screens/dashboard"
-      />
+      <:nav key={:reports} label="Berichte" plush="nav-reports" navigate="/screens/dashboard" />
       <:nav key={:weather} label="Wetter" plush="nav-weather" navigate="/screens/dashboard" />
       <:nav key={:sensors} label="Sensoren" plush="nav-sensors" navigate="/screens/dashboard" />
       <.header>
