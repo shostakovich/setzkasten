@@ -1208,20 +1208,20 @@ defmodule Setzkasten.Components.Data do
   }
 
   @bar_colors %{
-    1 => "text-chart-1-fill [--setzkasten-bar-line:var(--color-chart-1)]",
-    2 => "text-chart-2-fill [--setzkasten-bar-line:var(--color-chart-2)]",
-    3 => "text-chart-3-fill [--setzkasten-bar-line:var(--color-chart-3)]",
-    4 => "text-chart-4-fill [--setzkasten-bar-line:var(--color-chart-4)]",
-    5 => "text-chart-5-fill [--setzkasten-bar-line:var(--color-chart-5)]",
-    6 => "text-chart-6-fill [--setzkasten-bar-line:var(--color-chart-6)]",
-    7 => "text-chart-7-fill [--setzkasten-bar-line:var(--color-chart-7)]",
-    8 => "text-chart-8-fill [--setzkasten-bar-line:var(--color-chart-8)]",
-    {:seq, 1} => "text-seq-1 [--setzkasten-bar-line:var(--color-seq-1)]",
-    {:seq, 2} => "text-seq-2 [--setzkasten-bar-line:var(--color-seq-2)]",
-    {:seq, 3} => "text-seq-3 [--setzkasten-bar-line:var(--color-seq-3)]",
-    {:seq, 4} => "text-seq-4 [--setzkasten-bar-line:var(--color-seq-4)]",
-    {:seq, 5} => "text-seq-5 [--setzkasten-bar-line:var(--color-seq-5)]",
-    other: "text-chart-other-fill [--setzkasten-bar-line:var(--color-chart-other)]"
+    1 => "text-chart-1-fill",
+    2 => "text-chart-2-fill",
+    3 => "text-chart-3-fill",
+    4 => "text-chart-4-fill",
+    5 => "text-chart-5-fill",
+    6 => "text-chart-6-fill",
+    7 => "text-chart-7-fill",
+    8 => "text-chart-8-fill",
+    {:seq, 1} => "text-seq-1",
+    {:seq, 2} => "text-seq-2",
+    {:seq, 3} => "text-seq-3",
+    {:seq, 4} => "text-seq-4",
+    {:seq, 5} => "text-seq-5",
+    other: "text-chart-other-fill"
   }
 
   @doc """
@@ -1234,12 +1234,11 @@ defmodule Setzkasten.Components.Data do
   `hide_label` drops the visible label (it stays the progress's accessible name), for a bar
   whose label is said next to it, as a stat's `:meter` under its value.
 
-  `color` (a chart series 1–8, `:other` or a sequential step `{:seq, 1..5}`) draws the bar as
-  the chart draws that series:
-  `chart-N-fill` with a 1px `chart-N` line, in place of `tone`, so a bar beside a chart keeps
-  its series' colour without borrowing a tone's meaning. Series 1–8 and `:other` stand alone:
-  their line carries the 3:1. A sequential step has no line of its own (its fill is its line),
-  so steps 1–3 in light and 1–2 in dark need `show_value`.
+  `color` (a chart series 1–8, `:other` or a sequential step `{:seq, 1..5}`) draws the bar in
+  that series' `chart-N-fill`, without an outline, in place of `tone`, so a bar beside a chart
+  keeps its series' colour without borrowing a tone's meaning. Series 1, 4, 5 and 8 keep 3:1
+  against their track and stand alone; series 2, 3, 6, 7, `:other` and the sequential steps
+  1–3 need `show_value` or their value as text beside them (a stat's `:meter`).
 
       <.bar label="Aktien weltweit" value={72} target={70} show_value />
       <.bar label="Solar" value={64} color={2} show_value />
@@ -1267,7 +1266,7 @@ defmodule Setzkasten.Components.Data do
       assign(assigns,
         tone_class:
           if(assigns.color,
-            do: ["setzkasten-progress-chart", @bar_colors[assigns.color]],
+            do: @bar_colors[assigns.color],
             else: @bar_tones[assigns.tone]
           ),
         percent: percent(assigns.value, assigns.max),
@@ -1667,20 +1666,20 @@ defmodule Setzkasten.Components.Data do
   end
 
   @legend_colors %{
-    1 => "bg-chart-1-fill border border-chart-1",
-    2 => "bg-chart-2-fill border border-chart-2",
-    3 => "bg-chart-3-fill border border-chart-3",
-    4 => "bg-chart-4-fill border border-chart-4",
-    5 => "bg-chart-5-fill border border-chart-5",
-    6 => "bg-chart-6-fill border border-chart-6",
-    7 => "bg-chart-7-fill border border-chart-7",
-    8 => "bg-chart-8-fill border border-chart-8",
+    1 => "bg-chart-1-fill",
+    2 => "bg-chart-2-fill",
+    3 => "bg-chart-3-fill",
+    4 => "bg-chart-4-fill",
+    5 => "bg-chart-5-fill",
+    6 => "bg-chart-6-fill",
+    7 => "bg-chart-7-fill",
+    8 => "bg-chart-8-fill",
     {:seq, 1} => "bg-seq-1",
     {:seq, 2} => "bg-seq-2",
     {:seq, 3} => "bg-seq-3",
     {:seq, 4} => "bg-seq-4",
     {:seq, 5} => "bg-seq-5",
-    other: "bg-chart-other-fill border border-chart-other",
+    other: "bg-chart-other-fill",
     success: "bg-success-ink",
     error: "bg-error-ink",
     primary: "bg-primary",
@@ -1712,11 +1711,10 @@ defmodule Setzkasten.Components.Data do
   Chart legend: 10px dots with `text-xs` labels. An item's `value_label` ("412 W") shows its
   value at the end of its line: then the items form a grid of up to three columns of at least
   8rem, by the legend's own width (two in a phone card or a half-width card), labels end in an
-  ellipsis, values right-aligned with tabular figures. `color` is a series number 1–8 (fill
-  `chart-N-fill` with a 1px `chart-N` outline, like the bars; the outline carries the 3:1),
-  `:other` (the grouped rest, `chart-other-fill` with a `chart-other` outline), a step of the
-  sequential ramp `{:seq, 1..5}` for ordered categories, or `:success`, `:error`, `:primary`,
-  `:neutral`. An item's `marker` is `:dot` (default),
+  ellipsis, values right-aligned with tabular figures. `color` is a series number 1–8 (a
+  `chart-N-fill` dot, ≥ 3:1 on the surface), `:other` (the grouped rest, `chart-other-fill`),
+  a step of the sequential ramp `{:seq, 1..5}` for ordered categories, or `:success`, `:error`,
+  `:primary`, `:neutral`. An item's `marker` is `:dot` (default),
   `:line` or `:dashed` (a 16px line in the series' line colour, ≥ 3:1, to key a line or a
   dashed reference line).
 

@@ -53,11 +53,11 @@ defmodule Setzkasten.Components.Shell do
   (+ `count_label`, e.g. "neu": the link is then named "Buchungen, 2 neu"; the rail and the
   dock show a positive count as a badge on the icon), `amount` (minor units, sidebar balances), `section` (sidebar group title, shown before the
   first entry of a section; an entry without one after a section stands apart by the same gap),
-  `section_amount` (on a section's first entry: the section's total next to its title), `dock` (default true; the first five go into the dock) and `rail` (default
+  `section_amount` (on a section's first entry: the section's total next to its title), `dock` (default true; up to six go into the dock) and `rail` (default
   true; `false` leaves the entry out of the icon rail, e.g. object lists
   such as accounts, which stay in the full sidebar, its dialog and the dock). The rail keeps a
-  gap between sections, without their titles. With more than five dock entries, or entries
-  left out of the dock, the dock shows at most four and a `more_label` button: with
+  gap between sections, without their titles. With more than six dock entries, or entries
+  left out of the dock, the dock shows at most five and a `more_label` button: with
   `layout={:sidebar}` it opens the full sidebar, with `layout={:topbar}` a sheet (`<.modal>`)
   listing the entries the dock leaves out. With `layout={:sidebar}` a `:nav_footer` brings the
   button too, since the sidebar is the footer's only place on phones.
@@ -822,8 +822,8 @@ defmodule Setzkasten.Components.Shell do
     # The sidebar dialog behind "more" is the only place a phone shows the nav footer.
     footer? = assigns.layout == :sidebar and assigns.nav_footer != []
     left_out? = length(entries) < length(nav) or footer?
-    more? = length(entries) > 5 or (entries != [] and left_out?)
-    items = Enum.take(entries, if(more?, do: 4, else: 5))
+    more? = length(entries) > 6 or (entries != [] and left_out?)
+    items = Enum.take(entries, if(more?, do: 5, else: 6))
     {items, more?, if(more?, do: nav -- items, else: [])}
   end
 

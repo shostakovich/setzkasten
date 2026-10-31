@@ -244,7 +244,7 @@ defmodule Setzkasten.LayoutTest do
              "--color-selected: var(--color-neutral);\n    --color-selected-content: var(--color-neutral-content);"
   end
 
-  test "info and warning inks: their roles in dark, chart lines follow, utilities everywhere" do
+  test "info and warning inks: their roles in dark, utilities everywhere" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
     for declaration <- [
@@ -254,12 +254,37 @@ defmodule Setzkasten.LayoutTest do
       assert length(String.split(css, declaration)) == 3, declaration
     end
 
-    for {n, ink} <- [{2, "warning"}, {3, "success"}, {4, "error"}, {6, "info"}] do
-      declaration = "--color-chart-#{n}: var(--color-#{ink}-ink);"
-      assert length(String.split(css, declaration)) == 4, declaration
+    assert css =~ ~r/@theme \{[^}]*--color-info-ink: oklch[^}]*--color-warning-ink: oklch/
+  end
+
+  test "chart series are graphic colours of their own: 3:1 on base-100 and base-200, fill = line, bars 1, 4, 5, 8 on their track" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    series = Enum.map(1..8, &"chart-#{&1}") ++ ["chart-other"]
+
+    refute css =~ ~r/--color-chart-[\w-]+: var\(--color-(?!chart-)/
+
+    for name <- series do
+      fill = "--color-#{name}-fill: var(--color-#{name});"
+      assert length(String.split(css, fill)) == 4, fill
+      assert css =~ ~r/@theme \{[^}]*--color-#{name}-fill: oklch[^}]*--color-#{name}: oklch/
     end
 
-    assert css =~ ~r/@theme \{[^}]*--color-info-ink: oklch[^}]*--color-warning-ink: oklch/
+    for marker <- [
+          ~s([data-theme="zipfel-light"] {),
+          ":root:not([data-theme]) {",
+          ~s([data-theme="zipfel-dark"] {)
+        ] do
+      tokens = theme_tokens(css, marker)
+
+      for name <- series, surface <- ~w(base-100 base-200) do
+        assert contrast(tokens[name], tokens[surface]) >= 3, "#{marker} #{name} on #{surface}"
+      end
+
+      for name <- ~w(chart-1 chart-4 chart-5 chart-8), surface <- ~w(base-100 base-200) do
+        on_track = contrast(tokens[name], track(tokens[name], tokens[surface]))
+        assert on_track >= 3, "#{marker} #{name} bar on its track over #{surface}"
+      end
+    end
   end
 
   test "every ink is text-grade: 4.5:1 on base-100 and base-200 in each theme" do
@@ -352,8 +377,27 @@ defmodule Setzkasten.LayoutTest do
     (hi + 0.05) / (lo + 0.05)
   end
 
-  # OKLCH to linear sRGB (Björn Ottosson's matrices), clipped to the gamut, weighted per WCAG.
-  defp luminance([l, c, h]) do
+  # daisyUI's progress track: the bar colour at 20 % alpha, composited over the surface in sRGB.
+  defp track(color, surface) do
+    {:srgb, Enum.zip_with(srgb(color), srgb(surface), &(0.2 * &1 + 0.8 * &2))}
+  end
+
+  defp luminance(color) do
+    color |> linear() |> Enum.zip_with([0.2126, 0.7152, 0.0722], &(&1 * &2)) |> Enum.sum()
+  end
+
+  defp srgb(color), do: color |> linear() |> Enum.map(&encode/1)
+
+  defp encode(c) when c <= 0.0031308, do: 12.92 * c
+  defp encode(c), do: 1.055 * c ** (1 / 2.4) - 0.055
+
+  defp decode(c) when c <= 0.04045, do: c / 12.92
+  defp decode(c), do: ((c + 0.055) / 1.055) ** 2.4
+
+  defp linear({:srgb, rgb}), do: Enum.map(rgb, &decode/1)
+
+  # OKLCH to linear sRGB (Björn Ottosson's matrices), clipped to the gamut.
+  defp linear([l, c, h]) do
     {a, b} = {c * :math.cos(h * :math.pi() / 180), c * :math.sin(h * :math.pi() / 180)}
     l = l / 100
 
@@ -367,14 +411,13 @@ defmodule Setzkasten.LayoutTest do
         &(&1 ** 3)
       )
 
-    [
-      4.0767416621 * lms_l - 3.3077115913 * lms_m + 0.2309699292 * lms_s,
-      -1.2684380046 * lms_l + 2.6097574011 * lms_m - 0.3413193965 * lms_s,
-      -0.0041960863 * lms_l - 0.7034186147 * lms_m + 1.7076147010 * lms_s
-    ]
-    |> Enum.zip_with([0.2126, 0.7152, 0.0722], fn channel, weight ->
-      weight * min(max(channel, 0.0), 1.0)
-    end)
-    |> Enum.sum()
+    Enum.map(
+      [
+        4.0767416621 * lms_l - 3.3077115913 * lms_m + 0.2309699292 * lms_s,
+        -1.2684380046 * lms_l + 2.6097574011 * lms_m - 0.3413193965 * lms_s,
+        -0.0041960863 * lms_l - 0.7034186147 * lms_m + 1.7076147010 * lms_s
+      ],
+      &min(max(&1, 0.0), 1.0)
+    )
   end
 end

@@ -19,22 +19,22 @@ defmodule Setzkasten.Dev.Pages.Foundations do
     {"bg-error text-error-content", "error", "Fehler, Verlust"}
   ]
 
-  # {series, role, fill + outline (bars, areas, legend), line}
+  # {series, name, fill (bars, areas, legend), line}
   @series [
-    {1, "primary", "bg-chart-1-fill border-chart-1", "bg-chart-1"},
-    {2, "warning", "bg-chart-2-fill border-chart-2", "bg-chart-2"},
-    {3, "success", "bg-chart-3-fill border-chart-3", "bg-chart-3"},
-    {4, "error", "bg-chart-4-fill border-chart-4", "bg-chart-4"},
-    {5, "accent", "bg-chart-5-fill border-chart-5", "bg-chart-5"},
-    {6, "info", "bg-chart-6-fill border-chart-6", "bg-chart-6"},
-    {7, "secondary", "bg-chart-7-fill border-chart-7", "bg-chart-7"},
-    {8, "neutral", "bg-chart-8-fill border-chart-8", "bg-chart-8"},
-    {"other", "Rest", "bg-chart-other-fill border-chart-other", "bg-chart-other"},
-    {"seq-1", "geordnet, niedrig", "bg-seq-1 border-seq-1", "bg-seq-1"},
-    {"seq-2", "geordnet", "bg-seq-2 border-seq-2", "bg-seq-2"},
-    {"seq-3", "geordnet", "bg-seq-3 border-seq-3", "bg-seq-3"},
-    {"seq-4", "geordnet", "bg-seq-4 border-seq-4", "bg-seq-4"},
-    {"seq-5", "geordnet, hoch", "bg-seq-5 border-seq-5", "bg-seq-5"}
+    {1, "Blau", "bg-chart-1-fill", "bg-chart-1"},
+    {2, "Bernstein", "bg-chart-2-fill", "bg-chart-2"},
+    {3, "Grün", "bg-chart-3-fill", "bg-chart-3"},
+    {4, "Rot", "bg-chart-4-fill", "bg-chart-4"},
+    {5, "Violett", "bg-chart-5-fill", "bg-chart-5"},
+    {6, "Cyan", "bg-chart-6-fill", "bg-chart-6"},
+    {7, "Pink", "bg-chart-7-fill", "bg-chart-7"},
+    {8, "Schiefer", "bg-chart-8-fill", "bg-chart-8"},
+    {"other", "Rest", "bg-chart-other-fill", "bg-chart-other"},
+    {"seq-1", "geordnet, niedrig", "bg-seq-1", "bg-seq-1"},
+    {"seq-2", "geordnet", "bg-seq-2", "bg-seq-2"},
+    {"seq-3", "geordnet", "bg-seq-3", "bg-seq-3"},
+    {"seq-4", "geordnet", "bg-seq-4", "bg-seq-4"},
+    {"seq-5", "geordnet, hoch", "bg-seq-5", "bg-seq-5"}
   ]
 
   def render(assigns) do
@@ -92,23 +92,23 @@ defmodule Setzkasten.Dev.Pages.Foundations do
       </.demo>
       <.demo title="Diagrammreihen chart-1…8, chart-other und die sequenzielle Rampe seq-1…5">
         <ul class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
-          <li :for={{n, role, fill, line} <- @series} class="flex items-end gap-3">
+          <li :for={{n, name, fill, line} <- @series} class="flex items-end gap-3">
             <span class="flex h-10 items-end gap-1" aria-hidden="true">
-              <span class={["h-6 w-3 border", fill]}></span>
-              <span class={["h-10 w-3 border", fill]}></span>
+              <span class={["h-6 w-3", fill]}></span>
+              <span class={["h-10 w-3", fill]}></span>
             </span>
             <span class="min-w-0 flex-1">
               <span class={["mb-1.5 block h-0.5 rounded-full", line]} aria-hidden="true"></span>
-              <span class="font-semibold tabular-nums">{n}</span> {role}
+              <span class="font-semibold tabular-nums">{n}</span> {name}
             </span>
           </li>
         </ul>
         <:note>
-          Die Reihen sind die Rollenfarben. Balken, Flächen und Legendenpunkte:
-          <code>chart-N-fill</code>
-          mit 1px Kontur <code>chart-N</code>; Linien und Punkte: <code>chart-N</code>
-          (≥ 3:1 auf base-100/200). PV und Warnungen Reihe 2, Einnahmen
-          success, Überziehung error.
+          Eigene Grafikfarben, nicht die Rollen oder Inks: in beiden Themes ≥ 3:1 auf
+          base-100/200. Fläche <code>chart-N-fill</code>
+          und Linie <code>chart-N</code>
+          sind dieselbe Farbe, Balken ohne Kontur. PV und Warnungen Reihe 2, Einnahmen
+          Reihe 3, Überziehung Reihe 4.
         </:note>
       </.demo>
     </section>
