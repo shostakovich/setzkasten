@@ -132,7 +132,6 @@ defmodule Setzkasten.Dev.Dashboard do
           for {{p, c}, i} <- Enum.with_index(Enum.zip(@produced, @consumed)) do
             {i * 10 + 1, p / max * 100, c / max * 100}
           end,
-        outline: outline(),
         y_ticks: ["0,7", "0,35", "0"],
         x_ticks: ["14:00", "20:00", "02:00", "08:00", "13:00"]
       )
@@ -145,16 +144,14 @@ defmodule Setzkasten.Dev.Dashboard do
           y={100 - p}
           width="4"
           height={p}
-          class="fill-chart-2-fill stroke-chart-2"
-          {@outline}
+          class="fill-chart-2-fill"
         />
         <rect
           x={x + 4}
           y={100 - c}
           width="4"
           height={c}
-          class="fill-chart-1-fill stroke-chart-1"
-          {@outline}
+          class="fill-chart-1-fill"
         />
       </g>
     </.plot>
@@ -202,7 +199,6 @@ defmodule Setzkasten.Dev.Dashboard do
       assign(assigns,
         bars: for({kwh, i} <- Enum.with_index(@yield), do: {i * 10 + 2, kwh / max * 100}),
         width: length(@yield) * 10,
-        outline: outline(),
         y_ticks: ["3,5", "1,75", "0"],
         x_ticks: ["27.9.", "1.10.", "5.10.", "heute"]
       )
@@ -215,15 +211,11 @@ defmodule Setzkasten.Dev.Dashboard do
         y={100 - h}
         width="6"
         height={h}
-        class="fill-chart-2-fill stroke-chart-2"
-        {@outline}
+        class="fill-chart-2-fill"
       />
     </.plot>
     """
   end
-
-  # Bars: role fill with a 1px outline in the series line colour (3:1 for the pastel fills).
-  defp outline, do: %{"stroke-width": "1", "vector-effect": "non-scaling-stroke"}
 
   defp points(values, max) do
     values

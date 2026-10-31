@@ -733,30 +733,12 @@ defmodule Setzkasten.DataTest do
              ~r/\.progress\.setzkasten-progress-neutral \{\s*color: color-mix\(in oklab, var\(--color-base-content\) 70%, transparent\);/
   end
 
-  test "a bar takes a chart series colour: its fill with its line, in place of the tone" do
-    for {color, fill, line} <- [
-          {2, "chart-2-fill", "chart-2"},
-          {:other, "chart-other-fill", "chart-other"}
-        ] do
+  test "a bar takes a chart series fill without an outline, in place of the tone" do
+    for {color, fill} <- [{2, "chart-2-fill"}, {:other, "chart-other-fill"}, {{:seq, 3}, "seq-3"}] do
       assigns = %{color: color}
       doc = parse(~H|<.bar label="Solar" value={64} color={@color} tone={:error} show_value />|)
-
-      assert classes(doc, "progress") ==
-               [
-                 "progress",
-                 "w-full",
-                 "setzkasten-progress-chart",
-                 "text-#{fill}",
-                 "[--setzkasten-bar-line:var(--color-#{line})]"
-               ]
+      assert classes(doc, "progress") == ["progress", "w-full", "text-#{fill}"]
     end
-
-    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
-
-    assert css =~
-             ~r/\.progress\.setzkasten-progress-chart::-webkit-progress-value \{\s*box-shadow: inset 0 0 0 1px var\(--setzkasten-bar-line\);/
-
-    assert css =~ ~r/\.progress\.setzkasten-progress-chart::-moz-progress-bar \{\s*box-shadow/
   end
 
   test "bar caps the bar at max but shows the real share" do
@@ -1031,8 +1013,10 @@ defmodule Setzkasten.DataTest do
   test "legend uses chart tokens" do
     assigns = %{}
     doc = parse(~H|<.legend items={[%{label: "A", color: 1}, %{label: "B", color: :error}]} />|)
-    assert "bg-chart-1-fill" in classes(doc, "li:first-child span")
-    assert "border-chart-1" in classes(doc, "li:first-child span")
+
+    assert classes(doc, "li:first-child span") ==
+             ~w(size-2.5 shrink-0 rounded-full bg-chart-1-fill)
+
     assert "bg-error-ink" in classes(doc, "li:last-child span")
 
     doc =
@@ -1043,21 +1027,17 @@ defmodule Setzkasten.DataTest do
       ]} />
       """)
 
-    assert ~w(bg-chart-other-fill border border-chart-other) --
-             classes(doc, "li:first-child span") == []
+    assert "bg-chart-other-fill" in classes(doc, "li:first-child span")
+    refute "border" in classes(doc, "li:first-child span")
 
     assert "stroke-chart-other" in classes(doc, "li:last-child svg")
   end
 
-  test "the grouped rest has its own chart tokens in every theme, registered for utilities" do
+  test "the grouped rest has its own grey in light and in dark" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
-    assert css =~
-             "--color-chart-other-fill: oklch(86.00% 0.012 254.00);\n    --color-chart-other: oklch(60.00% 0.012 254.00);"
-
-    assert length(String.split(css, "--color-chart-other-fill: var(--color-chart-other);")) == 3
+    assert length(String.split(css, "--color-chart-other: oklch(64.00% 0.010 254.00);")) == 3
     assert length(String.split(css, "--color-chart-other: oklch(58.00% 0.010 254.00);")) == 3
-    assert css =~ ~r/@theme \{[^}]*--color-chart-other-fill: [^}]*--color-chart-other: /
   end
 
   test "legend items with a value line up in a grid, values right-aligned" do
