@@ -3,6 +3,9 @@
 ## 0.1.0 (unreleased)
 
 - First version.
+- Chart series `chart-1` … `chart-8` and `chart-other` are graphic colours of their own, vivid hues at 3:1 on
+  base-100/200 in both themes, no longer the roles and the inks (4.5:1 text colours, dull as fills); `chart-N-fill` is
+  `chart-N`. An app overrides a series directly; overriding a role or an ink no longer moves the series.
 - `composer`: a bar fixed to the bottom of the page column for a form that is only the bar, above the dock and
   right on top of the on-screen keyboard; `app_shell` exports the column's width, gutter and alignment for it.
 - Toasts (`flash`, `flash_group`) sit at the bottom, above dock, keyboard, composer, a pinned action bar and a
@@ -75,16 +78,16 @@
 - `plush` with a dark file: an `id` no longer repeats, the dark image takes `<id>-dark`.
 - The dock hides only for fields that bring up the on-screen keyboard, no longer for a focused slider, colour,
   date or time picker, button or file input.
-- `app_shell` `layout={:topbar}`: with more than five dock entries, or entries left out of the dock, the dock shows
-  four and a "Mehr" button that opens a sheet with the rest, so every entry stays reachable on phones.
+- `app_shell`: the dock holds six entries; with more than six, entries left out of the dock or a sidebar
+  `:nav_footer` it shows five and a "Mehr" button (with `layout={:topbar}` a sheet with the rest), so every entry
+  stays reachable on phones.
 - `modal` on phones: the bottom sheet keeps its content and a sticky action bar above the bottom safe area.
 - `app_shell` `layout={:sidebar}` without a dock: a button at the start of the top bar opens the sidebar on phones,
   which had no way into the navigation.
 - Theme tokens that equal a role follow it: the dark `success-ink`, `error-ink` and `sidebar-negative`, the light
   `selected` and `selected-content`. Overriding `success`, `error` or `neutral` no longer means restating them.
 - `info-ink` and `warning-ink` tokens (`text-info-ink`, `text-warning-ink`, …), text-grade like the other inks, for text,
-  icons and marks such as ratings; alert and flash icons and the chart lines 2 and 6 use them (darker in light), and in
-  dark the chart lines 3 and 4 follow their inks too.
+  icons and marks such as ratings; alert and flash icons use them (darker in light).
 - `app_shell` `layout={:sidebar}`: a `:nav_footer` brings the dock's "Mehr" button, so phones reach it in the sidebar
   also when every entry fits the dock.
 - `chart_card` `hook_attrs`: attributes on the hook element, e.g. the series as `data-*` for the chart hook.
@@ -104,7 +107,9 @@
 - `input type="toggle"` has `role="switch"`, so screen readers announce a switch.
 - `segmented mode={:patch}` replaces the history entry by default (`replace`), so Back leaves the page instead of
   stepping through every choice.
-- `bar` `color` (chart series 1–8 or `:other`): the series fill with its line, in place of a tone.
+- `bar` `color` (chart series 1–8 or `:other`): the series fill without an outline, in place of a tone, as are the
+  `legend` dots. Bars in series 2, 3, 6, 7 and `:other` stay below 3:1 against their track and need `show_value` or
+  their value as text beside them (a stat's `:meter`).
 - `app_shell` `bar_width`: the top bar row's own width (default `width`), so the header keeps its width on pages of
   different widths.
 - `plush`: a `size-*` class replaces its size class, as with `icon`; `width`/`height` still follow `size`.

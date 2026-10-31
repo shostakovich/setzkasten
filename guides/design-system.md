@@ -44,8 +44,8 @@ The inks (`success-ink`, `error-ink`, `info-ink`, `warning-ink`), `selected` and
 fills are pastels and too faint as text or thin lines; `selected` keeps primary for the main action. A button takes it
 with the utility `setzkasten-selected`; in the dark sidebar it inverts to `sidebar-content` with `sidebar` text. A
 token that equals a role follows it with `var()`: in dark the inks are their roles (`success`, `error`, `info`,
-`warning`) and `sidebar-negative` is `error-ink`; in light `selected` is `neutral` (and `neutral-content`); the chart
-lines 2, 3, 4 and 6 are the inks. An app that overrides such a role restates nothing else.
+`warning`) and `sidebar-negative` is `error-ink`; in light `selected` is `neutral` (and `neutral-content`). An app
+that overrides such a role restates nothing else. The chart series follow no role or ink (2.2).
 
 - **Text levels:** `text-base-content` (body, field labels) · `text-base-content/70` (meta, help lines, KPI titles)
   · daisyUI's `/60` (`thead`, `stat-desc`) · nothing lighter. Placeholders and disabled text are exempt.
@@ -85,23 +85,27 @@ Eight series, two tokens each (`bg-chart-N-fill`, `fill-chart-N-fill`, `stroke-c
 `--color-chart-N-fill`, `--color-chart-N`), plus `chart-other-fill` and `chart-other` for the grouped rest:
 
 - `chart-N-fill`: bars, areas, slices, dots, legend swatches.
-- `chart-N`: lines, markers, outlines; ≥ 3:1 on base-100/200. Series 2, 3, 4 and 6 draw them in the inks.
+- `chart-N`: lines, markers.
 
-| Series | Light fill | Light line | Dark fill = line |
-|---|---|---|---|
-| 1 primary | `#0077b4` | `#0077b4` | `#61bdff` |
-| 2 warning | `#ffc845` | `#956300` (warning-ink) | `#ffcc5a` |
-| 3 success | `#54dd7d` | `#007f38` (success-ink) | `#65e287` |
-| 4 error | `#fd7273` | `#cc272e` (error-ink) | `#ff8382` |
-| 5 accent | `#b7a1f5` | `#876dc8` | `#bda8fc` |
-| 6 info | `#47d2e8` | `#037a7f` (info-ink) | `#60d8eb` |
-| 7 secondary | `#f7b385` | `#c3610c` | `#f6b88f` |
-| 8 neutral | `#3d4958` | `#3d4958` | `#9aa6b4` |
-| other (grouped rest) | `#ccd2d9` | `#7b8187` | `#767b80` |
+The series are graphic colours of their own, not the roles or the inks: vivid hues at the lightness a mark needs
+(3:1 on base-100/200 in both themes, 2.4), where the inks are tuned for text (4.5:1) and turn olive, brown and navy
+as fills. `chart-N-fill` is `chart-N` (`var()`), so a bar and its line are one colour. An app overrides a series in
+its own theme block, `--color-chart-N` (and `--color-chart-N-fill` for a fill of its own); overriding a role or an
+ink leaves the series as they are.
 
-- Bars, areas, slices: `chart-N-fill` with a 1px `chart-N` outline (the outline carries the 3:1). SVG:
-  `class="fill-chart-2-fill stroke-chart-2" stroke-width="1"`, plus `vector-effect="non-scaling-stroke"` in a
-  stretched viewBox.
+| Series | Light | Dark |
+|---|---|---|
+| 1 blue | `#156cdd` | `#439bf7` |
+| 2 amber | `#cb7b04` | `#fcb52c` |
+| 3 green | `#0f9f64` | `#38d080` |
+| 4 red | `#d72630` | `#f45959` |
+| 5 violet | `#955be3` | `#bf9bfd` |
+| 6 cyan | `#1898b7` | `#4dd5ee` |
+| 7 pink | `#e04196` | `#f971b3` |
+| 8 slate | `#586475` | `#9aa6b4` |
+| other (grouped rest) | `#888d92` | `#767b80` |
+
+- Bars, areas, slices: `chart-N-fill`, no outline; the fill carries the 3:1. SVG: `class="fill-chart-2-fill"`.
 - Ordered categories (particle size bins, heat-map steps, ranges) take the sequential ramp, never categorical or
   semantic colours: honey and red read as warning and bad. Five steps of one hue, `seq-1` (low, near the surface) to
   `seq-5` (high, far from it), in light from pale to deep blue, in dark from dim to bright (`bg-seq-N`, `fill-seq-N`,
@@ -119,9 +123,10 @@ Eight series, two tokens each (`bg-chart-N-fill`, `fill-chart-N-fill`, `stroke-c
 
 - Stacked share bars (`share_bar`): fills only, no line. Outlines would cut one bar into pieces; a 2px gap that shows
   the surface separates neighbours (and the filled part from the empty rest, base-content 10 %). The bar carries no
-  meaning alone: its values are text in the legend (or a list for screen readers), so its pastel fills need no 3:1,
-  as 2.4 allows pastels next to the words that carry the meaning. Largest first, the grouped rest (`:other`) last.
-- Chart.js: `backgroundColor` = `--color-chart-N-fill`, `borderColor` = `--color-chart-N`, `borderWidth: 1`.
+  meaning alone: its values are text in the legend (or a list for screen readers), so a fill below 3:1 (a sequential
+  step, an app's own pastel) is fine, as 2.4 allows next to the words that carry the meaning. Largest first, the
+  grouped rest (`:other`) last.
+- Chart.js: `backgroundColor` = `--color-chart-N-fill`, `borderColor` = `--color-chart-N`; bars `borderWidth: 0`.
 - Semantic series: warnings 2, income 3, overspend 4. Categorical series take the numbers in order from 1 and skip
   those the chart already uses semantically: with warnings in 2 and nothing else semantic, the categories take 1, 3,
   4, 5 and so on. More categories than free series: group the rest into one series ("Sonstige") in `chart-other`, a
@@ -192,7 +197,17 @@ cards none; dropdowns, popovers, toasts and FAB `shadow-lg`; modals daisyUI's.
 | button hover: primary / error content | 4.5 | 5.78 / 5.49 | 6.93 / 6.14 |
 | sidebar content / muted / accent | 4.5 / 4.5 / 3 | 11.10 / 6.96 / 6.34 | 15.68 / 9.39 / 8.44 |
 | sidebar-negative on the sidebar / on its current or hovered entry (white 10 %) | 4.5 | 6.25 / 4.60 | 7.60 / 5.76 |
-| chart-other line (the grouped rest) on base-100 / 200 | 3 | 3.94 / 3.69 | 3.69 / 3.23 |
+| chart-1 blue (fill = line) on base-100 / 200 | 3 | 4.98 / 4.66 | 5.47 / 4.81 |
+| chart-2 amber (fill = line) on base-100 / 200 | 3 | 3.28 / 3.08 | 8.87 / 7.80 |
+| chart-3 green (fill = line) on base-100 / 200 | 3 | 3.41 / 3.19 | 7.87 / 6.92 |
+| chart-4 red (fill = line) on base-100 / 200 | 3 | 4.97 / 4.65 | 4.82 / 4.24 |
+| chart-5 violet (fill = line) on base-100 / 200 | 3 | 4.32 / 4.04 | 7.01 / 6.17 |
+| chart-6 cyan (fill = line) on base-100 / 200 | 3 | 3.38 / 3.17 | 9.07 / 7.98 |
+| chart-7 pink (fill = line) on base-100 / 200 | 3 | 3.91 / 3.66 | 6.05 / 5.32 |
+| chart-8 slate (fill = line) on base-100 / 200 | 3 | 5.99 / 5.61 | 6.37 / 5.60 |
+| chart-other, the grouped rest (fill = line), on base-100 / 200 | 3 | 3.36 / 3.15 | 3.68 / 3.24 |
+| `bar color` on its track (the series 20 %) on base-100 / 200: series 1, 4, 5, 8 | 3 | 3.36 / 3.17 or more | 3.72 / 3.31 or more |
+| `bar color` on its track on base-100 / 200: series 2, 3, 6, 7, other (with `show_value` or the value as text beside them) | – | 2.65–3.00 / 2.50–2.83 | 2.90–5.76 / 2.58–5.10 |
 | sequential ramp seq-1 … seq-5 on base-100 / 200 (neighbours ≥ 1.40) | – | 1.57 / 1.47 … 8.41 / 7.87 | 1.72 / 1.51 … 9.70 / 8.51 |
 
 The light pastel fills as marks (status dots, `progress-success|warning|error|info`) are below 3:1; alert icons use
@@ -652,9 +667,9 @@ Visible and accessible default strings are German; each has an attr:
   `target` (2px marker at the exact share, drawn as SVG geometry, no inline style), `hide_label` (no visible label,
   it stays the progress's name; for a bar whose label is said next to it, a stat's `:meter`). Pastel tones need `show_value`;
   `:neutral` (base-content 70 %, a share that is no state) stands alone like `:primary`. `color` (series 1–8,
-  `:other` or `{:seq, N}`) in place of `tone`: the series fill with its 1px line, as in the chart beside it (2.2);
-  series 1–8 and `:other` stand alone (the line carries 3:1), a sequential step has no line of its own, so steps 1–3
-  in light and 1–2 in dark need `show_value`.
+  `:other` or `{:seq, N}`) in place of `tone`: the series fill without an outline, as in the chart beside it (2.2);
+  series 1, 4, 5 and 8 keep 3:1 against their track (the series 20 %) and stand alone, series 2, 3, 6, 7, `:other`
+  and the sequential steps 1–3 need `show_value` or their value as text beside them (a stat's `:meter`).
 - **`avatar`** – `initials` or `icon`; `tone` (`:base` default, base-300 tile; or a theme role, `:primary` for the
   signed-in user); `size` `:sm` 32 · `:md` 40 · `:lg` 48px;
   `shape` `:square` (default) | `:round`. `aria-hidden` unless `label` is set. `loading`: spinner in the tile (same
@@ -673,7 +688,7 @@ Visible and accessible default strings are German; each has an attr:
   strips, maps, small multiples; skeleton at `:md`; with `hook` it raises, as a canvas takes its height from the
   card); slots `:actions`, `:legend`, `:data` (folded "Werte als Tabelle", the
   keyboard path to exact values); `loading` skeleton. `<.legend>` (global attrs): `items` with `label`, `color` 1–8, `:other`
-  (the grouped rest), `{:seq, 1..5}` (ordered categories) or `:success | :error | :primary | :neutral`, and `marker` `:dot` (default, fill + outline) | `:line` | `:dashed`
+  (the grouped rest), `{:seq, 1..5}` (ordered categories) or `:success | :error | :primary | :neutral`, and `marker` `:dot` (default, the fill) | `:line` | `:dashed`
   (a 16px stroke in the line colour, ≥ 3:1, for line series and reference lines), and `value_label` ("412 W"): with
   values the items form a grid of up to three columns of at least 8rem, by the legend's own width, not the viewport
   (two in a phone card or a half-width card), labels end in an ellipsis with the full
@@ -812,7 +827,7 @@ plain CSS identifiers, without `.` or `:`.
   - `:nav` entries: `key`, `label`, `navigate`/`href`, `icon` or `plush` (falls back to `icon` without an image)
     or `glyph` (an emoji or initial in the icon's place, `aria-hidden`), `count`, `amount`, `section`,
     `section_amount` (on the section's first entry: the total next to its title), `dock`
-    (the first five go into the dock; with more, or entries left out of the dock, at most four plus a `more_label`
+    (up to six go into the dock; with more, or entries left out of the dock, at most five plus a `more_label`
     button: with `layout={:sidebar}` it opens the sidebar, with `:topbar` a sheet (`modal`) with the entries the
     dock leaves out, as in the top-bar menu with icon, label, count badge and `aria-current`; the button is
     `dock-active` and `aria-current="true"` while the current page is one of them and no `parent` of it stands in;
