@@ -888,6 +888,45 @@
   }
 }
 
+/* <.app_shell on_sort>: the dragged sidebar entry lifts and follows the pointer, a line marks where it
+   lands. The fill is opaque and beats the entry's hover and current utilities, as it passes over others. */
+@layer utilities.setzkasten {
+  .setzkasten-sorting,
+  .setzkasten-sorting * {
+    cursor: grabbing !important;
+  }
+  /* The patch with the new order lands while sorting; the lifted fill must not fade on the entry now in its slot. */
+  .setzkasten-sorting [data-sort-id] > * {
+    transition: none;
+  }
+  .setzkasten-sort-lifted {
+    z-index: 1;
+  }
+  .setzkasten-sort-lifted > * {
+    background-color: color-mix(in oklab, var(--color-sidebar-content) 16%, var(--color-sidebar)) !important;
+    color: var(--color-sidebar-content);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.3),
+      0 4px 6px -4px rgb(0 0 0 / 0.3);
+  }
+  .setzkasten-sort-before::after,
+  .setzkasten-sort-after::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0.5rem;
+    height: 2px;
+    border-radius: 9999px;
+    background-color: var(--color-sidebar-accent);
+    pointer-events: none;
+  }
+  .setzkasten-sort-before::after {
+    top: -2px;
+  }
+  .setzkasten-sort-after::after {
+    bottom: -2px;
+  }
+}
+
 /* Tooltips take the selection fill: daisyUI's neutral is nearly the dark page itself (1.2:1). */
 @layer utilities.setzkasten {
   .tooltip {

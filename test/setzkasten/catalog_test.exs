@@ -26,6 +26,28 @@ defmodule Setzkasten.CatalogTest do
     refute has_element?(view, ~s|#composer iframe[src="/screens/shopping"]:not([width="390"])|)
   end
 
+  test "the budget screen moves an account within its group" do
+    {:ok, view, _} = live(build_conn(), "/screens/budget")
+    nav = "#app-shell-sidebar-sort"
+
+    view
+    |> element(nav)
+    |> render_hook("sort_account", %{
+      "section" => "Budgetkonten",
+      "id" => "ruecklage",
+      "index" => 0
+    })
+
+    ids =
+      view
+      |> render()
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#{nav} li[data-sort-section=Budgetkonten]")
+      |> LazyHTML.attribute("data-sort-id")
+
+    assert ids == ~w(ruecklage giro karte)
+  end
+
   test "the settings screen confirms a save on its button instead of a flash" do
     {:ok, view, _} = live(build_conn(), "/screens/settings")
     html = view |> element("#settings-form") |> render_submit()
