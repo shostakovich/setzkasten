@@ -17,7 +17,7 @@ defmodule Setzkasten.Dev.ScreenLive do
     {"dashboard", "Startseite (Hausautomation)",
      "Live-Kacheln, Raumluft, Energiefluss, Steckdosen und Diagramme, Plüsch-Dock."},
     {"budget", "Konto (Haushaltsbuch)",
-     "Seitenleiste mit Kontogruppen, Summen und negativen Salden; Auswahlleiste mit Kategorisieren."},
+     "Seitenleiste mit Kontogruppen, Summen, negativen Salden und ziehbaren Konten; Auswahlleiste mit Kategorisieren."},
     {"shopping", "Einkaufsliste (Haushalt)",
      "Kompakte Liste mit Abhaken, „Zuletzt verwendet“, Composer über dem Dock; Toasts mit Aktion."}
   ]
@@ -44,6 +44,7 @@ defmodule Setzkasten.Dev.ScreenLive do
        live_step: 0,
        ticking: false,
        transactions: Budget.transactions(),
+       account_groups: Budget.groups(),
        selected: [],
        shopping: Map.new(Shopping.open() ++ Shopping.recent(), &{&1.id, &1}),
        open_ids: Enum.map(Shopping.open(), & &1.id),
@@ -141,6 +142,9 @@ defmodule Setzkasten.Dev.ScreenLive do
      |> assign(selected: [])
      |> put_flash(:info, "Buchungen gelöscht (Demo).")}
   end
+
+  def handle_event("sort_account", %{"section" => section, "id" => id, "index" => index}, socket),
+    do: {:noreply, update(socket, :account_groups, &Budget.move(&1, section, id, index))}
 
   def handle_event("add_account", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App den Dialog „Konto hinzufügen“.")}
@@ -673,7 +677,7 @@ defmodule Setzkasten.Dev.ScreenLive do
   end
 
   def render(%{screen: "budget"} = assigns) do
-    assigns = assign(assigns, groups: Budget.groups(), account: Budget.account(assigns.marked))
+    assigns = assign(assigns, account: Budget.account(assigns.marked))
 
     ~H"""
     <.app_shell
@@ -682,6 +686,7 @@ defmodule Setzkasten.Dev.ScreenLive do
       width={:wide}
       amount_tone={:negative}
       current_area={:finances}
+      on_sort="sort_account"
     >
       <:brand><.icon name="coins" class="size-5 text-sidebar-accent" />Haushaltsbuch</:brand>
       <:back :if={@settings?} label="Zurück zu Finanzen" navigate="/screens/budget" />
@@ -710,7 +715,10 @@ defmodule Setzkasten.Dev.ScreenLive do
         navigate="/screens/budget"
       />
       <:nav
-        :for={{group, account, first?} <- if(@settings?, do: [], else: Budget.nav_accounts())}
+        :for={
+          {group, account, first?} <-
+            if(@settings?, do: [], else: Budget.nav_accounts(@account_groups))
+        }
         key={{:account, account.id}}
         label={account.name}
         glyph={account.glyph || String.first(account.name)}
@@ -719,6 +727,7 @@ defmodule Setzkasten.Dev.ScreenLive do
         count_label="offen"
         section={group.label}
         section_amount={first? && Budget.total(group)}
+        sort_id={account.id}
         rail={false}
         dock={false}
         parent={:accounts}
@@ -729,7 +738,7 @@ defmodule Setzkasten.Dev.ScreenLive do
         key={:add_account}
         label="Konto hinzufügen"
         icon="plus"
-        section={List.last(@groups).label}
+        section={List.last(@account_groups).label}
         on_click="add_account"
       />
       <:nav :if={!@settings?} key={:import} label="Import" icon="upload" navigate="/screens/budget" />

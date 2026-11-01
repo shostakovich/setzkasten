@@ -28,13 +28,25 @@ defmodule Setzkasten.Dev.Budget do
     ]
   end
 
-  def nav_accounts do
-    for group <- groups(),
+  def nav_accounts(groups) do
+    for group <- groups,
         {account, index} <- Enum.with_index(group.accounts),
         do: {group, account, index == 0}
   end
 
   def total(group), do: group.accounts |> Enum.map(& &1.balance) |> Enum.sum()
+
+  def move(groups, section, id, index) do
+    Enum.map(groups, fn
+      %{label: ^section, accounts: accounts} = group ->
+        {moved, rest} = Enum.split_with(accounts, &(&1.id == id))
+        {head, tail} = Enum.split(rest, index)
+        %{group | accounts: head ++ moved ++ tail}
+
+      group ->
+        group
+    end)
+  end
 
   def account(id),
     do:

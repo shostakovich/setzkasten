@@ -1359,4 +1359,61 @@ defmodule Setzkasten.ShellTest do
     assert "setzkasten-dock" in classes(doc, "nav.dock")
     refute Enum.any?(classes(doc, "#app-shell"), &(&1 =~ "dock-offset"))
   end
+
+  test "entries with a sort_id drag within their section, only in the sidebar" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.app_shell layout={:sidebar} on_sort="move_account">
+        <:brand>App</:brand>
+        <:nav key={:budget} label="Budget" icon="wallet" navigate="/" />
+        <:nav id="giro" key={:giro} label="Giro" section="Budget" sort_id="1" navigate="/1" />
+        <:nav id="karte" key={:karte} label="Karte" section="Budget" sort_id="2" navigate="/2" />
+        <:nav id="add" key={:add} label="Neu" section="Budget" on_click="add" />
+        <:nav id="haus" key={:haus} label="Haus" section="Tracking" sort_id="3" navigate="/3" />
+        <:nav id="bar" key={:bar} label="Bar" sort_id="4" navigate="/4" /> x
+      </.app_shell>
+      """)
+
+    sort = "#app-shell-sidebar-full ul#app-shell-sidebar-sort"
+    assert attr(doc, sort, "phx-hook") == "Setzkasten.Components.Shell.Sortable"
+    assert attr(doc, sort, "data-sort-event") == "move_account"
+
+    rows = find(doc, "#{sort} > li[data-sort-id]")
+    assert LazyHTML.attribute(rows, "data-sort-id") == ~w(1 2 3 4)
+
+    assert LazyHTML.attribute(find(doc, "li[data-sort-section]"), "data-sort-section") ==
+             ~w(Budget Budget Tracking)
+
+    assert count(doc, "li[data-sort-id]:has(> #bar-sidebar):not([data-sort-section])") == 1
+    assert count(doc, "li:has(> #add-sidebar):not([data-sort-id])") == 1
+    assert count(doc, "[data-sort-id]") == 4
+    assert count(doc, "[phx-hook$=Sortable]") == 1
+    assert count(doc, "#app-shell-sidebar [data-sort-id]") == 0
+  end
+
+  test "without on_sort, or in the top-bar layout, no entry is sortable" do
+    for layout <- [:sidebar, :topbar] do
+      assigns = %{layout: layout, on_sort: if(layout == :topbar, do: "move")}
+
+      doc =
+        parse(~H"""
+        <.app_shell layout={@layout} on_sort={@on_sort}>
+          <:brand>App</:brand>
+          <:nav key={:giro} label="Giro" section="Budget" sort_id="1" navigate="/1" /> x
+        </.app_shell>
+        """)
+
+      assert count(doc, "[data-sort-id]") == 0
+      assert count(doc, "[phx-hook$=Sortable]") == 0
+    end
+  end
+
+  test "the sort hook pushes the moved entry with its section and new index, never on touch" do
+    hook = colocated_js("Setzkasten.Components.Shell")
+    assert hook =~ ~s|e.pointerType === "touch"|
+    assert hook =~ "{section: d.section, id: d.id, index: d.index}"
+    assert hook =~ "if (!d.lifted || d.index === null || d.index === from) return this.release()"
+  end
 end

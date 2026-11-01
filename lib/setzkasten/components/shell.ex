@@ -81,6 +81,13 @@ defmodule Setzkasten.Components.Shell do
   section. It stays out of the rail and the dock unless `rail` or `dock` is `true`. In the
   sidebar dialog and the top-bar sheet it closes them before its action runs.
 
+  An entry with `sort_id` can be dragged within its `section` in the sidebar (from `lg`) with a mouse,
+  trackpad or pen; touch does not drag, and the rail, dock and dialog keep their order. On a drop at a
+  new place the shell pushes `on_sort` with `%{"section" => section, "id" => sort_id, "index" => index}`,
+  `index` counting from 0 among the section's entries with a `sort_id`; the server renders the new order.
+  Entries of other sections and without `sort_id` are no drop target, a drop outside the section puts
+  the entry back, and a click without movement still follows the entry.
+
   An entry renders once per place, so its `id` becomes `<id>-sidebar`, `<id>-dialog` (the
   sidebar as a dialog), `<id>-rail`, `<id>-menu` (the top-bar menu), `<id>-more` (the top-bar
   sheet behind the dock's `more_label`) and `<id>-dock`.
@@ -165,6 +172,11 @@ defmodule Setzkasten.Components.Shell do
     values: [false, :negative],
     doc: "`:negative`: nav and section amounts toned as `<.amount tone={:negative}>`"
 
+  attr :on_sort, :string,
+    default: nil,
+    doc:
+      ~s(event pushed when a `:nav` entry with `sort_id` is dropped at a new place in its section)
+
   attr :current_area, :any, default: nil, doc: "the current `:area` entry's key"
   attr :area_label, :string, default: "Bereich"
   attr :class, :any, default: nil
@@ -206,6 +218,7 @@ defmodule Setzkasten.Components.Shell do
     attr :amount, :integer
     attr :section, :string
     attr :section_amount, :integer, doc: "on the section's first entry: its total"
+    attr :sort_id, :string, doc: "makes the entry draggable within its section in the sidebar"
     attr :on_click, :any, doc: "makes the entry a button: an event name or `%JS{}`"
     attr :"phx-target", :any, doc: "for an event name in `on_click`, e.g. `@myself`"
     attr :dock, :boolean
@@ -407,6 +420,133 @@ defmodule Setzkasten.Components.Shell do
             }
           }
         </script>
+        <script :type={ColocatedHook} name=".Sortable">
+          const THRESHOLD = 4
+          const EVENTS = ["pointermove", "pointerup", "pointercancel", "keydown", "scroll"]
+          const MARKS = ["setzkasten-sort-lifted", "setzkasten-sort-before", "setzkasten-sort-after"]
+          // The dragged row's new index among its section's rows for its centre y; null outside the section.
+          const dropIndex = (boxes, from, y) => {
+            const half = boxes[from].height / 2
+            if (y < boxes[0].top - half || y > boxes[boxes.length - 1].bottom + half) return null
+            return boxes.filter((box, i) => i !== from && box.top + box.height / 2 < y).length
+          }
+          export default {
+            mounted() {
+              this.el.addEventListener("pointerdown", (e) => this.press(e))
+              this.el.addEventListener("dragstart", (e) => {
+                if (e.target.closest("[data-sort-id]")) e.preventDefault()
+              })
+            },
+            // A patch drops the marks and the offset; the drag state is the hook's, so draw it again.
+            updated() {
+              if (this.drag && this.drag.lifted && !this.drag.pushed) this.render()
+            },
+            destroyed() {
+              this.release()
+            },
+            press(e) {
+              const row = e.target.closest("[data-sort-id]")
+              if (this.drag || !row || e.button !== 0 || e.pointerType === "touch") return
+              this.drag = {
+                pointer: e.pointerId,
+                id: row.dataset.sortId,
+                section: row.getAttribute("data-sort-section"),
+                startX: e.clientX,
+                startY: e.clientY,
+                x: e.clientX,
+                y: e.clientY,
+                grab: e.clientY - row.getBoundingClientRect().top,
+                lifted: false,
+                index: null
+              }
+              this.listener = (ev) => this.on(ev)
+              for (const type of EVENTS) window.addEventListener(type, this.listener, true)
+            },
+            on(e) {
+              const d = this.drag
+              if (e.type === "keydown") {
+                if (e.key !== "Escape") return
+                if (d.lifted) e.preventDefault()
+                return this.release()
+              }
+              if (e.type === "scroll") return d.lifted && this.render()
+              if (e.pointerId !== d.pointer) return
+              if (e.type === "pointercancel") return this.release()
+              if (e.type === "pointerup") return this.drop()
+              d.x = e.clientX
+              d.y = e.clientY
+              if (!d.lifted && Math.hypot(d.x - d.startX, d.y - d.startY) < THRESHOLD) return
+              if (!d.lifted) this.lift()
+              this.render()
+            },
+            lift() {
+              this.drag.lifted = true
+              document.documentElement.classList.add("setzkasten-sorting")
+              // Without ids the patch reuses the links in place, so the press's focus would land on another entry.
+              if (this.el.contains(document.activeElement)) document.activeElement.blur()
+              // The click that ends a drag would follow the entry's link.
+              this.swallow = (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }
+              window.addEventListener("click", this.swallow, true)
+            },
+            rows() {
+              return [...this.el.querySelectorAll("[data-sort-id]")].filter(
+                (row) => row.getAttribute("data-sort-section") === this.drag.section
+              )
+            },
+            render() {
+              const d = this.drag
+              const rows = this.rows()
+              const from = rows.findIndex((row) => row.dataset.sortId === d.id)
+              if (from < 0) return this.release()
+              const row = rows[from]
+              for (const other of this.el.querySelectorAll("[data-sort-id]")) {
+                other.classList.remove(...MARKS)
+                other.style.removeProperty("translate")
+              }
+              const boxes = rows.map((r) => r.getBoundingClientRect())
+              const nav = this.el.getBoundingClientRect()
+              const inside = d.x >= nav.left && d.x <= nav.right
+              d.index = inside ? dropIndex(boxes, from, d.y - d.grab + boxes[from].height / 2) : null
+              row.style.translate = `0 ${d.y - d.grab - boxes[from].top}px`
+              row.classList.add("setzkasten-sort-lifted")
+              if (d.index === null || d.index === from) return
+              const others = rows.filter((r) => r !== row)
+              if (d.index < others.length) others[d.index].classList.add("setzkasten-sort-before")
+              else others[others.length - 1].classList.add("setzkasten-sort-after")
+            },
+            // The row stays where it was dropped until the reply, which comes after the patch with the new order.
+            drop() {
+              const d = this.drag
+              this.stopListening()
+              const from = this.rows().findIndex((row) => row.dataset.sortId === d.id)
+              if (!d.lifted || d.index === null || d.index === from) return this.release()
+              d.pushed = true
+              const done = () => this.drag === d && this.release()
+              this.timer = setTimeout(done, 5000)
+              this.pushEvent(this.el.dataset.sortEvent, {section: d.section, id: d.id, index: d.index}, done)
+            },
+            stopListening() {
+              if (this.listener) for (const type of EVENTS) window.removeEventListener(type, this.listener, true)
+              this.listener = null
+              const swallow = this.swallow
+              this.swallow = null
+              if (swallow) setTimeout(() => window.removeEventListener("click", swallow, true))
+            },
+            release() {
+              this.stopListening()
+              clearTimeout(this.timer)
+              document.documentElement.classList.remove("setzkasten-sorting")
+              for (const row of this.el.querySelectorAll("[data-sort-id]")) {
+                row.classList.remove(...MARKS)
+                row.style.removeProperty("translate")
+              }
+              this.drag = null
+            }
+          }
+        </script>
       <% end %>
       <div class={["min-w-0", @layout == :sidebar && "flex-1"]}>
         <header
@@ -589,6 +729,8 @@ defmodule Setzkasten.Components.Shell do
   defp assign_sidebar_mode(assigns), do: assign(assigns, back: nil, areas?: false)
 
   defp sidebar(assigns) do
+    assigns = assign(assigns, :sortable?, assigns.place == :sidebar and assigns.on_sort != nil)
+
     ~H"""
     <%!-- One inner edge (20px) for everything in the sidebar: ghost buttons in the brand and the
          account pull their padding into the gutter, so their icon or text lines up with the nav
@@ -622,7 +764,12 @@ defmodule Setzkasten.Components.Shell do
       </.area_target>
     </nav>
     <nav aria-label={@nav_label} class="flex-1">
-      <ul class="menu w-full flex-nowrap gap-0.5">
+      <ul
+        id={@sortable? && "#{@id}-sidebar-sort"}
+        class="menu w-full flex-nowrap gap-0.5"
+        phx-hook={@sortable? && "Setzkasten.Components.Shell.Sortable"}
+        data-sort-event={@sortable? && @on_sort}
+      >
         <%= for {item, index} <- Enum.with_index(@nav) do %>
           <li
             :if={item[:section] && section_start?(@nav, index)}
@@ -634,7 +781,11 @@ defmodule Setzkasten.Components.Shell do
             <span class="min-w-0 flex-1 truncate" title={item[:section]}>{item[:section]}</span>
             <.nav_amount amount={item[:section_amount]} tone={@amount_tone} />
           </li>
-          <li class={["flex-nowrap", section_end?(@nav, index) && "mt-4"]}>
+          <li
+            class={["flex-nowrap", section_end?(@nav, index) && "mt-4"]}
+            data-sort-id={@sortable? && item[:sort_id]}
+            data-sort-section={@sortable? && item[:sort_id] && item[:section]}
+          >
             <.nav_target
               item={item}
               place={@place}

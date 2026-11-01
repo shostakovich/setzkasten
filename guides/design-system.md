@@ -329,6 +329,7 @@ page-load sequence. Pure CSS in `setzkasten.css`, replacing daisyUI's timings.
 | `tooltip` | daisyUI's: fades in with a 4px shift in 200ms, out after 75ms | appears and disappears at once |
 | `list_row exit={:strike}`, tap | the title's strike line draws from its start in 250ms (`ease-out`), the title takes the meta's 70 %, before the server answers | the line appears at once |
 | `list_row exit={:strike}`, removed | strikes first if not yet struck, then collapses in 200ms (`ease-in`, from its measured height to 0, fading), the rows below move up; LiveView keeps the row until then; a live navigation removes it at once | fades out in 100ms, then the rows below jump up |
+| `app_shell` sortable entry | follows the pointer at once (direct manipulation), no transitions while sorting; put back, it jumps to its place | the same |
 
 Not animated: the sidebar collapse (it changes the layout in three places; following it would mean animating
 widths), the hover and press colour of list and table rows (instant in dense lists). A disclosure or menu rendered open
@@ -856,6 +857,14 @@ plain CSS identifiers, without `.` or `:`.
     (an action is no place to go to); in the top-bar menu it is a menu button. In the sidebar dialog (rail and dock
     "Mehr") and the top-bar sheet it closes the dialog first, focus back on the button that opened it, then runs
     `on_click`; a link closes it by replacing the view.
+  - `sort_id` and `on_sort` (on the shell): an entry with a `sort_id` can be dragged within its `section` in the
+    sidebar (from `lg`), with a mouse, trackpad or pen after a 4px move; a click without it still follows the entry.
+    The entry lifts (an opaque `sidebar-content` 16 % fill, a shadow) and follows the pointer, a 2px
+    `sidebar-accent` line marks where it lands. On a drop at a new place the shell pushes `on_sort` with
+    `%{"section" => section, "id" => sort_id, "index" => index}` (0-based among the section's entries with a
+    `sort_id`) and keeps the entry there until the server's reply renders the new order. Other sections, entries
+    without `sort_id`, a drop outside the section and Escape put it back without an event. Touch does not drag (the
+    sidebar dialog scrolls on phones); rail, dock, dialog and top-bar sheet keep their order.
   - An entry renders once per place, so its `id` is suffixed: `<id>-sidebar`, `-dialog`, `-rail`, `-menu` (top-bar
     menu), `-more` (top-bar sheet), `-dock`; without `id` no ids.
   - `:area` entries (`layout={:sidebar}`, more than one): a segmented switch between the app's areas under the

@@ -3,6 +3,8 @@
 ## 0.1.0 (unreleased)
 
 - First version.
+- `app_shell` sortable sidebar entries: a `:nav` entry with `sort_id` can be dragged within its section in the
+  sidebar with a mouse, trackpad or pen; a drop pushes `on_sort` with `section`, `id` and the new `index`.
 - Chart series `chart-1` … `chart-8` and `chart-other` are graphic colours of their own, vivid hues at 3:1 on
   base-100/200 in both themes, no longer the roles and the inks (4.5:1 text colours, dull as fills); `chart-N-fill` is
   `chart-N`. An app overrides a series directly; overriding a role or an ink no longer moves the series.
