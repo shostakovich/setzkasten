@@ -1636,11 +1636,23 @@ defmodule Setzkasten.DataTest do
     assert hook =~ "if (section === d.section && index === from) return null"
   end
 
+  test "the sortable hook leaves presses in an item's popover or dialog alone and keeps Escape from clicking" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|const LAYERS = "[popover], dialog"|
+    assert hook =~ "if (layer && item.contains(layer)) return"
+    assert hook =~ "if (pressed && this.swallow) this.hold(this.drag.pointer)"
+    assert hook =~ ~s|if (e.type === "pointercancel") return this.release(false)|
+    assert hook =~ "if (!box) return this.release()"
+    assert hook =~ "if (this.drag === d) this.autoscroll()"
+  end
+
   test "a sorted item lifts on base tokens, in the sidebar on its own" do
     assert css() =~
              ~r/\.setzkasten-sort-lifted \{[^}]*background-color: var\(--setzkasten-sort-fill, color-mix\(in oklab, var\(--color-base-content\) 8%, var\(--color-base-100\)\)\) !important/
 
     assert css() =~ "background-color: var(--setzkasten-sort-line, var(--color-primary));"
+    assert css() =~ ~r/\.setzkasten-sort-lifted \{[^}]*z-index: 2;/
+    assert css() =~ ~r/\.setzkasten-sort-after::after \{[^}]*z-index: 1;/
 
     assert css() =~
              ~r/\.setzkasten-sidebar \{\s*--setzkasten-sort-fill: color-mix\(in oklab, var\(--color-sidebar-content\) 16%, var\(--color-sidebar\)\);\s*--setzkasten-sort-line: var\(--color-sidebar-accent\);/

@@ -160,6 +160,8 @@ defmodule Setzkasten.Components.Data do
       const EVENTS = ["pointermove", "pointerup", "pointercancel", "keydown", "scroll"]
       const MARKS = ["setzkasten-sort-lifted", "setzkasten-sort-before", "setzkasten-sort-after"]
       const FIELDS = "input, textarea, select, [contenteditable]"
+      const LAYERS = "[popover], dialog"
+      const HOLD = ["pointerdown", "pointerup", "pointercancel"]
       const MEMBERS = "[data-sort-id], [data-sort-head]"
       const centre = (box) => box.top + box.height / 2
       const scroller = (el) => {
@@ -191,6 +193,8 @@ defmodule Setzkasten.Components.Data do
           const item = e.target.closest("[data-sort-id]")
           if (this.drag || !item || !this.el.contains(item) || e.button !== 0 || e.pointerType === "touch") return
           if (e.target.closest(FIELDS) || !this.event(item)) return
+          const layer = e.target.closest(LAYERS)
+          if (layer && item.contains(layer)) return
           this.drag = {
             pointer: e.pointerId,
             id: item.dataset.sortId,
@@ -216,14 +220,14 @@ defmodule Setzkasten.Components.Data do
           }
           if (e.type === "scroll") return d.lifted && this.render()
           if (e.pointerId !== d.pointer) return
-          if (e.type === "pointercancel") return this.release()
+          if (e.type === "pointercancel") return this.release(false)
           if (e.type === "pointerup") return this.drop()
           d.x = e.clientX
           d.y = e.clientY
           if (!d.lifted && Math.hypot(d.x - d.startX, d.y - d.startY) < THRESHOLD) return
           if (!d.lifted) this.lift()
           this.render()
-          this.autoscroll()
+          if (this.drag === d) this.autoscroll()
         },
         lift() {
           this.drag.lifted = true
@@ -266,6 +270,7 @@ defmodule Setzkasten.Components.Data do
           const shown = all.filter((m) => m.el.getClientRects().length)
           for (const m of shown) m.box = m.el.getBoundingClientRect()
           const box = all[at].box
+          if (!box) return this.release()
           const y = d.y - d.grab + box.height / 2
           item.style.translate = `0 ${d.y - d.grab - box.top}px`
           item.classList.add("setzkasten-sort-lifted")
@@ -335,7 +340,19 @@ defmodule Setzkasten.Components.Data do
           this.swallow = null
           if (swallow) setTimeout(() => window.removeEventListener("click", swallow, true))
         },
-        release() {
+        // The button is still down: its release would click what was pressed.
+        hold(pointer) {
+          const swallow = this.swallow
+          this.swallow = null
+          const end = (e) => {
+            if (e.type !== "pointerdown" && e.pointerId !== pointer) return
+            for (const type of HOLD) window.removeEventListener(type, end, true)
+            setTimeout(() => window.removeEventListener("click", swallow, true))
+          }
+          for (const type of HOLD) window.addEventListener(type, end, true)
+        },
+        release(pressed = true) {
+          if (pressed && this.swallow) this.hold(this.drag.pointer)
           this.stopListening()
           clearTimeout(this.timer)
           document.documentElement.classList.remove("setzkasten-sorting")

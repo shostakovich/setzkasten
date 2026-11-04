@@ -719,9 +719,9 @@ Visible and accessible default strings are German; each has an attr:
     The item stays there until the reply renders the new order. Escape, a drop outside the level or at its old
     place put it back without an event.
   - Mouse, trackpad or pen after a 4px move; touch never drags (the page scrolls). A press in an input, select or
-    textarea does not drag; the click that ends a drag is swallowed, so a link or button in the item stays put;
-    a click without movement still works. Near the edge of the scrolling area (the page, or a scrolling ancestor)
-    it scrolls.
+    textarea, or in a popover or dialog inside the item, does not drag; the click that ends a drag (also one put
+    back with Escape) is swallowed, so a link or button in the item stays put; a click without movement still
+    works. Near the edge of the scrolling area (the page, or a scrolling ancestor) it scrolls.
   - Look: the item lifts (opaque fill, `base-content` 8 % on `base-100`, cells included, and a shadow) and follows
     the pointer; a 2px `primary` line marks where it lands, on the item it lands before or after. Works on `<tr>`
     and `<tbody>`. The sidebar uses its own tokens.

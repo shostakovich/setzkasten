@@ -905,7 +905,7 @@
       0 10px 15px -3px rgb(0 0 0 / 0.3),
       0 4px 6px -4px rgb(0 0 0 / 0.3);
     position: relative;
-    z-index: 1;
+    z-index: 2;
     background-color: var(--setzkasten-sort-fill, color-mix(in oklab, var(--color-base-content) 8%, var(--color-base-100))) !important;
     box-shadow: var(--setzkasten-sort-shadow);
   }
@@ -916,10 +916,12 @@
   .setzkasten-sort-after {
     position: relative;
   }
+  /* Above the next row's positioned cells, below the lifted item. */
   .setzkasten-sort-before::after,
   .setzkasten-sort-after::after {
     content: "";
     position: absolute;
+    z-index: 1;
     inset-inline: 0.5rem;
     height: 2px;
     border-radius: 9999px;
