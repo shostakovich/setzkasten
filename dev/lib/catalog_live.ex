@@ -37,6 +37,7 @@ defmodule Setzkasten.Dev.CatalogLive do
        picked: [],
        sort: "date",
        basket: @basket,
+       envelopes: Setzkasten.Dev.Data.envelope_groups(),
        combo: to_form(%{"category" => "groceries"}, as: :booking),
        form: Pages.FormsPage.build_form(%{})
      )}
@@ -97,6 +98,19 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   def handle_event("basket_reset", _params, socket),
     do: {:noreply, assign(socket, basket: @basket)}
+
+  def handle_event("move_envelope_group", %{"id" => id, "index" => index}, socket),
+    do:
+      {:noreply,
+       update(socket, :envelopes, &Setzkasten.Dev.Data.move_envelope_group(&1, id, index))}
+
+  def handle_event("move_envelope", %{"id" => id, "section" => section, "index" => index}, socket) do
+    {:noreply,
+     update(socket, :envelopes, &Setzkasten.Dev.Data.move_envelope(&1, id, section, index))}
+  end
+
+  def handle_event("envelope", %{"name" => name}, socket),
+    do: {:noreply, put_flash(socket, :info, "Hier öffnet die App „#{name}“ (Demo).")}
 
   def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
 

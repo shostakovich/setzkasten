@@ -888,26 +888,33 @@
   }
 }
 
-/* <.app_shell on_sort>: the dragged sidebar entry lifts and follows the pointer, a line marks where it
-   lands. The fill is opaque and beats the entry's hover and current utilities, as it passes over others. */
+/* Setzkasten.Components.Data.Sortable: the dragged item lifts and follows the pointer, a line marks where it lands.
+   The fill is opaque and beats the item's hover and selection utilities, as it passes over others. */
 @layer utilities.setzkasten {
   .setzkasten-sorting,
   .setzkasten-sorting * {
     cursor: grabbing !important;
+    user-select: none;
   }
-  /* The patch with the new order lands while sorting; the lifted fill must not fade on the entry now in its slot. */
-  .setzkasten-sorting [data-sort-id] > * {
+  /* The patch with the new order lands while sorting; the lifted fill must not fade on the item now in its slot. */
+  .setzkasten-sorting :is([data-sort-id], [data-sort-id] *) {
     transition: none;
   }
   .setzkasten-sort-lifted {
-    z-index: 1;
-  }
-  .setzkasten-sort-lifted > * {
-    background-color: color-mix(in oklab, var(--color-sidebar-content) 16%, var(--color-sidebar)) !important;
-    color: var(--color-sidebar-content);
-    box-shadow:
+    --setzkasten-sort-shadow:
       0 10px 15px -3px rgb(0 0 0 / 0.3),
       0 4px 6px -4px rgb(0 0 0 / 0.3);
+    position: relative;
+    z-index: 1;
+    background-color: var(--setzkasten-sort-fill, color-mix(in oklab, var(--color-base-content) 8%, var(--color-base-100))) !important;
+    box-shadow: var(--setzkasten-sort-shadow);
+  }
+  .setzkasten-sort-lifted :is(td, th) {
+    background-color: var(--setzkasten-sort-fill, color-mix(in oklab, var(--color-base-content) 8%, var(--color-base-100))) !important;
+  }
+  .setzkasten-sort-before,
+  .setzkasten-sort-after {
+    position: relative;
   }
   .setzkasten-sort-before::after,
   .setzkasten-sort-after::after {
@@ -916,7 +923,7 @@
     inset-inline: 0.5rem;
     height: 2px;
     border-radius: 9999px;
-    background-color: var(--color-sidebar-accent);
+    background-color: var(--setzkasten-sort-line, var(--color-primary));
     pointer-events: none;
   }
   .setzkasten-sort-before::after {
@@ -924,6 +931,20 @@
   }
   .setzkasten-sort-after::after {
     bottom: -2px;
+  }
+  .setzkasten-sidebar {
+    --setzkasten-sort-fill: color-mix(in oklab, var(--color-sidebar-content) 16%, var(--color-sidebar));
+    --setzkasten-sort-line: var(--color-sidebar-accent);
+  }
+  /* A sidebar entry lifts its rounded link, not the square list item around it. */
+  .setzkasten-sidebar .setzkasten-sort-lifted {
+    background-color: transparent !important;
+    box-shadow: none;
+  }
+  .setzkasten-sidebar .setzkasten-sort-lifted > * {
+    background-color: var(--setzkasten-sort-fill) !important;
+    color: var(--color-sidebar-content);
+    box-shadow: var(--setzkasten-sort-shadow);
   }
 }
 

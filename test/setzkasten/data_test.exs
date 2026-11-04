@@ -1624,4 +1624,25 @@ defmodule Setzkasten.DataTest do
     assert positive == ~w(tabular-nums whitespace-nowrap)
     assert "text-success-ink" in classes(parse(~H|<.amount value={500} tone />|), "data")
   end
+
+  test "the sortable hook pushes the moved item's level event with section and index, never on touch" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|e.pointerType === "touch"|
+    assert hook =~ "if (e.target.closest(FIELDS) || !this.event(item)) return"
+    assert hook =~ "return el.dataset.sortEvent || this.el.dataset.sortEvent"
+    assert hook =~ "this.pushEvent(d.event, {section, id: d.id, index}, done)"
+    assert hook =~ "if (!d.lifted || !d.target) return this.release()"
+    assert hook =~ "if (!prev && next.head) return null"
+    assert hook =~ "if (section === d.section && index === from) return null"
+  end
+
+  test "a sorted item lifts on base tokens, in the sidebar on its own" do
+    assert css() =~
+             ~r/\.setzkasten-sort-lifted \{[^}]*background-color: var\(--setzkasten-sort-fill, color-mix\(in oklab, var\(--color-base-content\) 8%, var\(--color-base-100\)\)\) !important/
+
+    assert css() =~ "background-color: var(--setzkasten-sort-line, var(--color-primary));"
+
+    assert css() =~
+             ~r/\.setzkasten-sidebar \{\s*--setzkasten-sort-fill: color-mix\(in oklab, var\(--color-sidebar-content\) 16%, var\(--color-sidebar\)\);\s*--setzkasten-sort-line: var\(--color-sidebar-accent\);/
+  end
 end

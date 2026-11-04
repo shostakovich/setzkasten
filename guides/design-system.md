@@ -329,7 +329,7 @@ page-load sequence. Pure CSS in `setzkasten.css`, replacing daisyUI's timings.
 | `tooltip` | daisyUI's: fades in with a 4px shift in 200ms, out after 75ms | appears and disappears at once |
 | `list_row exit={:strike}`, tap | the title's strike line draws from its start in 250ms (`ease-out`), the title takes the meta's 70 %, before the server answers | the line appears at once |
 | `list_row exit={:strike}`, removed | strikes first if not yet struck, then collapses in 200ms (`ease-in`, from its measured height to 0, fading), the rows below move up; LiveView keeps the row until then; a live navigation removes it at once | fades out in 100ms, then the rows below jump up |
-| `app_shell` sortable entry | follows the pointer at once (direct manipulation), no transitions while sorting; put back, it jumps to its place | the same |
+| Sortable item (`Sortable` hook, `app_shell` sidebar entries) | follows the pointer at once (direct manipulation), no transitions while sorting; put back, it jumps to its place | the same |
 
 Not animated: the sidebar collapse (it changes the layout in three places; following it would mean animating
 widths), the hover and press colour of list and table rows (instant in dense lists). A disclosure or menu rendered open
@@ -703,6 +703,28 @@ Visible and accessible default strings are German; each has an attr:
   legend. A negative value counts as 0; a whole of 0 shows the empty track. Geometry is SVG (nested viewports in
   percent, no inline style), no width animation; the bar is `aria-hidden`, the values are text. `id` defaults to one
   derived from `label`; pass `id` when two share bars share a label on one page.
+- **Sortable** – `phx-hook="Setzkasten.Components.Data.Sortable"` on an element with an `id` (a `<table>`, a list)
+  lets its items be dragged into a new order; the app renders the order the server keeps.
+  - Item: `data-sort-id`. Its event: its own `data-sort-event`, else the container's. Items with the same event
+    are one level, so one container sorts two: `<tbody data-sort-id data-sort-event="move_group">` per group and its
+    rows with the container's `data-sort-event="move_category"`. A press starts the innermost item.
+  - `data-sort-section` groups a level's items; without section heads an item stays in its section (the sidebar).
+    Section heads, `data-sort-head="<section>"` (not draggable, event as for items, e.g. a group's header row), let
+    items move between sections: a head starts its section and takes drops for it, also when the section is empty.
+    Over a head's top half an item goes to the end of the section before, over its bottom half to the start of the
+    head's; above the first head is no drop. Markup without `data-sort-id` or `data-sort-head` (an "Uncategorised"
+    body) neither drags nor takes drops.
+  - A drop at a new place pushes `%{"id" => id, "section" => section, "index" => index}`: the target section (`nil`
+    without sections), `index` 0-based among its items without the moved one (rows of a collapsed section count).
+    The item stays there until the reply renders the new order. Escape, a drop outside the level or at its old
+    place put it back without an event.
+  - Mouse, trackpad or pen after a 4px move; touch never drags (the page scrolls). A press in an input, select or
+    textarea does not drag; the click that ends a drag is swallowed, so a link or button in the item stays put;
+    a click without movement still works. Near the edge of the scrolling area (the page, or a scrolling ancestor)
+    it scrolls.
+  - Look: the item lifts (opaque fill, `base-content` 8 % on `base-100`, cells included, and a shadow) and follows
+    the pointer; a 2px `primary` line marks where it lands, on the item it lands before or after. Works on `<tr>`
+    and `<tbody>`. The sidebar uses its own tokens.
 
 ### Navigation
 
@@ -858,13 +880,11 @@ plain CSS identifiers, without `.` or `:`.
     "Mehr") and the top-bar sheet it closes the dialog first, focus back on the button that opened it, then runs
     `on_click`; a link closes it by replacing the view.
   - `sort_id` and `on_sort` (on the shell): an entry with a `sort_id` can be dragged within its `section` in the
-    sidebar (from `lg`), with a mouse, trackpad or pen after a 4px move; a click without it still follows the entry.
-    The entry lifts (an opaque `sidebar-content` 16 % fill, a shadow) and follows the pointer, a 2px
-    `sidebar-accent` line marks where it lands. On a drop at a new place the shell pushes `on_sort` with
+    sidebar (from `lg`) with the `Sortable` hook (see Data): its lifted link takes an opaque `sidebar-content` 16 %
+    fill, the line `sidebar-accent`. On a drop at a new place the shell pushes `on_sort` with
     `%{"section" => section, "id" => sort_id, "index" => index}` (0-based among the section's entries with a
-    `sort_id`) and keeps the entry there until the server's reply renders the new order. Other sections, entries
-    without `sort_id`, a drop outside the section and Escape put it back without an event. Touch does not drag (the
-    sidebar dialog scrolls on phones); rail, dock, dialog and top-bar sheet keep their order.
+    `sort_id`). Other sections and entries without `sort_id` take no drop. Touch does not drag (the sidebar dialog
+    scrolls on phones); rail, dock, dialog and top-bar sheet keep their order.
   - An entry renders once per place, so its `id` is suffixed: `<id>-sidebar`, `-dialog`, `-rail`, `-menu` (top-bar
     menu), `-more` (top-bar sheet), `-dock`; without `id` no ids.
   - `:area` entries (`layout={:sidebar}`, more than one): a segmented switch between the app's areas under the
@@ -956,6 +976,7 @@ plain CSS identifiers, without `.` or `:`.
 | Flash, toast | `JS.push("lv:clear-flash")` + `JS.hide`; colocated hook for the 5 s auto-dismiss |
 | Composer | `position: fixed` + colocated hook (`ResizeObserver`) publishing its height; keyboard inset from `<.theme_script>` |
 | Confirm | `<.confirm_dialog>` + `show_confirm/3` |
+| Drag to sort | pointer events + colocated hook (`Sortable`), the server renders the order |
 | Sidebar overlay | `<.modal placement={:start} close_button={false}>` |
 | Sidebar collapse | `data-sidebar` on `<html>` + colocated hook (`localStorage`), `<.theme_script>` before paint |
 | Theme | `<.theme_script>` + colocated hook, or server-rendered `data-theme` |

@@ -1377,7 +1377,7 @@ defmodule Setzkasten.ShellTest do
       """)
 
     sort = "#app-shell-sidebar-full ul#app-shell-sidebar-sort"
-    assert attr(doc, sort, "phx-hook") == "Setzkasten.Components.Shell.Sortable"
+    assert attr(doc, sort, "phx-hook") == "Setzkasten.Components.Data.Sortable"
     assert attr(doc, sort, "data-sort-event") == "move_account"
 
     rows = find(doc, "#{sort} > li[data-sort-id]")
@@ -1408,12 +1408,5 @@ defmodule Setzkasten.ShellTest do
       assert count(doc, "[data-sort-id]") == 0
       assert count(doc, "[phx-hook$=Sortable]") == 0
     end
-  end
-
-  test "the sort hook pushes the moved entry with its section and new index, never on touch" do
-    hook = colocated_js("Setzkasten.Components.Shell")
-    assert hook =~ ~s|e.pointerType === "touch"|
-    assert hook =~ "{section: d.section, id: d.id, index: d.index}"
-    assert hook =~ "if (!d.lifted || d.index === null || d.index === from) return this.release()"
   end
 end

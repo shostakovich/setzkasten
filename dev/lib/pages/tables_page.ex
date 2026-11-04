@@ -103,6 +103,64 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           trägt <code>aria-current</code>: Fläche <code>row-selected</code> und ein 3px-Balken vorn.
         </:note>
       </.demo>
+      <.demo title="Sortierbar: Gruppen und Kategorien ziehen (Sortable)">
+        <div class="overflow-x-auto border-y border-base-content/10">
+          <table
+            id="envelopes"
+            class="table setzkasten-table-dense tabular-nums"
+            phx-hook="Setzkasten.Components.Data.Sortable"
+            data-sort-event="move_envelope"
+          >
+            <thead>
+              <tr>
+                <th scope="col">Kategorie</th>
+                <th scope="col" class="text-end">Verfügbar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ohne Kategorie</td>
+                <td class="text-end"><.amount value={0} /></td>
+              </tr>
+            </tbody>
+            <tbody
+              :for={group <- @envelopes}
+              id={"envelopes-#{group.id}"}
+              data-sort-id={group.id}
+              data-sort-event="move_envelope_group"
+            >
+              <tr data-sort-head={group.id}>
+                <th scope="colgroup" colspan="2" class="bg-base-200 text-xs font-semibold">
+                  {group.label}
+                </th>
+              </tr>
+              <tr
+                :for={row <- group.rows}
+                id={"envelope-#{row.id}"}
+                data-sort-id={row.id}
+                data-sort-section={group.id}
+              >
+                <td>
+                  <button
+                    type="button"
+                    class="link link-hover"
+                    phx-click="envelope"
+                    phx-value-name={row.name}
+                  >
+                    {row.name}
+                  </button>
+                </td>
+                <td class="text-end"><.amount value={row.available} tone={:negative} /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <:note>
+          Eine Kategorie zieht man in ihrer Gruppe und in jede andere, auch in die leere „Spaß“:
+          über der oberen Hälfte eines Gruppenkopfs ans Ende der Gruppe davor, über der unteren an
+          den Anfang dieser. Am Kopf zieht man die ganze Gruppe. „Ohne Kategorie“ bleibt stehen.
+        </:note>
+      </.demo>
       <.demo title="Leer (:empty-Slot)">
         <.table id="empty-entries" rows={[]}>
           <:col :let={e} label="Datum">{e.date}</:col>
@@ -311,6 +369,16 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       row_attrs={&%{"aria-current": &1.id == @current && "true", "data-kind": &1.kind}}>
       …
     </.table>
+
+    <%!-- sortable: groups and the rows within them, rows also into another group --%>
+    <table id="budget" class="table" phx-hook="Setzkasten.Components.Data.Sortable"
+           data-sort-event="move_category">
+      <tbody :for={g <- @groups} data-sort-id={g.id} data-sort-event="move_group">
+        <tr data-sort-head={g.id}><th colspan="2">{g.name}</th></tr>
+        <tr :for={c <- g.categories} data-sort-id={c.id} data-sort-section={g.id}>…</tr>
+      </tbody>
+    </table>
+    <%!-- handle_event("move_category", %{"id" => id, "section" => group_id, "index" => index}, socket) --%>
 
     <%!-- data grid: 36px rows (44px on touch), 32px controls in cells --%>
     <.table id="register" rows={@rows} size={:dense}>
