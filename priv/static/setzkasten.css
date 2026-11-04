@@ -888,7 +888,7 @@
   }
 }
 
-/* Setzkasten.Components.Data.Sortable: the dragged item lifts and follows the pointer, a line marks where it lands.
+/* Setzkasten.Components.Data.Sortable: the dragged item lifts and follows the pointer, the others make room where it lands.
    The fill is opaque and beats the item's hover and selection utilities, as it passes over others. */
 @layer utilities.setzkasten {
   .setzkasten-sorting,
@@ -912,31 +912,18 @@
   .setzkasten-sort-lifted :is(td, th) {
     background-color: var(--setzkasten-sort-fill, color-mix(in oklab, var(--color-base-content) 8%, var(--color-base-100))) !important;
   }
-  .setzkasten-sort-before,
-  .setzkasten-sort-after {
+  /* A table row only paints its translate when positioned. */
+  .setzkasten-sorting .setzkasten-sort-shifted {
     position: relative;
+    transition: translate var(--setzkasten-duration-exit) ease-out;
   }
-  /* Above the next row's positioned cells, below the lifted item. */
-  .setzkasten-sort-before::after,
-  .setzkasten-sort-after::after {
-    content: "";
-    position: absolute;
-    z-index: 1;
-    inset-inline: 0.5rem;
-    height: 2px;
-    border-radius: 9999px;
-    background-color: var(--setzkasten-sort-line, var(--color-primary));
-    pointer-events: none;
-  }
-  .setzkasten-sort-before::after {
-    top: -2px;
-  }
-  .setzkasten-sort-after::after {
-    bottom: -2px;
+  @media (prefers-reduced-motion: reduce) {
+    .setzkasten-sorting .setzkasten-sort-shifted {
+      transition: none;
+    }
   }
   .setzkasten-sidebar {
     --setzkasten-sort-fill: color-mix(in oklab, var(--color-sidebar-content) 16%, var(--color-sidebar));
-    --setzkasten-sort-line: var(--color-sidebar-accent);
   }
   /* A sidebar entry lifts its rounded link, not the square list item around it. */
   .setzkasten-sidebar .setzkasten-sort-lifted {

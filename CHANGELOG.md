@@ -6,8 +6,8 @@
 - `app_shell` sortable sidebar entries: a `:nav` entry with `sort_id` can be dragged within its section in the
   sidebar with a mouse, trackpad or pen; a drop pushes `on_sort` with `section`, `id` and the new `index`.
 - `Setzkasten.Components.Data.Sortable`: drag to sort for any markup, also table rows and whole `<tbody>` groups,
-  with levels per event, section heads that let items move between sections (also into an empty one), and
-  auto-scroll near the edge; the sidebar uses it.
+  with levels per event, section heads that let items move between sections (also into an empty one), the other
+  items making room where the dragged one lands, and auto-scroll near the edge; the sidebar uses it.
 - Chart series `chart-1` … `chart-8` and `chart-other` are graphic colours of their own, vivid hues at 3:1 on
   base-100/200 in both themes, no longer the roles and the inks (4.5:1 text colours, dull as fills); `chart-N-fill` is
   `chart-N`. An app overrides a series directly; overriding a role or an ink no longer moves the series.

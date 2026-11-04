@@ -158,7 +158,7 @@ defmodule Setzkasten.Components.Data do
       const THRESHOLD = 4
       const EDGE = 48
       const EVENTS = ["pointermove", "pointerup", "pointercancel", "keydown", "scroll"]
-      const MARKS = ["setzkasten-sort-lifted", "setzkasten-sort-before", "setzkasten-sort-after"]
+      const MARKS = ["setzkasten-sort-lifted", "setzkasten-sort-shifted"]
       const FIELDS = "input, textarea, select, [contenteditable]"
       const LAYERS = "[popover], dialog"
       const HOLD = ["pointerdown", "pointerup", "pointercancel"]
@@ -279,10 +279,18 @@ defmodule Setzkasten.Components.Data do
             d.x >= area.left && d.x <= area.right &&
             y >= shown[0].box.top - box.height / 2 && y <= shown[shown.length - 1].box.bottom + box.height / 2
           d.target = inside ? this.target(all, at, y) : null
-          if (!d.target) return
-          const {next, prev, section} = d.target
-          if (next && !next.head && next.section === section) next.el.classList.add("setzkasten-sort-before")
-          else prev.el.classList.add("setzkasten-sort-after")
+          if (d.target) this.makeRoom(all, at, box.height)
+        },
+        // The members between the item's slot and the target move over, so the gap shows where it lands.
+        makeRoom(all, at, height) {
+          const {next} = this.drag.target
+          const end = next ? all.indexOf(next) : all.length
+          const [from, to, by] = end > at ? [at + 1, end, -height] : [end, at, height]
+          for (const m of all.slice(from, to)) {
+            if (!m.box) continue
+            m.el.style.translate = `0 ${by}px`
+            m.el.classList.add("setzkasten-sort-shifted")
+          }
         },
         // Hidden members (a collapsed group's rows) count as above the slot, so a drop there appends.
         target(all, at, y) {

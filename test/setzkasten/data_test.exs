@@ -1650,11 +1650,17 @@ defmodule Setzkasten.DataTest do
     assert css() =~
              ~r/\.setzkasten-sort-lifted \{[^}]*background-color: var\(--setzkasten-sort-fill, color-mix\(in oklab, var\(--color-base-content\) 8%, var\(--color-base-100\)\)\) !important/
 
-    assert css() =~ "background-color: var(--setzkasten-sort-line, var(--color-primary));"
     assert css() =~ ~r/\.setzkasten-sort-lifted \{[^}]*z-index: 2;/
-    assert css() =~ ~r/\.setzkasten-sort-after::after \{[^}]*z-index: 1;/
 
     assert css() =~
-             ~r/\.setzkasten-sidebar \{\s*--setzkasten-sort-fill: color-mix\(in oklab, var\(--color-sidebar-content\) 16%, var\(--color-sidebar\)\);\s*--setzkasten-sort-line: var\(--color-sidebar-accent\);/
+             ~r/\.setzkasten-sidebar \{\s*--setzkasten-sort-fill: color-mix\(in oklab, var\(--color-sidebar-content\) 16%, var\(--color-sidebar\)\);/
+  end
+
+  test "the other items make room where a sorted item lands, positioned so table rows paint it" do
+    assert colocated_js("Setzkasten.Components.Data") =~
+             "if (d.target) this.makeRoom(all, at, box.height)"
+
+    assert css() =~
+             ~r/\.setzkasten-sorting \.setzkasten-sort-shifted \{\s*position: relative;\s*transition: translate var\(--setzkasten-duration-exit\) ease-out;/
   end
 end

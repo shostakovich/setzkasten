@@ -329,7 +329,7 @@ page-load sequence. Pure CSS in `setzkasten.css`, replacing daisyUI's timings.
 | `tooltip` | daisyUI's: fades in with a 4px shift in 200ms, out after 75ms | appears and disappears at once |
 | `list_row exit={:strike}`, tap | the title's strike line draws from its start in 250ms (`ease-out`), the title takes the meta's 70 %, before the server answers | the line appears at once |
 | `list_row exit={:strike}`, removed | strikes first if not yet struck, then collapses in 200ms (`ease-in`, from its measured height to 0, fading), the rows below move up; LiveView keeps the row until then; a live navigation removes it at once | fades out in 100ms, then the rows below jump up |
-| Sortable item (`Sortable` hook, `app_shell` sidebar entries) | follows the pointer at once (direct manipulation), no transitions while sorting; put back, it jumps to its place | the same |
+| Sortable item (`Sortable` hook, `app_shell` sidebar entries) | follows the pointer at once (direct manipulation); the others make room in `duration-exit`, ease-out; put back, it jumps to its place | the others jump |
 
 Not animated: the sidebar collapse (it changes the layout in three places; following it would mean animating
 widths), the hover and press colour of list and table rows (instant in dense lists). A disclosure or menu rendered open
@@ -723,8 +723,8 @@ Visible and accessible default strings are German; each has an attr:
     back with Escape) is swallowed, so a link or button in the item stays put; a click without movement still
     works. Near the edge of the scrolling area (the page, or a scrolling ancestor) it scrolls.
   - Look: the item lifts (opaque fill, `base-content` 8 % on `base-100`, cells included, and a shadow) and follows
-    the pointer; a 2px `primary` line marks where it lands, on the item it lands before or after. Works on `<tr>`
-    and `<tbody>`. The sidebar uses its own tokens.
+    the pointer; the items between its old place and where it lands slide over by its height, so the gap shows
+    where it lands. Works on `<tr>` and `<tbody>`. The sidebar uses its own tokens.
 
 ### Navigation
 
@@ -881,7 +881,7 @@ plain CSS identifiers, without `.` or `:`.
     `on_click`; a link closes it by replacing the view.
   - `sort_id` and `on_sort` (on the shell): an entry with a `sort_id` can be dragged within its `section` in the
     sidebar (from `lg`) with the `Sortable` hook (see Data): its lifted link takes an opaque `sidebar-content` 16 %
-    fill, the line `sidebar-accent`. On a drop at a new place the shell pushes `on_sort` with
+    fill. On a drop at a new place the shell pushes `on_sort` with
     `%{"section" => section, "id" => sort_id, "index" => index}` (0-based among the section's entries with a
     `sort_id`). Other sections and entries without `sort_id` take no drop. Touch does not drag (the sidebar dialog
     scrolls on phones); rail, dock, dialog and top-bar sheet keep their order.
