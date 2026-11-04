@@ -1624,4 +1624,43 @@ defmodule Setzkasten.DataTest do
     assert positive == ~w(tabular-nums whitespace-nowrap)
     assert "text-success-ink" in classes(parse(~H|<.amount value={500} tone />|), "data")
   end
+
+  test "the sortable hook pushes the moved item's level event with section and index, never on touch" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|e.pointerType === "touch"|
+    assert hook =~ "if (e.target.closest(FIELDS) || !this.event(item)) return"
+    assert hook =~ "return el.dataset.sortEvent || this.el.dataset.sortEvent"
+    assert hook =~ "this.pushEvent(d.event, {section, id: d.id, index}, done)"
+    assert hook =~ "if (!d.lifted || !d.target) return this.release()"
+    assert hook =~ "if (!prev && next.head) return null"
+    assert hook =~ "if (section === d.section && index === from) return null"
+  end
+
+  test "the sortable hook leaves presses in an item's popover or dialog alone and keeps Escape from clicking" do
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|const LAYERS = "[popover], dialog"|
+    assert hook =~ "if (layer && item.contains(layer)) return"
+    assert hook =~ "if (pressed && this.swallow) this.hold(this.drag.pointer)"
+    assert hook =~ ~s|if (e.type === "pointercancel") return this.release(false)|
+    assert hook =~ "if (!box) return this.release()"
+    assert hook =~ "if (this.drag === d) this.autoscroll()"
+  end
+
+  test "a sorted item lifts on base tokens, in the sidebar on its own" do
+    assert css() =~
+             ~r/\.setzkasten-sort-lifted \{[^}]*background-color: var\(--setzkasten-sort-fill, color-mix\(in oklab, var\(--color-base-content\) 8%, var\(--color-base-100\)\)\) !important/
+
+    assert css() =~ ~r/\.setzkasten-sort-lifted \{[^}]*z-index: 2;/
+
+    assert css() =~
+             ~r/\.setzkasten-sidebar \{\s*--setzkasten-sort-fill: color-mix\(in oklab, var\(--color-sidebar-content\) 16%, var\(--color-sidebar\)\);/
+  end
+
+  test "the other items make room where a sorted item lands, positioned so table rows paint it" do
+    assert colocated_js("Setzkasten.Components.Data") =~
+             "if (d.target) this.makeRoom(all, at, box.height)"
+
+    assert css() =~
+             ~r/\.setzkasten-sorting \.setzkasten-sort-shifted \{\s*position: relative;\s*transition: translate var\(--setzkasten-duration-exit\) ease-out;/
+  end
 end

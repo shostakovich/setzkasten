@@ -74,7 +74,7 @@ defmodule Setzkasten.MixProject do
     [
       licenses: ["Unlicense"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib priv guides mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files: ~w(lib priv guides mix.exs README.md LICENSE .formatter.exs)
     ]
   end
 
@@ -84,7 +84,7 @@ defmodule Setzkasten.MixProject do
       logo: "guides/assets/setzkasten-128.png",
       assets: %{"guides/assets" => "guides/assets"},
       source_ref: "v#{@version}",
-      extras: ["README.md", "guides/design-system.md", "CHANGELOG.md"],
+      extras: ["README.md"],
       groups_for_modules: [
         Components: ~r/Setzkasten\.Components\./,
         Testing: [Setzkasten.Test.Confirm]

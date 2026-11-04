@@ -92,6 +92,38 @@ defmodule Setzkasten.Dev.Data do
     }
   end
 
+  def envelope_groups do
+    [
+      %{
+        id: "fix",
+        label: "Fixkosten",
+        rows: [env("miete", "Miete", 0), env("strom", "Strom", 4_200)]
+      },
+      %{
+        id: "alltag",
+        label: "Alltag",
+        rows: [env("essen", "Lebensmittel", 18_350), env("drogerie", "Drogerie", -1_240)]
+      },
+      %{id: "spass", label: "Spaß", rows: []}
+    ]
+  end
+
+  defp env(id, name, available), do: %{id: id, name: name, available: available}
+
+  def move_envelope_group(groups, id, index) do
+    {[moved], rest} = Enum.split_with(groups, &(&1.id == id))
+    List.insert_at(rest, index, moved)
+  end
+
+  def move_envelope(groups, id, section, index) do
+    moved = groups |> Enum.flat_map(& &1.rows) |> Enum.find(&(&1.id == id))
+
+    Enum.map(groups, fn group ->
+      rows = Enum.reject(group.rows, &(&1.id == id))
+      %{group | rows: if(group.id == section, do: List.insert_at(rows, index, moved), else: rows)}
+    end)
+  end
+
   def entries do
     [
       %{id: 1, date: "07.10.2026", title: "Wocheneinkauf", amount: -8742},

@@ -1,6 +1,27 @@
 defmodule Setzkasten.Components.Data do
   @moduledoc """
   Tables, lists, amounts, stats, fact lists, bars, avatars and the chart frame.
+
+  `phx-hook="Setzkasten.Components.Data.Sortable"` on an element with an `id` lets its
+  items be dragged into a new order with a mouse, trackpad or pen (touch does not drag):
+
+    * an item is an element with `data-sort-id`; it pushes its own `data-sort-event`, else
+      the container's. Items with the same event form a level, so one container can sort
+      groups (`<tbody data-sort-event="move_group">`) and the rows within them;
+    * `data-sort-section` groups a level's items; an item stays in its section;
+    * a level with section heads (`data-sort-head="<section>"`, not draggable, its event as
+      for items) lets items move between sections: a head starts its section and takes
+      drops for it, also when the section is empty.
+
+  A drop at a new place pushes `%{"id" => id, "section" => section, "index" => index}`: the
+  target section (`nil` without one) and the 0-based index among its items without the moved
+  one (rows of a collapsed section count); the item stays there until the reply renders the
+  new order. Escape or a drop outside puts it back without an event.
+
+  A drag starts after a 4px move, never on touch nor from an input or a popover or dialog
+  inside the item; the click that ends it is swallowed. The item lifts and follows the
+  pointer, the others slide over to make room where it lands, and the page or a scrolling
+  ancestor scrolls near its edge.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
@@ -139,6 +160,221 @@ defmodule Setzkasten.Components.Data do
         </tfoot>
       </table>
     </div>
+    <script :type={ColocatedHook} name=".Sortable">
+      const THRESHOLD = 4
+      const EDGE = 48
+      const EVENTS = ["pointermove", "pointerup", "pointercancel", "keydown", "scroll"]
+      const MARKS = ["setzkasten-sort-lifted", "setzkasten-sort-shifted"]
+      const FIELDS = "input, textarea, select, [contenteditable]"
+      const LAYERS = "[popover], dialog"
+      const HOLD = ["pointerdown", "pointerup", "pointercancel"]
+      const MEMBERS = "[data-sort-id], [data-sort-head]"
+      const centre = (box) => box.top + box.height / 2
+      const scroller = (el) => {
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          const style = getComputedStyle(p)
+          if (/auto|scroll/.test(style.overflowY) && p.scrollHeight > p.clientHeight) return p
+          if (style.position === "fixed" || style.position === "sticky") return null
+        }
+        return document.scrollingElement
+      }
+      export default {
+        mounted() {
+          this.el.addEventListener("pointerdown", (e) => this.press(e))
+          this.el.addEventListener("dragstart", (e) => {
+            if (e.target.closest("[data-sort-id]")) e.preventDefault()
+          })
+        },
+        // A patch drops the marks and the offset; the drag state is the hook's, so draw it again.
+        updated() {
+          if (this.drag && this.drag.lifted && !this.drag.pushed) this.render()
+        },
+        destroyed() {
+          this.release()
+        },
+        event(el) {
+          return el.dataset.sortEvent || this.el.dataset.sortEvent
+        },
+        press(e) {
+          const item = e.target.closest("[data-sort-id]")
+          if (this.drag || !item || !this.el.contains(item) || e.button !== 0 || e.pointerType === "touch") return
+          if (e.target.closest(FIELDS) || !this.event(item)) return
+          const layer = e.target.closest(LAYERS)
+          if (layer && item.contains(layer)) return
+          this.drag = {
+            pointer: e.pointerId,
+            id: item.dataset.sortId,
+            event: this.event(item),
+            section: item.getAttribute("data-sort-section"),
+            startX: e.clientX,
+            startY: e.clientY,
+            x: e.clientX,
+            y: e.clientY,
+            grab: e.clientY - item.getBoundingClientRect().top,
+            lifted: false,
+            target: null
+          }
+          this.listener = (ev) => this.on(ev)
+          for (const type of EVENTS) window.addEventListener(type, this.listener, true)
+        },
+        on(e) {
+          const d = this.drag
+          if (e.type === "keydown") {
+            if (e.key !== "Escape") return
+            if (d.lifted) e.preventDefault()
+            return this.release()
+          }
+          if (e.type === "scroll") return d.lifted && this.render()
+          if (e.pointerId !== d.pointer) return
+          if (e.type === "pointercancel") return this.release(false)
+          if (e.type === "pointerup") return this.drop()
+          d.x = e.clientX
+          d.y = e.clientY
+          if (!d.lifted && Math.hypot(d.x - d.startX, d.y - d.startY) < THRESHOLD) return
+          if (!d.lifted) this.lift()
+          this.render()
+          if (this.drag === d) this.autoscroll()
+        },
+        lift() {
+          this.drag.lifted = true
+          this.scroller = scroller(this.el)
+          document.documentElement.classList.add("setzkasten-sorting")
+          getSelection()?.removeAllRanges()
+          // Without ids the patch reuses the elements in place, so the press's focus would land on another item.
+          if (this.el.contains(document.activeElement)) document.activeElement.blur()
+          // The click that ends a drag would follow the item's link or open its button.
+          this.swallow = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+          window.addEventListener("click", this.swallow, true)
+        },
+        members() {
+          const d = this.drag
+          const level = [...this.el.querySelectorAll(MEMBERS)].filter((el) => this.event(el) === d.event)
+          const across = level.some((el) => el.hasAttribute("data-sort-head"))
+          return level
+            .map((el) => {
+              const head = el.hasAttribute("data-sort-head")
+              return {el, head, section: el.getAttribute(head ? "data-sort-head" : "data-sort-section")}
+            })
+            .filter((m) => across || m.section === d.section)
+        },
+        clear() {
+          for (const el of this.el.querySelectorAll(MEMBERS)) {
+            el.classList.remove(...MARKS)
+            el.style.removeProperty("translate")
+          }
+        },
+        render() {
+          const d = this.drag
+          const all = this.members()
+          const at = all.findIndex((m) => m.el.dataset.sortId === d.id)
+          if (at < 0) return this.release()
+          this.clear()
+          const item = all[at].el
+          const shown = all.filter((m) => m.el.getClientRects().length)
+          for (const m of shown) m.box = m.el.getBoundingClientRect()
+          const box = all[at].box
+          if (!box) return this.release()
+          const y = d.y - d.grab + box.height / 2
+          item.style.translate = `0 ${d.y - d.grab - box.top}px`
+          item.classList.add("setzkasten-sort-lifted")
+          const area = this.el.getBoundingClientRect()
+          const inside =
+            d.x >= area.left && d.x <= area.right &&
+            y >= shown[0].box.top - box.height / 2 && y <= shown[shown.length - 1].box.bottom + box.height / 2
+          d.target = inside ? this.target(all, at, y) : null
+          if (d.target) this.makeRoom(all, at, box.height)
+        },
+        // The members between the item's slot and the target move over, so the gap shows where it lands.
+        makeRoom(all, at, height) {
+          const {next} = this.drag.target
+          const end = next ? all.indexOf(next) : all.length
+          const [from, to, by] = end > at ? [at + 1, end, -height] : [end, at, height]
+          for (const m of all.slice(from, to)) {
+            if (!m.box) continue
+            m.el.style.translate = `0 ${by}px`
+            m.el.classList.add("setzkasten-sort-shifted")
+          }
+        },
+        // Hidden members (a collapsed group's rows) count as above the slot, so a drop there appends.
+        target(all, at, y) {
+          const d = this.drag
+          const others = all.filter((_, i) => i !== at)
+          const stops = others.filter((m) => m.box)
+          if (!stops.length) return null
+          const k = stops.filter((m) => centre(m.box) < y).length
+          const prev = stops[k - 1]
+          const next = stops[k]
+          if (!prev && next.head) return null
+          const section = prev ? prev.section : next.section
+          const end = next ? others.indexOf(next) : others.length
+          const index = others.slice(0, end).filter((m) => !m.head && m.section === section).length
+          const from = all.slice(0, at).filter((m) => !m.head && m.section === d.section).length
+          if (section === d.section && index === from) return null
+          return {next, prev, section, index}
+        },
+        autoscroll() {
+          const d = this.drag
+          if (!this.scroller) return
+          const view = this.scroller === document.scrollingElement
+            ? {top: 0, bottom: window.innerHeight}
+            : this.scroller.getBoundingClientRect()
+          const top = Math.max(view.top, 0) + EDGE
+          const bottom = Math.min(view.bottom, window.innerHeight) - EDGE
+          const over = d.y < top ? d.y - top : d.y > bottom ? d.y - bottom : 0
+          d.speed = Math.max(-EDGE, Math.min(EDGE, over)) / 4
+          if (!d.speed || this.frame) return
+          const step = () => {
+            this.frame = null
+            if (this.drag !== d || !d.speed || d.pushed) return
+            this.scroller.scrollBy(0, d.speed)
+            this.frame = requestAnimationFrame(step)
+          }
+          this.frame = requestAnimationFrame(step)
+        },
+        // The item stays where it was dropped until the reply, which comes after the patch with the new order.
+        drop() {
+          const d = this.drag
+          this.stopListening()
+          if (!d.lifted || !d.target) return this.release()
+          d.pushed = true
+          const done = () => this.drag === d && this.release()
+          this.timer = setTimeout(done, 5000)
+          const {section, index} = d.target
+          this.pushEvent(d.event, {section, id: d.id, index}, done)
+        },
+        stopListening() {
+          if (this.listener) for (const type of EVENTS) window.removeEventListener(type, this.listener, true)
+          this.listener = null
+          cancelAnimationFrame(this.frame)
+          this.frame = null
+          const swallow = this.swallow
+          this.swallow = null
+          if (swallow) setTimeout(() => window.removeEventListener("click", swallow, true))
+        },
+        // The button is still down: its release would click what was pressed.
+        hold(pointer) {
+          const swallow = this.swallow
+          this.swallow = null
+          const end = (e) => {
+            if (e.type !== "pointerdown" && e.pointerId !== pointer) return
+            for (const type of HOLD) window.removeEventListener(type, end, true)
+            setTimeout(() => window.removeEventListener("click", swallow, true))
+          }
+          for (const type of HOLD) window.addEventListener(type, end, true)
+        },
+        release(pressed = true) {
+          if (pressed && this.swallow) this.hold(this.drag.pointer)
+          this.stopListening()
+          clearTimeout(this.timer)
+          document.documentElement.classList.remove("setzkasten-sorting")
+          this.clear()
+          this.drag = null
+        }
+      }
+    </script>
     """
   end
 

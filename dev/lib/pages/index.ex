@@ -11,7 +11,7 @@ defmodule Setzkasten.Dev.Pages.Index do
     ~H"""
     <div class="max-w-prose space-y-3">
       <p>
-        Jede Seite zeigt eine Gruppe von Komponenten aus <code>guides/design-system.md</code>
+        Jede Seite zeigt eine Gruppe von Komponenten
         mit allen Varianten, Größen und Zuständen. Alles hier wird von den echten HEEx-Komponenten
         gerendert; der Katalog ist zugleich Ziel für Screenshots, Kontrastprüfungen und
         visuelle Regressionstests.

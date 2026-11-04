@@ -48,6 +48,31 @@ defmodule Setzkasten.CatalogTest do
     assert ids == ~w(ruecklage giro karte)
   end
 
+  test "the tables page moves a category into an empty group and a group to the top" do
+    {:ok, view, _} = live(build_conn(), "/tables")
+    table = "#envelopes"
+
+    render_hook(element(view, table), "move_envelope", %{
+      "id" => "strom",
+      "section" => "spass",
+      "index" => 0
+    })
+
+    render_hook(element(view, table), "move_envelope_group", %{
+      "id" => "spass",
+      "section" => nil,
+      "index" => 0
+    })
+
+    doc = view |> render() |> LazyHTML.from_document()
+    ids = &(doc |> LazyHTML.query(&1) |> LazyHTML.attribute("data-sort-id"))
+
+    assert ids.("#{table} > tbody[data-sort-id]") == ~w(spass fix alltag)
+    assert ids.("#{table} tr[data-sort-section=spass]") == ~w(strom)
+    assert ids.("#{table} tr[data-sort-section=fix]") == ~w(miete)
+    assert doc |> LazyHTML.query("#{table} tr[data-sort-head]") |> Enum.count() == 3
+  end
+
   test "the settings screen confirms a save on its button instead of a flash" do
     {:ok, view, _} = live(build_conn(), "/screens/settings")
     html = view |> element("#settings-form") |> render_submit()
