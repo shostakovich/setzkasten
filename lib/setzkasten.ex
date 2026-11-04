@@ -14,7 +14,7 @@ defmodule Setzkasten do
       end
 
   Component modules can also be imported one by one, e.g. `import Setzkasten.Components.Data`.
-  See the README for installation and `guides/design-system.md` for the design rules.
+  See the README for installation.
 
   ## Configuration (all optional, read at runtime)
 

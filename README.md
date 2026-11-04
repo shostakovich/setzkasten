@@ -9,7 +9,6 @@ The name is German for a typesetter's type case: ready pieces to compose pages f
 - Light and dark daisyUI themes in one CSS file
 - No JavaScript framework: `<dialog>`, `<details>` and `Phoenix.LiveView.JS`
 - No inline styles, works under a strict CSP
-- Design rules: [guides/design-system.md](guides/design-system.md)
 
 ## Install
 

@@ -15,7 +15,13 @@ defmodule Setzkasten.Components.Data do
 
   A drop at a new place pushes `%{"id" => id, "section" => section, "index" => index}`: the
   target section (`nil` without one) and the 0-based index among its items without the moved
-  one. See the design system guide for behaviour and look.
+  one (rows of a collapsed section count); the item stays there until the reply renders the
+  new order. Escape or a drop outside puts it back without an event.
+
+  A drag starts after a 4px move, never on touch nor from an input or a popover or dialog
+  inside the item; the click that ends it is swallowed. The item lifts and follows the
+  pointer, the others slide over to make room where it lands, and the page or a scrolling
+  ancestor scrolls near its edge.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
