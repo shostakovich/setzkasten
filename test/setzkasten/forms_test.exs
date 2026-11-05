@@ -481,7 +481,7 @@ defmodule Setzkasten.FormsTest do
     assert classes(doc, "fieldset > :first-child") == ["sr-only"]
   end
 
-  test "a warning help line has an icon, full text colour and stays described" do
+  test "a warning help line has an icon, the warning ink and stays described" do
     assigns = %{}
 
     doc =
@@ -491,7 +491,7 @@ defmodule Setzkasten.FormsTest do
 
     assert attr(doc, "input", "aria-describedby") == "iban-help"
     assert count(doc, "#iban-help svg.lucide") == 1
-    assert "text-base-content" in classes(doc, "#iban-help")
+    assert "text-warning-ink" in classes(doc, "#iban-help")
     assert text(doc, "#iban-help") == "Nicht bestätigt"
 
     doc = parse(~H|<.input name="t" id="t" label="Titel" help="Kurz" />|)
@@ -509,7 +509,7 @@ defmodule Setzkasten.FormsTest do
 
     assert attr(doc, "#photo-help", "aria-live") == "polite"
     assert count(doc, "#photo-help svg.lucide") == 1
-    assert classes(doc, "#photo-help") == ~w(label whitespace-normal text-base-content mt-1)
+    assert classes(doc, "#photo-help") == ~w(label whitespace-normal text-warning-ink mt-1)
   end
 
   test "inline input joins the field and its button, errors below the join" do

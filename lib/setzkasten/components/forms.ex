@@ -31,7 +31,7 @@ defmodule Setzkasten.Components.Forms do
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
-  marks the help line as a warning (`triangle-alert` icon, full base-content text); it stays
+  marks the help line as a warning (`triangle-alert` icon and text in `warning-ink`); it stays
   linked by `aria-describedby`.
 
   `identifier` (text-like types) is the field for a code such as an ISIN, IBAN or ticker
@@ -1079,8 +1079,9 @@ defmodule Setzkasten.Components.Forms do
 
   @doc """
   The help line of a field, as `input` renders it, with the id `<id>-help`. See `field_error/1`.
-  `tone={:warning}` adds a `triangle-alert` icon and sets the text in full base-content (the
-  warning fill is too faint as text). Global attrs (e.g. `aria-live`) land on the `<p>`.
+  `tone={:warning}` adds a `triangle-alert` icon and sets icon and text in `warning-ink`, as
+  error lines are in `error-ink` (4.5:1 on the page and the popover surface, light and dark).
+  Global attrs (e.g. `aria-live`) land on the `<p>`.
 
       <.field_help id="iban" tone={:warning}>Konto ist noch nicht bestätigt</.field_help>
   """
@@ -1094,7 +1095,7 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <p
       id={"#{@id}-help"}
-      class={["label whitespace-normal", @tone == :warning && "text-base-content", @class]}
+      class={["label whitespace-normal", @tone == :warning && "text-warning-ink", @class]}
       {@rest}
     >
       <.icon :if={@tone == :warning} name="triangle-alert" class="size-4 shrink-0" />
