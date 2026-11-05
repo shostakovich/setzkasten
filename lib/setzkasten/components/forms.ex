@@ -1105,8 +1105,11 @@ defmodule Setzkasten.Components.Forms do
   The errors of a dense control with no room for lines under it (an amount in a table cell), in
   a bubble at the control: shown at once and kept in view, not a tooltip on hover. It sits under
   the control (above it when the window has no room below), in the top layer, so a scrolling
-  table does not clip it, and hides while the control is scrolled out of the window. Clicks
-  pass through it to the cells under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned amount.
+  table does not clip it. It hides while the control is out of sight: scrolled out of the
+  window or a scrolling box, or under something else such as a sticky header or a dialog. It
+  follows the control when the page around it changes, and clicks pass through it to the cells
+  under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned
+  amount.
 
   Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
   `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
@@ -1147,6 +1150,27 @@ defmodule Setzkasten.Components.Forms do
     <script :type={ColocatedHook} name=".ErrorBubble">
       const EDGE = 8
       const GAP = 4
+      const clips = (el) => {
+        const boxes = []
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          const style = getComputedStyle(p)
+          if (style.overflowX !== "visible" || style.overflowY !== "visible") boxes.push(p)
+        }
+        return boxes
+      }
+      const sighted = (control) => {
+        const r = control.getBoundingClientRect()
+        if (!r.width) return null
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const clipped = clips(control).some((box) => {
+          const b = box.getBoundingClientRect()
+          return x < b.left || x > b.right || y < b.top || y > b.bottom
+        })
+        if (clipped) return null
+        const hit = document.elementFromPoint(x, y)
+        return hit && (control.contains(hit) || hit.contains(control)) ? r : null
+      }
       export default {
         mounted() {
           this.onMove = () => {
@@ -1155,6 +1179,12 @@ defmodule Setzkasten.Components.Forms do
           }
           window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
           window.addEventListener("resize", this.onMove)
+          this.mutations = new MutationObserver((records) => {
+            if (records.some((record) => !this.el.contains(record.target))) this.onMove()
+          })
+          this.mutations.observe(document.body, { subtree: true, childList: true, attributes: true })
+          this.sizes = new ResizeObserver(this.onMove)
+          this.sizes.observe(document.body)
           this.place()
         },
         updated() { this.place() },
@@ -1162,13 +1192,19 @@ defmodule Setzkasten.Components.Forms do
           cancelAnimationFrame(this.frame)
           window.removeEventListener("scroll", this.onMove, { capture: true })
           window.removeEventListener("resize", this.onMove)
+          this.mutations.disconnect()
+          this.sizes.disconnect()
         },
         place() {
           const control = document.getElementById(this.el.dataset.for)
-          const r = control && control.getBoundingClientRect()
-          const vh = window.innerHeight
+          if (control !== this.control) {
+            if (this.control) this.sizes.unobserve(this.control)
+            if (control) this.sizes.observe(control)
+            this.control = control
+          }
+          const r = control && sighted(control)
           const open = this.el.matches(":popover-open")
-          if (!r || !r.width || r.bottom < 0 || r.top > vh) {
+          if (!r) {
             if (open) this.el.hidePopover()
             return
           }
@@ -1181,6 +1217,7 @@ defmodule Setzkasten.Components.Forms do
           const width = this.el.offsetWidth
           const height = this.el.offsetHeight
           const vw = document.documentElement.clientWidth
+          const vh = window.innerHeight
           const rtl = getComputedStyle(this.el).direction === "rtl"
           const end = this.el.classList.contains("setzkasten-error-bubble-end") !== rtl
           const left = Math.min(end ? r.right - width : r.left, vw - width - EDGE)

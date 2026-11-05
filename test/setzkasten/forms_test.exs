@@ -1005,9 +1005,19 @@ defmodule Setzkasten.FormsTest do
 
     hook = colocated_js("Setzkasten.Components.Forms")
     assert hook =~ "const control = document.getElementById(this.el.dataset.for)"
-    assert hook =~ "if (!r || !r.width || r.bottom < 0 || r.top > vh) {"
+    # Hidden while a scrolling box clips the control or something covers it.
+    assert hook =~
+             ~s|if (style.overflowX !== "visible" \|\| style.overflowY !== "visible") boxes.push(p)|
+
+    assert hook =~ "const hit = document.elementFromPoint(x, y)"
+    assert hook =~ "return hit && (control.contains(hit) || hit.contains(control)) ? r : null"
+    # Placed again when the page around it changes, not for its own changes.
+    assert hook =~ "if (records.some((record) => !this.el.contains(record.target))) this.onMove()"
+    assert hook =~ "this.sizes.observe(document.body)"
     assert hook =~ "r.bottom + GAP + height <= vh - EDGE ? r.bottom + GAP : r.top - GAP - height"
-    assert hook =~ ~r/if \(this.shown\) this.el.removeAttribute\("role"\)\s*this.el.showPopover\(\)/
+
+    assert hook =~
+             ~r/if \(this.shown\) this.el.removeAttribute\("role"\)\s*this.el.showPopover\(\)/
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-error-bubble \{\s*position: fixed;/

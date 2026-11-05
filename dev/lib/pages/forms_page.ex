@@ -257,6 +257,12 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       <.demo title="Fehlerblase an einem Feld in einer scrollenden Tabelle" class="max-w-md">
         <div class="max-h-40 overflow-auto rounded-box border border-base-content/10">
           <table class="table table-sm">
+            <thead class="sticky top-0 z-10 bg-base-100">
+              <tr>
+                <th>Kategorie</th>
+                <th class="text-end">Zugewiesen</th>
+              </tr>
+            </thead>
             <tbody>
               <tr :for={{id, label, value, errors} <- bubble_cells()}>
                 <td>{label}</td>
@@ -278,7 +284,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
         </div>
         <:note>
           In der obersten Ebene, so schneidet die Tabelle sie nicht ab; verschwindet, wenn das
-          Feld aus dem Fenster scrollt.
+          Feld aus der Tabelle oder dem Fenster scrollt oder unter dem Tabellenkopf liegt.
         </:note>
       </.demo>
     </.showcase>
@@ -656,7 +662,9 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       {"bubble-food", "Lebensmittel", "350,00", []},
       {"bubble-fuel", "Tanken", "60*2",
        ["„60*2“ ist kein gültiger Betrag. Rechnen geht mit + und −, etwa 50+20."]},
-      {"bubble-gifts", "Geschenke", "25,00", []}
+      {"bubble-gifts", "Geschenke", "25,00", []},
+      {"bubble-drugstore", "Drogerie", "40,00", []},
+      {"bubble-clothes", "Kleidung", "80,00", []}
     ]
   end
 end
