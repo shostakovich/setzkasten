@@ -191,6 +191,16 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
           ]}
         />
       </.demo>
+      <.demo title="Schalter zwischen beschrifteten Feldern" class="max-w-md">
+        <.input name="r[payee]" id="r-payee" label="Empfänger" value="Hausverwaltung Ost" />
+        <.input name="r[recurring]" id="r-recurring" type="toggle" label="Jeden Monat wiederholen" />
+        <.input name="r[notify]" id="r-notify" type="checkbox" label="Vorher erinnern" />
+        <.input name="r[purpose]" id="r-purpose" label="Verwendungszweck" />
+        <:note>
+          Der Schalter beginnt, wo das Label eines Felds beginnen würde; ein zweiter direkt
+          darunter bleibt nah. Mit dem Finger hat die 44px-Zeile den Raum schon.
+        </:note>
+      </.demo>
     </.showcase>
 
     <.showcase

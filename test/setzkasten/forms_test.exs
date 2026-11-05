@@ -216,6 +216,24 @@ defmodule Setzkasten.FormsTest do
     assert attr(doc, "input[type=checkbox]", "aria-checked") == nil
   end
 
+  test "a checkbox or toggle in a stack takes a label's room above, a bare one none" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="a" id="a" type="toggle" label="A" />
+      <.input name="b" id="b" type="checkbox" label="B" bare />
+      """)
+
+    assert classes(doc, "div:has(> label > #a)") == ~w(fieldset setzkasten-check-field min-w-0)
+    refute "setzkasten-check-field" in classes(doc, "div:has(> label > #b)")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media not \(pointer: coarse\) \{\s*\.setzkasten-check-field \{\s*padding-top: 1rem;\s*\}\s*\.setzkasten-check-field \+ \.setzkasten-check-field \{\s*padding-top: 0\.5rem;/
+  end
+
   test "checkbox and radio without a colour variant take the 50 % field border" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 

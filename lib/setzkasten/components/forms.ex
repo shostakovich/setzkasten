@@ -27,7 +27,9 @@ defmodule Setzkasten.Components.Forms do
   from the native checked state. `bare` (checkbox and toggle) drops the field's padding and
   row height, so the control lines up with a heading beside it (a card's `:actions`); on touch
   screens a hit area centred on the label, at least 44px each way, keeps the target without
-  growing the row, also with `hide_label`.
+  growing the row, also with `hide_label`. In a stack of fields a checkbox or toggle starts
+  where a labelled field's label would (its control lines up with the label's text), and
+  one right under another stays close; on touch screens its 44px row already makes that room.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
@@ -127,7 +129,11 @@ defmodule Setzkasten.Components.Forms do
       end)
 
     ~H"""
-    <div class={if @bare, do: "inline-flex min-w-0 flex-col", else: "fieldset min-w-0"}>
+    <div class={
+      if @bare,
+        do: "inline-flex min-w-0 flex-col",
+        else: "fieldset setzkasten-check-field min-w-0"
+    }>
       <label class={[
         "flex items-center gap-3 text-sm",
         if(@bare,

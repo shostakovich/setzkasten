@@ -523,6 +523,19 @@
   }
 }
 
+/* A checkbox or toggle field has no label row above its control: on fine pointers it takes the room
+   of one, so its control starts where a labelled field's label does; touch rows are 44px already. */
+@layer utilities.setzkasten {
+  @media not (pointer: coarse) {
+    .setzkasten-check-field {
+      padding-top: 1rem;
+    }
+    .setzkasten-check-field + .setzkasten-check-field {
+      padding-top: 0.5rem;
+    }
+  }
+}
+
 /* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
    70 % as for all secondary text. */
 @layer utilities.setzkasten {
