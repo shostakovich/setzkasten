@@ -131,8 +131,32 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
             on_click={show_modal("security-dialog")}
           />
         </.table>
-        <.modal id="security-dialog" title="Wertpapier bearbeiten">
-          <p class="py-4 text-sm">Formular des Wertpapiers.</p>
+        <.modal id="security-dialog" title="Wertpapier bearbeiten" placement={:top}>
+          <form class="grid gap-2" phx-submit="noop">
+            <.input
+              name="sec[isin]"
+              id="sec-isin"
+              label="ISIN"
+              identifier
+              maxlength="12"
+              value="DE000A0S9GB0"
+            />
+            <.input
+              name="sec[feed]"
+              id="sec-feed"
+              type="select"
+              label="Kursquelle"
+              options={[{"Yahoo", "yahoo"}, {"Ohne Kursabruf", "none"}]}
+              value="none"
+              help="Ohne Kursabruf bleiben die gespeicherten Kurse stehen, neue kommen keine."
+              help_tone={:warning}
+            />
+            <.input name="sec[retired]" id="sec-retired" type="toggle" label="Ausgemustert" />
+            <.action_bar>
+              <.button type="button" phx-click={hide_modal("security-dialog")}>Abbrechen</.button>
+              <.button type="submit" variant={:primary}>Speichern</.button>
+            </.action_bar>
+          </form>
         </.modal>
         <:note>
           Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte

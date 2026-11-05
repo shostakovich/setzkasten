@@ -90,6 +90,15 @@ defmodule Setzkasten.Components.Overlays do
   row and `:actions` stay in place while a long body scrolls between them; they reach into the
   box's 24px padding, so a `class` should leave the padding as it is.
 
+  `placement={:top}` is the centred dialog held at a fixed distance from the top from `sm`,
+  so it grows downwards instead of jumping when fields appear or go (a form that changes
+  with its input); on phones it is the same bottom sheet.
+
+  Focus starts on a field with `autofocus`, at every width and before anything above it (a
+  segmented control). Without one, the bottom sheet focuses the dialog itself, so no
+  on-screen keyboard comes up; from `sm` and in side panels it goes to the first control, as
+  the browser does.
+
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
   stays closed until `show` turns `true` again.
@@ -106,7 +115,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :title, :string, default: nil
   attr :show, :boolean, default: nil
   attr :on_cancel, JS, default: nil
-  attr :placement, :atom, default: :center, values: [:center, :start, :end]
+  attr :placement, :atom, default: :center, values: [:center, :top, :start, :end]
   attr :close_label, :string, default: "Schließen"
   attr :close_button, :boolean, default: true
   attr :class, :any, default: nil
@@ -115,12 +124,14 @@ defmodule Setzkasten.Components.Overlays do
   slot :actions
 
   def modal(assigns) do
-    assigns = assign(assigns, :close?, assigns.close_button and assigns.placement != :center)
+    assigns =
+      assign(assigns, :close?, assigns.close_button and assigns.placement in [:start, :end])
 
     ~H"""
     <dialog
       id={@id}
       class={["modal", placement_class(@placement)]}
+      tabindex="-1"
       aria-labelledby={@title && "#{@id}-title"}
       phx-hook=".Modal"
       phx-mounted={JS.ignore_attributes(["open"])}
@@ -210,10 +221,17 @@ defmodule Setzkasten.Components.Overlays do
           this.suspended = [...document.querySelectorAll(".setzkasten-popover:popover-open")]
             .filter((popover) => !popover.contains(this.el))
           for (const popover of this.suspended) this.js().setAttribute(popover, "data-suspended", "")
+          // A bottom sheet opens on itself, so no field brings up the keyboard unless it asks to.
+          const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches
+          if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
           this.el.showModal()
-          // Chrome focuses a scrolling box itself instead of its first field.
+          this.el.removeAttribute("autofocus")
+          const asked = [...this.el.querySelectorAll(".modal-box [autofocus]")].find(usable)
           const box = this.el.querySelector(".modal-box")
-          if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
+          if (asked) asked.focus()
+          else if (sheet) this.el.focus()
+          // Chrome focuses a scrolling box itself instead of its first field.
+          else if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
         },
         resume() {
           let resumed = false
@@ -291,6 +309,7 @@ defmodule Setzkasten.Components.Overlays do
   end
 
   defp placement_class(:center), do: "modal-bottom sm:modal-middle"
+  defp placement_class(:top), do: "modal-bottom sm:modal-middle setzkasten-modal-top"
   defp placement_class(:start), do: "modal-start"
   defp placement_class(:end), do: "modal-end"
 

@@ -31,7 +31,37 @@ defmodule Setzkasten.OverlaysTest do
     assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
-    assert css =~ ~r/\.modal-box:focus-visible \{\s*outline: none;/
+    assert css =~ ~r/\.modal-box:focus-visible,\s*\.modal:focus-visible \{\s*outline: none;/
+  end
+
+  test "focus starts on an autofocus field; a bottom sheet without one focuses itself" do
+    assigns = %{}
+    assert attr(parse(~H|<.modal id="m">Body</.modal>|), "dialog", "tabindex") == "-1"
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+
+    assert hook =~
+             ~s|const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches|
+
+    assert hook =~
+             ~s|if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")|
+
+    assert hook =~
+             ~r/if \(asked\) asked.focus\(\)\s*else if \(sheet\) this.el.focus\(\)/
+  end
+
+  test "a top-anchored modal is the bottom sheet on phones and held at the top from sm" do
+    assigns = %{}
+    doc = parse(~H|<.modal id="t" title="Neu" placement={:top}>Body</.modal>|)
+    assert classes(doc, "dialog") == ~w(modal modal-bottom sm:modal-middle setzkasten-modal-top)
+    assert count(doc, ".modal-box form") == 0
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media \(width >= 40rem\) \{\s*\.setzkasten-modal-top \{\s*align-items: start;/
+
+    assert css =~ ~r/\.setzkasten-modal-top > \.modal-box \{\s*margin-top: max\(1\.5rem, 12dvh\);/
   end
 
   test "a bottom sheet keeps its content and a sticky bar above the bottom safe area" do

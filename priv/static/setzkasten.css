@@ -766,8 +766,18 @@
   .modal-bottom > .modal-box {
     max-height: calc(100dvh - 5em);
   }
-  .modal-box:focus-visible {
+  .modal-box:focus-visible,
+  .modal:focus-visible {
     outline: none;
+  }
+  @media (width >= 40rem) {
+    .setzkasten-modal-top {
+      align-items: start;
+    }
+    .setzkasten-modal-top > .modal-box {
+      margin-top: max(1.5rem, 12dvh);
+      max-height: calc(100dvh - max(1.5rem, 12dvh) - 1.5rem);
+    }
   }
 }
 
