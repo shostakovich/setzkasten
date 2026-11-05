@@ -122,7 +122,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
             </.cell_sub>
           </:col>
           <:col :let={s} label="Kurs" align={:end}>
-            <.amount value={s.price} minor_digits={4} decimals={2} />
+            <.amount value={s.price} minor_digits={4} decimals={2..4} pad_decimals={4} />
           </:col>
           <:action
             label={&"Bearbeiten: #{&1.name}"}
@@ -163,7 +163,9 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich. Der Stift
           erscheint mit der Maus beim Überfahren oder mit dem Tastaturfokus und hält seinen
           Platz; mit dem Finger steht er immer da, unter <code>sm</code> fehlt er
-          (<code>actions_show_from</code>), denn die Zeile führt zur Detailseite.
+          (<code>actions_show_from</code>), denn die Zeile führt zur Detailseite. Kurse mit zwei
+          bis vier Stellen stehen am Komma untereinander (<code>decimals={"{2..4}"}</code>
+          <code>pad_decimals={"{4}"}</code>).
         </:note>
       </.demo>
       <.demo title="Sortierbar: Gruppen und Kategorien ziehen (Sortable)">

@@ -42,6 +42,31 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
           </:item>
         </.description_list>
       </.demo>
+      <.demo title="Am Komma ausgerichtet: decimals={2..4} pad_decimals={4}">
+        <div class="flex gap-12">
+          <div class="grid justify-items-end">
+            <.amount
+              :for={price <- [1_324_600, 341_250, 1_245_000, 7_812_345, 120_000_000]}
+              value={price}
+              minor_digits={4}
+              decimals={2..4}
+              pad_decimals={4}
+            />
+          </div>
+          <div class="grid justify-items-end">
+            <.amount
+              :for={price <- [1_324_600, 341_250, 1_245_000, 7_812_345, 120_000_000]}
+              value={price}
+              minor_digits={4}
+              decimals={2..4}
+            />
+          </div>
+        </div>
+        <:note>
+          Links mit unsichtbaren Ziffern bis zur vierten Stelle, rechts ohne: die Stellen, die ein
+          Kurs hat, ab zwei, ohne angehängte Nullen.
+        </:note>
+      </.demo>
     </.showcase>
 
     <.showcase id="identifier" name="<.identifier>" title="Kennung">
@@ -442,6 +467,8 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     <.amount value={6_327_914} decimals={0} />
     <.amount value={110} currency="USD" currency_display={:code} />
     <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
+    <%!-- prices with two to four places, lined up on the comma in a column --%>
+    <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
     """
   end
 

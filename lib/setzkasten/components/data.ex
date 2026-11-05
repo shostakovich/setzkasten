@@ -1214,6 +1214,15 @@ defmodule Setzkasten.Components.Data do
   `minor_digits` says how many decimal places the integer's minor unit has: 2 by default, 0 for
   yen, 3 for dinar; `decimals` follows it unless given.
 
+  A range in `decimals` shows the places a value has: `2..4` rounds to four and drops trailing
+  zeros down to two (prices: 132,46 · 34,125 · 781,2345). `pad_decimals` keeps room for that
+  many places (invisible tabular figures after the unit, left out of copying and screen
+  readers), so mixed precisions line up on the comma in a right-aligned column without
+  written zeros while the unit stays beside the number. The units must match for the commas
+  to line up.
+
+      <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
+
       <.amount value={-7420} signed tone />
       <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
@@ -1229,7 +1238,15 @@ defmodule Setzkasten.Components.Data do
   attr :currency, :string, default: "EUR"
   attr :currency_display, :atom, default: :symbol, values: [:symbol, :code]
   attr :minor_digits, :integer, default: 2, doc: "decimal places of the integer's minor unit"
-  attr :decimals, :integer, default: nil, doc: "shown decimal places; `minor_digits` by default"
+
+  attr :decimals, :any,
+    default: nil,
+    doc: "shown decimal places, or a range `2..4`; `minor_digits` by default"
+
+  attr :pad_decimals, :integer,
+    default: nil,
+    doc: "room for this many decimal places, so a column aligns on the comma"
+
   attr :signed, :boolean, default: false
 
   attr :tone, :any,
@@ -1247,11 +1264,32 @@ defmodule Setzkasten.Components.Data do
   end
 
   def amount(assigns) do
-    assigns = assign(assigns, :decimals, assigns.decimals || assigns.minor_digits)
+    decimals = assigns.decimals || assigns.minor_digits
+
+    {number, unit} =
+      assigns.value
+      |> Format.money(
+        currency: assigns.currency,
+        currency_display: assigns.currency_display,
+        signed: assigns.signed,
+        minor_digits: assigns.minor_digits,
+        decimals: decimals
+      )
+      |> String.split("\u00A0", parts: 2)
+      |> List.to_tuple()
+
+    assigns =
+      assign(assigns,
+        decimals: decimals,
+        number: number,
+        unit: unit,
+        pad: decimal_pad(number, assigns.pad_decimals),
+        machine_places: max(assigns.minor_digits, most_places(decimals))
+      )
 
     ~H"""
     <data
-      value={Format.machine(@value, minor_digits: @minor_digits)}
+      value={Format.machine(@value, minor_digits: @minor_digits, decimals: @machine_places)}
       phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
@@ -1260,15 +1298,25 @@ defmodule Setzkasten.Components.Data do
         @class
       ]}
       {@rest}
-    >{Format.money(@value,
-      currency: @currency,
-      currency_display: @currency_display,
-      signed: @signed,
-      minor_digits: @minor_digits,
-      decimals: @decimals
-    )}</data>
+    >{@number <> "\u00A0" <> @unit}<span :if={@pad} class="invisible select-none" aria-hidden="true">{@pad}</span></data>
     """
   end
+
+  # Invisible tabular zeros, not U+2007: Figtree's figure space is wider than its tabular figures.
+  defp decimal_pad(_number, nil), do: nil
+
+  defp decimal_pad(number, places) do
+    shown = number |> String.split(",") |> Enum.at(1, "") |> String.length()
+
+    case places - shown do
+      missing when missing <= 0 -> nil
+      missing when shown == 0 -> "," <> String.duplicate("0", missing)
+      missing -> String.duplicate("0", missing)
+    end
+  end
+
+  defp most_places(_first..last//_), do: last
+  defp most_places(places), do: places
 
   defp tone_class(-1, _tone), do: "text-error-ink"
   defp tone_class(1, true), do: "text-success-ink"

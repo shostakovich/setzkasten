@@ -604,6 +604,29 @@ defmodule Setzkasten.DataTest do
     assert "text-base-content/70" in classes(doc, "data")
   end
 
+  test "amount pads with invisible figures after its unit to line up on the comma" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.amount value={341_250} minor_digits={4} decimals={2..4} pad_decimals={4} />|)
+
+    assert text(doc, "data") == "34,125\u00A0€0"
+    assert doc |> find("data") |> LazyHTML.to_html() =~ "34,125\u00A0€<span"
+    assert attr(doc, "data", "value") == "34.1250"
+    assert text(doc, "data span") == "0"
+    assert classes(doc, "data span") == ~w(invisible select-none)
+    assert attr(doc, "data span", "aria-hidden") == "true"
+
+    doc = parse(~H|<.amount value={1200} decimals={0} pad_decimals={2} />|)
+    assert text(doc, "data span") == ",00"
+
+    doc =
+      parse(~H|<.amount value={7_812_345} minor_digits={4} decimals={2..4} pad_decimals={4} />|)
+
+    assert count(doc, "data span") == 0
+    assert text(doc, "data") == "781,2345 €"
+  end
+
   test "amount in minor units of a currency without cents" do
     assigns = %{}
 

@@ -26,11 +26,14 @@ defmodule Setzkasten.Format do
       "1,10 USD"
       iex> Setzkasten.Format.money(4850, currency: "JPY", minor_digits: 0)
       "4.850 JPY"
+      iex> Setzkasten.Format.money(1_245_000, minor_digits: 4, decimals: 2..4)
+      "124,50 €"
 
   Options: `:currency` (default `"EUR"`, unknown codes print as the code), `:currency_display`
   (`:symbol`, the default, or `:code` for the ISO code), `:signed` (prefix `+` for positive
   values), `:minor_digits` (the decimal places of an integer's minor unit: 2 by default, 0 for
-  yen, 3 for dinar), `:decimals` (default: `:minor_digits`).
+  yen, 3 for dinar), `:decimals` (default: `:minor_digits`; a range such as `2..4` shows the
+  places the value has, rounded to the most and trailing zeros dropped down to the fewest).
   """
   def money(value, opts \\ []) do
     currency = Keyword.get(opts, :currency, "EUR")
@@ -53,17 +56,34 @@ defmodule Setzkasten.Format do
       "−20,5"
       iex> Setzkasten.Format.number(1234, minor_units: true, minor_digits: 3)
       "1,234"
+      iex> Setzkasten.Format.number(34.125, decimals: 2..4)
+      "34,125"
 
-  Options: `:decimals` (default 0, with `minor_units: true` the `:minor_digits`), `:signed`
+  Options: `:decimals` (default 0, with `minor_units: true` the `:minor_digits`; a range
+  `min..max` as in `money/2`), `:signed`
   (prefix `+` for positive values), `:minor_units` (`true` reads an integer in minor units),
   `:minor_digits` (their decimal places, default 2).
   """
   def number(value, opts \\ []) do
     minor = if opts[:minor_units], do: Keyword.get(opts, :minor_digits, 2)
-    decimals = Keyword.get(opts, :decimals, minor || 0)
+    {fewest, decimals} = places(Keyword.get(opts, :decimals, minor || 0))
     {sign, units} = scaled(value, decimals, minor)
     {int, frac} = split_digits(Integer.to_string(units), decimals)
-    prefix(sign, units, opts[:signed]) <> group(int) <> frac
+    prefix(sign, units, opts[:signed]) <> group(int) <> trim_fraction(frac, fewest)
+  end
+
+  defp places(first..last//_), do: {first, last}
+  defp places(decimals) when is_integer(decimals), do: {decimals, decimals}
+
+  defp trim_fraction("", _fewest), do: ""
+
+  defp trim_fraction("," <> digits, fewest) do
+    {kept, rest} = String.split_at(digits, fewest)
+
+    case kept <> String.trim_trailing(rest, "0") do
+      "" -> ""
+      digits -> "," <> digits
+    end
   end
 
   defp split_digits(digits, 0), do: {digits, ""}
@@ -89,7 +109,7 @@ defmodule Setzkasten.Format do
   """
   def machine(value, opts \\ []) do
     minor = Keyword.get(opts, :minor_digits, 2)
-    decimals = Keyword.get(opts, :decimals, minor)
+    {_fewest, decimals} = places(Keyword.get(opts, :decimals, minor))
     {sign, units} = scaled(value, decimals, minor)
     digits = units |> Integer.to_string() |> String.pad_leading(decimals + 1, "0")
     {int, frac} = String.split_at(digits, -decimals)
@@ -109,6 +129,8 @@ defmodule Setzkasten.Format do
       -1
   """
   def shown_sign(value, decimals \\ 2, minor_digits \\ 2) do
+    {_fewest, decimals} = places(decimals)
+
     case scaled(value, decimals, minor_digits) do
       {_sign, 0} -> 0
       {sign, _units} -> sign

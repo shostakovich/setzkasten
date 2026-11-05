@@ -21,6 +21,20 @@ defmodule Setzkasten.FormatTest do
     assert Format.sign(%{__struct__: Decimal, sign: 1, coef: 0, exp: 0}) == 0
   end
 
+  test "a range of decimals shows the places a value has, within the range" do
+    assert Format.money(1_324_600, minor_digits: 4, decimals: 2..4) == "132,46#{@nbsp}€"
+    assert Format.money(341_250, minor_digits: 4, decimals: 2..4) == "34,125#{@nbsp}€"
+    assert Format.money(7_812_345, minor_digits: 4, decimals: 2..4) == "781,2345#{@nbsp}€"
+    assert Format.money(7_812_345, minor_digits: 4, decimals: 2..3) == "781,235#{@nbsp}€"
+    assert Format.number(12.0, decimals: 0..2) == "12"
+    assert Format.number(-0.001, decimals: 0..2) == "0"
+
+    decimal = %{__struct__: Decimal, sign: 1, coef: 341_250, exp: -4}
+    assert Format.money(decimal, decimals: 2..4) == "34,125#{@nbsp}€"
+    assert Format.machine(decimal, decimals: 2..4) == "34.1250"
+    assert Format.shown_sign(-1, 0..2) == -1
+  end
+
   test "unknown currencies print their code" do
     assert Format.money(100, currency: "SEK") == "1,00#{@nbsp}SEK"
   end
