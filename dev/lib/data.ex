@@ -137,7 +137,7 @@ defmodule Setzkasten.Dev.Data do
     [
       %{
         id: "active",
-        label: "Im Bestand",
+        label: nil,
         rows: [
           security("vwce", "Vanguard FTSE All-World", "IE00BK5BQT80", "VWCE.DE", 1_324_600),
           security("is3n", "iShares Core MSCI EM IMI", "IE00BKM4GZ66", "IS3N.DE", 341_250),

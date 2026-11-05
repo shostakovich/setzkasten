@@ -277,6 +277,36 @@ defmodule Setzkasten.DataTest do
              ~r/tr:is\(:hover, :focus-within, .*\) > \.setzkasten-row-actions > \* \{\s*opacity: 1;/
   end
 
+  test "a group without a label has no head row; a folding one needs a label" do
+    assigns = %{
+      groups: [
+        %{id: "main", label: nil, rows: @rows},
+        %{id: "old", label: "Ausgemustert", rows: @rows, fold: :closed}
+      ]
+    }
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r} label="Name">{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "#t-main th") == 0
+    assert count(doc, "#t-main tr") == 2
+    assert count(doc, "#t-old th button") == 1
+
+    assigns = %{groups: [%{id: "x", label: nil, rows: @rows, fold: :closed}]}
+
+    assert_raise ArgumentError, ~r/needs a label/, fn ->
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+    end
+  end
+
   test "a folding group's head is a button that toggles its rows in the browser" do
     assigns = %{
       groups: [
@@ -298,6 +328,7 @@ defmodule Setzkasten.DataTest do
 
     assert attr(doc, "#t-b", "data-folded") == ""
     assert attr(doc, "#t-b th button", "aria-expanded") == "false"
+    assert attr(doc, "#t-b th button", "aria-controls") == "t-b"
     assert text(doc, "#t-b th button span") == "2"
     assert count(doc, "#t-b th button svg") == 1
 

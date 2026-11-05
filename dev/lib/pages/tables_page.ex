@@ -159,7 +159,8 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           </form>
         </.modal>
         <:note>
-          Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte
+          Die Hauptzeilen stehen ohne Kopf (<code>label: nil</code>), nur die Gruppe darunter hat
+          einen. Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte
           Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich. Der Stift
           erscheint mit der Maus beim Überfahren oder mit dem Tastaturfokus und hält seinen
           Platz; mit dem Finger steht er immer da, unter <code>sm</code> fehlt er
@@ -435,9 +436,9 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       …
     </.table>
 
-    <%!-- a group that folds: its head row toggles it, closed at first --%>
+    <%!-- a group that folds: its head row toggles it, closed at first; label nil: no head --%>
     <.table id="securities" groups={[
-      %{id: "active", label: "Im Bestand", rows: @active},
+      %{id: "active", label: nil, rows: @active},
       %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
     ]}>…</.table>
 

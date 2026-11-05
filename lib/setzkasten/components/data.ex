@@ -97,13 +97,15 @@ defmodule Setzkasten.Components.Data do
   `%{id, label, rows}`, one `<tbody>` each. `:foot` holds the cells of the total row (use
   `show_from/1` on hidden columns).
 
-  A group with `fold: :open` or `fold: :closed` folds: its head row is a button
-  (`aria-expanded`, a chevron, the number of rows) that shows and hides the rows in the browser,
-  starting as given. The open state survives patches. Folded rows keep their part in the column
-  widths (`visibility: collapse`), so the table does not shift when a group opens.
+  A group with `label: nil` has no head row, e.g. the main rows above a folding group.
+  A group with `fold: :open` or `fold: :closed` (and a label) folds: its head row is a button
+  (`aria-expanded`, `aria-controls` naming its `<tbody>`, a chevron, the number of rows) that
+  shows and hides the rows in the browser, starting as given. The open state survives patches.
+  Folded rows keep their part in the column widths (`visibility: collapse`), so the table does
+  not shift when a group opens.
 
       <.table id="securities" groups={[
-        %{id: "active", label: "Aktiv", rows: @active},
+        %{id: "active", label: nil, rows: @active},
         %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
       ]}>…</.table>
 
@@ -183,6 +185,10 @@ defmodule Setzkasten.Components.Data do
   end
 
   def table(assigns) do
+    if Enum.any?(assigns.groups || [], &(&1[:fold] && !&1[:label])) do
+      raise ArgumentError, "a <.table> group with fold needs a label: its head row is the toggle"
+    end
+
     assigns =
       assigns
       |> prepare_rows()
@@ -211,7 +217,7 @@ defmodule Setzkasten.Components.Data do
           data-focus-fallback
           data-folded={group[:fold] == :closed}
         >
-          <tr>
+          <tr :if={group[:label]}>
             <th
               scope="colgroup"
               colspan={@span}
@@ -225,6 +231,7 @@ defmodule Setzkasten.Components.Data do
                 type="button"
                 class={["group flex w-full cursor-pointer items-center text-start", stretched()]}
                 aria-expanded={to_string(group[:fold] == :open)}
+                aria-controls={"#{@id}-#{group.id}"}
                 phx-click={toggle_group()}
               >
                 <.icon
