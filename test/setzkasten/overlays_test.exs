@@ -102,11 +102,15 @@ defmodule Setzkasten.OverlaysTest do
     assert hook =~
              ~s|const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches|
 
+    # As does a dialog whose title is a name edited in place, so the name is not focused from the start.
     assert hook =~
-             ~s|if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")|
+             ~s|const itself = sheet \|\| !!this.el.querySelector(".setzkasten-modal-head .setzkasten-title-input")|
 
     assert hook =~
-             ~r/if \(asked\) asked.focus\(\)\s*else if \(sheet\) this.el.focus\(\)/
+             ~s|if (itself && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")|
+
+    assert hook =~
+             ~r/if \(asked\) asked.focus\(\)\s*else if \(itself\) this.el.focus\(\)/
   end
 
   test "a top-anchored modal is the bottom sheet on phones and held at the top from sm" do

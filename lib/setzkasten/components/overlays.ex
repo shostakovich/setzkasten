@@ -101,7 +101,9 @@ defmodule Setzkasten.Components.Overlays do
   the browser does.
 
   The `:heading` slot takes the title as markup in place of `title`, e.g. a `title_input/1`
-  (a name edited in place) with the id `<id>-title`, which then names the dialog.
+  (a name edited in place) with the id `<id>-title`, which then names the dialog. Such a
+  dialog, too, focuses itself unless a field asks for `autofocus`: the name is renamed on a
+  click or Tab, not edited from the start.
 
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
@@ -240,16 +242,17 @@ defmodule Setzkasten.Components.Overlays do
           this.suspended = [...document.querySelectorAll(".setzkasten-popover:popover-open")]
             .filter((popover) => !popover.contains(this.el))
           for (const popover of this.suspended) this.js().setAttribute(popover, "data-suspended", "")
-          // A bottom sheet opens on itself, so no field brings up the keyboard unless it asks to.
+          // A bottom sheet (no keyboard unasked) and a dialog titled by a title_input open on themselves.
           const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches
-          if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
+          const itself = sheet || !!this.el.querySelector(".setzkasten-modal-head .setzkasten-title-input")
+          if (itself && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
           this.el.showModal()
           this.announce("open")
           this.el.removeAttribute("autofocus")
           const asked = [...this.el.querySelectorAll(".modal-box [autofocus]")].find(usable)
           const box = this.el.querySelector(".modal-box")
           if (asked) asked.focus()
-          else if (sheet) this.el.focus()
+          else if (itself) this.el.focus()
           // Chrome focuses a scrolling box itself instead of its first field.
           else if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
         },
