@@ -132,6 +132,40 @@ defmodule Setzkasten.Dev.Data do
     ]
   end
 
+  @doc "Securities with a price in ten-thousandths of their currency, the retired ones apart."
+  def securities do
+    [
+      %{
+        id: "active",
+        label: "Im Bestand",
+        rows: [
+          security("vwce", "Vanguard FTSE All-World", "IE00BK5BQT80", "VWCE.DE", 1_324_600),
+          security("is3n", "iShares Core MSCI EM IMI", "IE00BKM4GZ66", "IS3N.DE", 341_250),
+          security("gold", "Xetra-Gold", "DE000A0S9GB0", "4GLD.DE", 1_245_000),
+          security("btce", "Bitcoin ETP", "DE000A27Z304", "BTCE.DE", 7_812_345)
+        ]
+      },
+      %{
+        id: "retired",
+        label: "Ausgemustert",
+        fold: :closed,
+        rows: [
+          security("exs1", "iShares Core DAX", "DE0005933931", "EXS1.DE", 1_901_200),
+          security(
+            "sxr8",
+            "iShares Core S&P 500 (Langname, der umbricht)",
+            "IE00B5BMR087",
+            nil,
+            5_870_010
+          )
+        ]
+      }
+    ]
+  end
+
+  defp security(id, name, isin, symbol, price),
+    do: %{id: id, name: name, isin: isin, symbol: symbol, price: price}
+
   def costs do
     [
       %{name: "Vanguard FTSE All-World", ter: "0,22 %", year: "30 €"},

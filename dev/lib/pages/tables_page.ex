@@ -15,6 +15,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         entries: Data.entries(),
         costs: Data.costs(),
         posts: Enum.take(Data.posts(), 2),
+        securities: Data.securities(),
         holdings: Data.holdings()
       )
 
@@ -101,6 +102,21 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           36px-Zeilen mit der Feinzeigerhöhe, 44px mit dem Finger; Felder und Buttons in Zellen
           sind 32px hoch, so bleibt die Zeile beim Bearbeiten gleich hoch. Die bearbeitete Zeile
           trägt <code>aria-current</code>: Fläche <code>row-selected</code> und ein 3px-Balken vorn.
+        </:note>
+      </.demo>
+      <.demo title="Gruppe zum Einklappen (fold: :closed)">
+        <.table id="securities" groups={@securities}>
+          <:col :let={s} label="Wertpapier">
+            {s.name}
+            <.cell_sub>{join_meta([s.isin, s.symbol])}</.cell_sub>
+          </:col>
+          <:col :let={s} label="Kurs" align={:end}>
+            <.amount value={s.price} minor_digits={4} decimals={2} />
+          </:col>
+        </.table>
+        <:note>
+          Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte
+          Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich.
         </:note>
       </.demo>
       <.demo title="Sortierbar: Gruppen und Kategorien ziehen (Sortable)">
@@ -369,6 +385,12 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       row_attrs={&%{"aria-current": &1.id == @current && "true", "data-kind": &1.kind}}>
       …
     </.table>
+
+    <%!-- a group that folds: its head row toggles it, closed at first --%>
+    <.table id="securities" groups={[
+      %{id: "active", label: "Im Bestand", rows: @active},
+      %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
+    ]}>…</.table>
 
     <%!-- sortable: groups and the rows within them, rows also into another group --%>
     <table id="budget" class="table" phx-hook="Setzkasten.Components.Data.Sortable"

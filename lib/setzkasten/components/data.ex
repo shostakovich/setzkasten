@@ -97,6 +97,16 @@ defmodule Setzkasten.Components.Data do
   `%{id, label, rows}`, one `<tbody>` each. `:foot` holds the cells of the total row (use
   `show_from/1` on hidden columns).
 
+  A group with `fold: :open` or `fold: :closed` folds: its head row is a button
+  (`aria-expanded`, a chevron, the number of rows) that shows and hides the rows in the browser,
+  starting as given. The open state survives patches. Folded rows keep their part in the column
+  widths (`visibility: collapse`), so the table does not shift when a group opens.
+
+      <.table id="securities" groups={[
+        %{id: "active", label: "Aktiv", rows: @active},
+        %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
+      ]}>…</.table>
+
       <.table id="activity" rows={@entries} size={:sm} zebra>
         <:col :let={e} label="Datum">{e.date}</:col>
         <:col :let={e} label="Betrag" align={:end}><.amount value={e.amount} tone /></:col>
@@ -147,10 +157,40 @@ defmodule Setzkasten.Components.Data do
             <td colspan={length(@col)}>{render_slot(@empty)}</td>
           </tr>
         </tbody>
-        <tbody :for={group <- @groups || []} id={"#{@id}-#{group.id}"} data-focus-fallback>
+        <tbody
+          :for={group <- @groups || []}
+          id={"#{@id}-#{group.id}"}
+          data-focus-fallback
+          data-folded={group[:fold] == :closed}
+        >
           <tr>
-            <th scope="colgroup" colspan={length(@col)} class="bg-base-200 text-xs font-semibold">
-              {group.label}
+            <th
+              scope="colgroup"
+              colspan={length(@col)}
+              class={[
+                "bg-base-200 text-xs font-semibold",
+                group[:fold] && "relative hover:bg-base-300"
+              ]}
+            >
+              <button
+                :if={group[:fold]}
+                type="button"
+                class={["group flex w-full cursor-pointer items-center text-start", stretched()]}
+                aria-expanded={to_string(group[:fold] == :open)}
+                phx-click={toggle_group()}
+              >
+                <.icon
+                  name="chevron-right"
+                  class="-ms-0.5 me-1 size-3.5 shrink-0 transition-transform group-aria-expanded:rotate-90 motion-reduce:transition-none"
+                />
+                {group.label}
+                <span class="ms-2 font-normal text-base-content/70 tabular-nums">
+                  {length(group.rows)}
+                </span>
+              </button>
+              <%= if !group[:fold] do %>
+                {group.label}
+              <% end %>
             </th>
           </tr>
           {table_rows(assigns, group.rows)}
@@ -273,7 +313,7 @@ defmodule Setzkasten.Components.Data do
           if (at < 0) return this.release()
           this.clear()
           const item = all[at].el
-          const shown = all.filter((m) => m.el.getClientRects().length)
+          const shown = all.filter((m) => m.el.getClientRects().length && getComputedStyle(m.el).visibility !== "collapse")
           for (const m of shown) m.box = m.el.getBoundingClientRect()
           const box = all[at].box
           if (!box) return this.release()
@@ -450,6 +490,11 @@ defmodule Setzkasten.Components.Data do
   end
 
   defp flat, do: @flat
+
+  defp toggle_group do
+    JS.toggle_attribute({"data-folded", ""}, to: {:closest, "tbody"})
+    |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+  end
 
   # Not daisyUI's table-sm: its 12px text and narrower padding would not line up with :md.
   defp size_class(:md), do: nil

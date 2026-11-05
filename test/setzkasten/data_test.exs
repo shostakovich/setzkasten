@@ -228,6 +228,47 @@ defmodule Setzkasten.DataTest do
     assert "only:table-row" in classes(doc, "#e-empty")
   end
 
+  test "a folding group's head is a button that toggles its rows in the browser" do
+    assigns = %{
+      groups: [
+        %{id: "a", label: "Aktiv", rows: @rows},
+        %{id: "b", label: "Ausgemustert", rows: @rows, fold: :closed},
+        %{id: "c", label: "Offen", rows: @rows, fold: :open}
+      ]
+    }
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r} label="Name">{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "#t-a button") == 0
+    assert text(doc, "#t-a th") == "Aktiv"
+
+    assert attr(doc, "#t-b", "data-folded") == ""
+    assert attr(doc, "#t-b th button", "aria-expanded") == "false"
+    assert text(doc, "#t-b th button span") == "2"
+    assert count(doc, "#t-b th button svg") == 1
+
+    assert attr(doc, "#t-c", "data-folded") == nil
+    assert attr(doc, "#t-c th button", "aria-expanded") == "true"
+
+    ops = doc |> attr("#t-b button", "phx-click") |> Jason.decode!()
+
+    assert ops == [
+             ["toggle_attr", %{"attr" => ["data-folded", ""], "to" => %{"closest" => "tbody"}}],
+             ["toggle_attr", %{"attr" => ["aria-expanded", "true", "false"]}]
+           ]
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/tbody\[data-folded\] > tr:not\(:first-child\) \{\s*visibility: collapse;/
+
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|getComputedStyle(m.el).visibility !== "collapse"|
+  end
+
   test "table supports streams" do
     stream = Phoenix.LiveView.LiveStream.new(:items, 0, @rows, [])
     assigns = %{stream: stream}

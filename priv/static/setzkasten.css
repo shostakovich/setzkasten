@@ -999,6 +999,13 @@
   }
 }
 
+/* A folded table group: its rows keep their share of the column widths, so opening it shifts nothing. */
+@layer utilities.setzkasten {
+  .table tbody[data-folded] > tr:not(:first-child) {
+    visibility: collapse;
+  }
+}
+
 /* daisyUI's card centres every figure and grows every paragraph; a chart card holds the app's
    own chart markup (an SVG in a figure, a legend of paragraphs), which keeps its layout. */
 @layer utilities.setzkasten {
