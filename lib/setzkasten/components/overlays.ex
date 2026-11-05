@@ -334,9 +334,9 @@ defmodule Setzkasten.Components.Overlays do
   @doc """
   A name edited in place as the title of a `<.modal>` (its `:heading` slot) or sheet: a text
   field at 1.25rem semibold, a step above the headings under it, on a faint fill that shows at
-  rest that it can be edited and grows stronger on hover and focus. The dialog opens without
-  focusing it. Give it the id `<modal
-  id>-title`, so its value names the dialog; `label` names the field itself for screen readers
+  rest that it can be edited and grows stronger on hover and focus. The fill hangs into the
+  gutter, so the text lines up with the content under it. The dialog opens without focusing it.
+  Give it the id `<modal id>-title`, so its value names the dialog; `label` names the field itself for screen readers
   (e.g. "Name"). Escape puts back the saved `value` and keeps the dialog open; once the value
   is the saved one, Escape closes the dialog. Saving is the app's: `phx-blur` on the field and
   `phx-submit` (Enter) on its form. Errors show under it, as `input/1`'s do; `field` works as

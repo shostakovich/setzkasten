@@ -1149,12 +1149,16 @@
 }
 
 /* <.title_input>: the field is the modal's title, a step above its headings, and a faint fill
-   shows at rest that it can be edited. */
+   shows at rest that it can be edited. The fill hangs into the gutter, so the text lines up with
+   the column. */
 @layer utilities.setzkasten {
   .setzkasten-title-input > .input {
-    width: 100%;
+    --setzkasten-title-pad: 0.75rem;
+    width: calc(100% + 2 * var(--setzkasten-title-pad));
     height: auto;
+    margin-inline: calc(-1 * var(--setzkasten-title-pad));
     padding-block: 0.25rem;
+    padding-inline: var(--setzkasten-title-pad);
     font-size: 1.25rem;
     line-height: 1.75rem;
     font-weight: 600;

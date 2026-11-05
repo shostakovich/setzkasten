@@ -79,6 +79,10 @@ defmodule Setzkasten.OverlaysTest do
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.25rem;/
+    # The fill hangs into the gutter, so the text lines up with the column.
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input \{[^}]*margin-inline: calc\(-1 \* var\(--setzkasten-title-pad\)\);[^}]*padding-inline: var\(--setzkasten-title-pad\);/
+
     # A faint fill at rest shows that it can be edited, a stronger one on hover and focus.
     assert css =~
              ~r/\.setzkasten-title-input > \.input \{[^}]*background-color: color-mix\(in oklab, var\(--color-base-content\) 5%, transparent\);/
