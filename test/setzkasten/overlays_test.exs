@@ -563,7 +563,9 @@ defmodule Setzkasten.OverlaysTest do
     assert hook =~ "height <= above || (height > below && above >= below)"
     assert hook =~ ~s|this.js().setAttribute(this.el, "data-placed", "")|
     assert hook =~ "style.maxHeight = `${room}px`"
-    assert hook =~ "Math.max(EDGE, Math.min(starts[0], vw - width - EDGE))"
+    # As native flip-inline: the other edge when it keeps the panel inside the window.
+    assert hook =~ "const start = starts.find(inside) ?? starts[0]"
+    assert hook =~ "Math.max(EDGE, Math.min(start, vw - width - EDGE))"
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     # The hook's placement replaces anchor positioning, which would keep the panel below.

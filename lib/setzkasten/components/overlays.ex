@@ -422,8 +422,8 @@ defmodule Setzkasten.Components.Overlays do
 
   Placement: below the trigger, its start edge at the trigger's (`align={:end}`: end edges),
   `position={:top}` above; it flips when there is no room. When neither side holds it, it takes
-  the side with more room, as tall as that room, and scrolls inside; along the trigger it shifts
-  to stay 8px inside the window. CSS anchor positioning places it while one side holds it; a
+  the side with more room, as tall as that room, and scrolls inside; along the trigger it takes
+  the other edge when that one keeps it inside the window, else it shifts to stay 8px inside. CSS anchor positioning places it while one side holds it; a
   colocated hook does otherwise, where the browser has none, and always for `anchor` (the id of
   an element elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger`
   may be left out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
@@ -661,7 +661,8 @@ defmodule Setzkasten.Components.Overlays do
           const room = Math.max(0, up ? above : below)
           if (native && !this.el.hasAttribute("data-placed")) this.js().setAttribute(this.el, "data-placed", "")
           style.maxHeight = `${room}px`
-          style.left = `${Math.max(EDGE, Math.min(starts[0], vw - width - EDGE))}px`
+          const start = starts.find(inside) ?? starts[0]
+          style.left = `${Math.max(EDGE, Math.min(start, vw - width - EDGE))}px`
           style.top = `${up ? a.top - GAP - Math.min(height, room) : a.bottom + GAP}px`
         }
       }
