@@ -1007,6 +1007,7 @@ defmodule Setzkasten.FormsTest do
     assert hook =~ "const control = document.getElementById(this.el.dataset.for)"
     assert hook =~ "if (!r || !r.width || r.bottom < 0 || r.top > vh) {"
     assert hook =~ "r.bottom + GAP + height <= vh - EDGE ? r.bottom + GAP : r.top - GAP - height"
+    assert hook =~ ~r/if \(this.shown\) this.el.removeAttribute\("role"\)\s*this.el.showPopover\(\)/
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-error-bubble \{\s*position: fixed;/

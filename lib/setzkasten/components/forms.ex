@@ -1110,7 +1110,8 @@ defmodule Setzkasten.Components.Forms do
 
   Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
   `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
-  errors it renders nothing, so it can stay in place.
+  errors it renders nothing, so it can stay in place. Screen readers hear new errors once, as
+  they appear, and not again when the control comes back into view.
 
       <input id="assign-food" class="input input-sm" value={@typed} inputmode="decimal"
         aria-invalid={@errors != [] && "true"}
@@ -1171,7 +1172,12 @@ defmodule Setzkasten.Components.Forms do
             if (open) this.el.hidePopover()
             return
           }
-          if (!open) this.el.showPopover()
+          if (!open) {
+            // Announced as it appears, not again when it comes back into view.
+            if (this.shown) this.el.removeAttribute("role")
+            this.el.showPopover()
+            this.shown = true
+          }
           const width = this.el.offsetWidth
           const height = this.el.offsetHeight
           const vw = document.documentElement.clientWidth
