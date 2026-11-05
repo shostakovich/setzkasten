@@ -176,6 +176,9 @@ defmodule Setzkasten.FormsTest do
     assert text(doc, "#photo-error-1") == "Höchstens 3 Dateien"
     assert count(doc, "#photo-error-0 svg.lucide") == 1
     assert "text-error-ink" in classes(doc, "#photo-error-0")
+    # The icon hangs before the first line, and a line break in a message breaks the line.
+    assert "mt-0.5" in classes(doc, "#photo-error-0 svg.lucide")
+    assert classes(doc, "#photo-error-0 > span") == ~w(whitespace-pre-line)
     assert classes(doc, "#photo-help") == ~w(label whitespace-normal)
 
     assert field_describedby("photo", ["a", "b"], true) ==

@@ -1059,8 +1059,9 @@ defmodule Setzkasten.Components.Forms do
   end
 
   @doc """
-  The error lines of a field, as `input` renders them: `circle-alert` icon, `error-ink`, first
-  letter upper case, ids `<id>-error-0`, `<id>-error-1`, … For controls that are no `<.input>`
+  The error lines of a field, as `input` renders them: `circle-alert` icon before the first line,
+  `error-ink`, first letter upper case, ids `<id>-error-0`, `<id>-error-1`, … A line break in a
+  message breaks the line there, e.g. between two sentences. For controls that are no `<.input>`
   (`live_file_input`, a custom picker); place it after the control inside a `fieldset.fieldset`
   and link the lines with `aria-describedby={field_describedby(id, errors, help)}`.
 
@@ -1094,9 +1095,11 @@ defmodule Setzkasten.Components.Forms do
     <p
       :for={{msg, i} <- Enum.with_index(@messages)}
       id={"#{@id}-error-#{i}"}
-      class="flex items-center gap-1.5 text-sm text-error-ink"
+      class="flex gap-1.5 text-sm text-error-ink"
     >
-      <.icon name="circle-alert" class="size-4 shrink-0" />{upcase_first(msg)}
+      <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" /><span class="whitespace-pre-line">{upcase_first(
+        msg
+      )}</span>
     </p>
     """
   end
