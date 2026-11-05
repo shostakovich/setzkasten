@@ -1758,6 +1758,7 @@
     font-size: 0.875rem;
     line-height: 1.25rem;
     text-wrap: pretty;
+    pointer-events: none;
   }
 }
 

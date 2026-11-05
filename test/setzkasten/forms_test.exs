@@ -1011,5 +1011,7 @@ defmodule Setzkasten.FormsTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-error-bubble \{\s*position: fixed;/
     assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*color: var\(--color-error-ink\);/
+    # The cells under it stay clickable.
+    assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*pointer-events: none;/
   end
 end

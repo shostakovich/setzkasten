@@ -1105,8 +1105,8 @@ defmodule Setzkasten.Components.Forms do
   The errors of a dense control with no room for lines under it (an amount in a table cell), in
   a bubble at the control: shown at once and kept in view, not a tooltip on hover. It sits under
   the control (above it when the window has no room below), in the top layer, so a scrolling
-  table does not clip it, and hides while the control is scrolled out of the window.
-  `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned amount.
+  table does not clip it, and hides while the control is scrolled out of the window. Clicks
+  pass through it to the cells under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned amount.
 
   Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
   `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
