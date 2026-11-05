@@ -84,8 +84,9 @@ defmodule Setzkasten.Components.Data do
   Flat by default: the table sits on the page between `border-y` hairlines and
   runs edge to edge on phones. `flush` drops both for a card's `:list` slot or a modal.
 
-  `:col` attrs: `label`, `align` (`:end` right-aligns with tabular figures), `show_from`
-  (`:sm` … `:"2xl"`, hides the column below), `class`. `row_link` turns the first cell into a
+  `:col` attrs: `label`, `hide_label` (the label for screen readers only, e.g. a column of
+  marks), `align` (`:end` right-aligns with tabular figures), `show_from` (`:sm` … `:"2xl"`,
+  hides the column below), `class`. `row_link` turns the first cell into a
   link stretched over the row; a row for which it returns `nil` has no link and no hover.
   `row_attrs` returns extra attributes for a row's `<tr>` (`aria-current`, `data-*`,
   `hidden`, …) as a map or keyword list, or `nil` for none; its `class` is added to the row's
@@ -151,6 +152,7 @@ defmodule Setzkasten.Components.Data do
 
   slot :col, required: true do
     attr :label, :string
+    attr :hide_label, :boolean
     attr :align, :atom, values: [:start, :end]
     attr :show_from, :atom, values: @breakpoints
     attr :class, :any
@@ -199,7 +201,12 @@ defmodule Setzkasten.Components.Data do
       <table class={["table tabular-nums", size_class(@size), @zebra && "table-zebra"]}>
         <thead>
           <tr>
-            <th :for={col <- @col} scope="col" class={col_class(col)}>{col[:label]}</th>
+            <th :for={col <- @col} scope="col" class={col_class(col)}>
+              <span :if={col[:hide_label]} class="sr-only">{col[:label]}</span>
+              <%= if !col[:hide_label] do %>
+                {col[:label]}
+              <% end %>
+            </th>
             <th :if={@action != []} scope="col" class={["w-0", show_from(@actions_show_from)]}>
               <span class="sr-only">{@actions_label}</span>
             </th>

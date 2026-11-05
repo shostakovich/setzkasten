@@ -307,6 +307,22 @@ defmodule Setzkasten.DataTest do
     end
   end
 
+  test "a column's label can be for screen readers only" do
+    assigns = %{rows: @rows}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows}>
+        <:col :let={r} label="Name">{r.name}</:col>
+        <:col :let={r} label="Hinweise" hide_label>{r.name}</:col>
+      </.table>
+      """)
+
+    assert text(doc, "thead th:first-child") == "Name"
+    assert count(doc, "thead th:first-child .sr-only") == 0
+    assert text(doc, "thead th:last-child .sr-only") == "Hinweise"
+  end
+
   test "a folding group's head is a button that toggles its rows in the browser" do
     assigns = %{
       groups: [
