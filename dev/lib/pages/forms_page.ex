@@ -95,6 +95,22 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
           icon="search"
           placeholder="Name oder ISIN"
         />
+        <.input
+          name="d[isin]"
+          id="d-isin"
+          label="ISIN (identifier, maxlength 12)"
+          identifier
+          maxlength="12"
+          value="IE00BK5BQT80"
+          placeholder="XX0000000000"
+        />
+        <.input
+          name="d[symbol]"
+          id="d-symbol"
+          label="Yahoo-Symbol (getippt: vwce.de)"
+          identifier
+          value="vwce.de"
+        />
         <div class="md:col-span-2">
           <.input
             name="d[note]"
@@ -115,6 +131,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
           id="s-warn"
           label="Hinweis als Warnung (help_tone={:warning})"
           value="DE02 1203 0000 0000 2020 51"
+          identifier
           help="Dieses Konto ist noch nicht bestätigt."
           help_tone={:warning}
         />
@@ -514,6 +531,8 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     <.input field={@form[:split]} type="radio_group" label="Aufteilung"
             options={[{"Gleichmäßig", "equal"}, {"Nach Anteilen", "shares"}]} />
     <.input field={@form[:iban]} label="IBAN" help="Noch nicht bestätigt" help_tone={:warning} />
+    <%!-- a code: monospace, shown in capitals, no spell checking; maxlength sets the width --%>
+    <.input field={@form[:isin]} label="ISIN" identifier maxlength="12" placeholder="XX0000000000" />
     """
   end
 

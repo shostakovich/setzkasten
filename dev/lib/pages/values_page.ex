@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Werte und Diagramme"
-  def summary, do: "amount, stat, description_list, bar, avatar, chart_card, legend"
+  def summary, do: "amount, identifier, stat, description_list, bar, avatar, chart_card, legend"
 
   def render(assigns) do
     ~H"""
@@ -41,6 +41,32 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
             <.amount value={6_327_914} decimals={0} />
           </:item>
         </.description_list>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="identifier" name="<.identifier>" title="Kennung">
+      <:intro>
+        Codes wie ISIN, WKN, IBAN und Börsenkürzel in Festbreitenschrift: 0 und O, 1, I und l
+        sind nicht zu verwechseln, auf die Versalhöhe des Fließtexts gebracht.
+      </:intro>
+      <.demo title="Im Text, in der Meta-Zeile">
+        <.description_list class="grid sm:grid-cols-2 sm:gap-x-8">
+          <:item label="ISIN">
+            <.identifier>IE00BK5BQT80</.identifier>
+          </:item>
+          <:item label="WKN">
+            <.identifier>A1JX52</.identifier>
+          </:item>
+          <:item label="IBAN">
+            <.identifier>DE02 1203 0000 0000 2020 51</.identifier>
+          </:item>
+          <:item label="Figtree zum Vergleich">IE00BK5BQT80 · O0 Il1</:item>
+        </.description_list>
+        <p class="text-sm text-base-content/70">
+          Vanguard FTSE All-World<.meta_sep /><.identifier>IE00BK5BQT80</.identifier><.meta_sep /><.identifier>
+            VWCE.DE
+          </.identifier>
+        </p>
       </.demo>
     </.showcase>
 

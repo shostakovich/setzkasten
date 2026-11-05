@@ -34,6 +34,15 @@ defmodule Setzkasten.Components.Forms do
   marks the help line as a warning (`triangle-alert` icon, full base-content text); it stays
   linked by `aria-describedby`.
 
+  `identifier` (text-like types) is the field for a code such as an ISIN, IBAN or ticker
+  symbol: the monospace face of `identifier/1`, the value shown in capitals (the server still
+  receives what was typed, so it upcases it), and `autocapitalize="characters"`,
+  `autocorrect="off"`, `spellcheck="false"`, `autocomplete="off"` unless given. With
+  `maxlength` (and no `prefix`, `suffix`, `icon` or `inline`) the field is as wide as that
+  many characters, so its width hints at the length.
+
+      <.input field={@form[:isin]} label="ISIN" identifier maxlength="12" placeholder="XX0000000000" />
+
   `inline` (text-like types) puts the field and the inner block, the form's button, in one
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
   the join. The button takes `class="join-item"`.
@@ -74,6 +83,10 @@ defmodule Setzkasten.Components.Forms do
   attr :suffix, :string, default: nil
   attr :icon, :string, default: nil, doc: "Lucide icon at the start of the field (search)"
   attr :numeric, :boolean, default: false
+
+  attr :identifier, :boolean,
+    default: false,
+    doc: "a code (ISIN, IBAN, ticker): monospace, capitals, no spell checking"
 
   attr :options, :list,
     doc: "options for select and radio_group (a radio option may be a map with `:description`)"
@@ -251,10 +264,14 @@ defmodule Setzkasten.Components.Forms do
   def input(assigns) do
     assigns = prepare(assigns)
 
+    boxed = assigns.prefix || assigns.suffix || assigns.icon
+
     assigns =
       assign(assigns,
-        boxed: assigns.prefix || assigns.suffix || assigns.icon,
-        rest: numeric_rest(assigns)
+        boxed: boxed,
+        fit:
+          assigns.identifier && !boxed && !assigns.inline && fit_size(assigns.rest[:maxlength]),
+        rest: assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
       )
 
     ~H"""
@@ -274,7 +291,7 @@ defmodule Setzkasten.Components.Forms do
   defp field_attrs(assigns) do
     Map.take(
       assigns,
-      ~w(type id name value errors numeric icon prefix suffix boxed class describedby rest)a
+      ~w(type id name value errors numeric identifier fit icon prefix suffix boxed class describedby rest)a
     )
   end
 
@@ -284,6 +301,8 @@ defmodule Setzkasten.Components.Forms do
   attr :value, :any, required: true
   attr :errors, :list, required: true
   attr :numeric, :boolean, required: true
+  attr :identifier, :boolean, required: true
+  attr :fit, :any, required: true
   attr :icon, :string, required: true
   attr :prefix, :string, required: true
   attr :suffix, :string, required: true
@@ -306,7 +325,7 @@ defmodule Setzkasten.Components.Forms do
         id={@id}
         name={@name}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={@numeric && "text-end tabular-nums"}
+        class={[@numeric && "text-end tabular-nums", @identifier && identifier_class()]}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@describedby}
         {@rest}
@@ -319,11 +338,14 @@ defmodule Setzkasten.Components.Forms do
       id={@id}
       name={@name}
       value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+      size={@fit}
       class={[
-        "input w-full",
+        "input",
+        if(@fit, do: "w-auto max-w-full justify-self-start", else: "w-full"),
         @join && "join-item",
         @errors != [] && "input-error",
         @numeric && "text-end tabular-nums",
+        @identifier && identifier_class(),
         @class
       ]}
       aria-invalid={@errors != [] && "true"}
@@ -358,6 +380,32 @@ defmodule Setzkasten.Components.Forms do
 
   defp numeric_rest(%{numeric: true, rest: rest}), do: Map.put_new(rest, :inputmode, "decimal")
   defp numeric_rest(%{rest: rest}), do: rest
+
+  defp identifier_rest(rest, false), do: rest
+
+  defp identifier_rest(rest, true) do
+    Map.merge(
+      %{
+        autocapitalize: "characters",
+        autocorrect: "off",
+        spellcheck: "false",
+        autocomplete: "off"
+      },
+      rest
+    )
+  end
+
+  # One character more than the longest value leaves room for the caret.
+  defp fit_size(nil), do: nil
+
+  defp fit_size(maxlength) do
+    case Integer.parse(to_string(maxlength)) do
+      {length, ""} -> length + 1
+      _ -> nil
+    end
+  end
+
+  defp identifier_class, do: "setzkasten-identifier setzkasten-identifier-field"
 
   defp control_class("checkbox"), do: "checkbox checkbox-primary"
   defp control_class("toggle"), do: "toggle toggle-primary"

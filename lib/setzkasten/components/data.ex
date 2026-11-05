@@ -1276,6 +1276,25 @@ defmodule Setzkasten.Components.Data do
   defp tone_class(0, _tone), do: "text-base-content/70"
 
   @doc """
+  A code such as an ISIN, WKN, IBAN or ticker symbol, in running text, a meta line or
+  `cell_sub`: the theme's monospace stack (`font-mono`), so 0 and O, 1, I and l differ, with a
+  slashed zero where the font has one, scaled to the text's cap height. Browsers leave it
+  untranslated. The class `setzkasten-identifier` does the same on any element;
+  `<.input identifier>` is the field for one.
+
+      <.cell_sub><.identifier>{s.isin}</.identifier><.meta_sep /><.identifier>{s.symbol}</.identifier></.cell_sub>
+  """
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def identifier(assigns) do
+    ~H"""
+    <span class={["setzkasten-identifier", @class]} translate="no" {@rest}>{render_slot(@inner_block)}</span>
+    """
+  end
+
+  @doc """
   A KPI tile: daisyUI `stat` on base-100 with a hairline and `tabular-nums`.
   `size={:sm}` (`text-2xl`) for tile grids where 32px overflows. `tone` (`:success`,
   `:warning`, `:error`) colours the value with the ink tokens. `stale` adds a badge instead of fading the value;

@@ -48,6 +48,42 @@ defmodule Setzkasten.FormsTest do
              ~r/\.fieldset:has\(> :is\(label, legend\)\.sr-only:first-child\) \{\s*padding-block: 0;/
   end
 
+  test "an identifier field: monospace capitals, no spell checking, as wide as its maxlength" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" identifier maxlength="12" />
+      <.input name="sym" id="sym" label="Symbol" identifier spellcheck="true" />
+      <.input name="iban" id="iban" label="IBAN" identifier maxlength="34" prefix="DE" />
+      """)
+
+    assert classes(doc, "#isin") ==
+             ~w(input w-auto max-w-full justify-self-start setzkasten-identifier setzkasten-identifier-field)
+
+    assert attr(doc, "#isin", "size") == "13"
+    assert attr(doc, "#isin", "autocapitalize") == "characters"
+    assert attr(doc, "#isin", "autocorrect") == "off"
+    assert attr(doc, "#isin", "spellcheck") == "false"
+    assert attr(doc, "#isin", "autocomplete") == "off"
+
+    assert attr(doc, "#sym", "spellcheck") == "true"
+    assert attr(doc, "#sym", "size") == nil
+    assert "w-full" in classes(doc, "#sym")
+
+    assert attr(doc, "#iban", "size") == nil
+    assert "setzkasten-identifier" in classes(doc, "#iban")
+
+    doc = parse(~H|<.identifier class="text-xs">IE00BK5BQT80</.identifier>|)
+    assert classes(doc, "span") == ~w(setzkasten-identifier text-xs)
+    assert attr(doc, "span", "translate") == "no"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-identifier \{\s*font-family: var\(--font-mono\);/
+    assert css =~ "font-variant-numeric: tabular-nums slashed-zero;"
+    assert css =~ ~r/\.setzkasten-identifier-field \{\s*text-transform: uppercase;/
+  end
+
   test "text input with label, help and describedby" do
     assigns = %{form: form(%{"title" => "Wocheneinkauf"})}
     doc = parse(~H|<.input field={@form[:title]} label="Titel" help="Kurz" />|)

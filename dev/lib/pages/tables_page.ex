@@ -113,7 +113,13 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         >
           <:col :let={s} label="Wertpapier">
             {s.name}
-            <.cell_sub>{join_meta([s.isin, s.symbol])}</.cell_sub>
+            <.cell_sub>
+              <.identifier>{s.isin}</.identifier><.meta_sep :if={s.symbol} /><.identifier :if={
+                s.symbol
+              }>
+                {s.symbol}
+              </.identifier>
+            </.cell_sub>
           </:col>
           <:col :let={s} label="Kurs" align={:end}>
             <.amount value={s.price} minor_digits={4} decimals={2} />

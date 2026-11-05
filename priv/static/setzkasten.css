@@ -999,6 +999,24 @@
   }
 }
 
+/* Codes (ISIN, IBAN, ticker): a monospace face tells 0 from O and 1 from I and l, which Figtree's
+   do not; cap-height matching keeps it from looking larger than the text around it. */
+@layer utilities.setzkasten {
+  .setzkasten-identifier {
+    font-family: var(--font-mono);
+    font-size-adjust: cap-height 0.712;
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-variant-ligatures: none;
+    letter-spacing: 0.02em;
+  }
+  .setzkasten-identifier-field {
+    text-transform: uppercase;
+  }
+  .setzkasten-identifier-field::placeholder {
+    text-transform: none;
+  }
+}
+
 /* <.table>'s row actions show with a mouse when the row is hovered, focused or current; they keep
    their room, so nothing shifts. Touch screens have no hover and always show them. */
 @layer utilities.setzkasten {
