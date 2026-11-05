@@ -147,6 +147,15 @@ defmodule Setzkasten.OverlaysTest do
              ~r/:is\(\.modal-start, \.modal-end\) > \.modal-box:not\(\.setzkasten-sidebar\) \{\s*border-bottom: env\(safe-area-inset-bottom\) solid transparent;/
   end
 
+  test "a side panel draws no hairline along the screen's edge" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.modal-start > \.modal-box \{\s*border-inline-start-width: 0;/
+    assert css =~ ~r/\.modal-end > \.modal-box \{\s*border-inline-end-width: 0;/
+
+    assert css =~
+             ~r/@media \(width < 40rem\) \{\s*:is\(\.modal-start, \.modal-end\) > \.modal-box \{\s*border-inline-width: 0;/
+  end
+
   test "side panel placement and server-driven show" do
     assigns = %{}
     doc = parse(~H|<.modal id="p" placement={:end} show>Body</.modal>|)

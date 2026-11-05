@@ -778,6 +778,18 @@
   :is(.modal-start, .modal-end) > .modal-box:not(.setzkasten-sidebar) {
     border-bottom: env(safe-area-inset-bottom) solid transparent;
   }
+  /* A side panel's hairline only where it meets the page; on phones it meets the screen's edges. */
+  .modal-start > .modal-box {
+    border-inline-start-width: 0;
+  }
+  .modal-end > .modal-box {
+    border-inline-end-width: 0;
+  }
+  @media (width < 40rem) {
+    :is(.modal-start, .modal-end) > .modal-box {
+      border-inline-width: 0;
+    }
+  }
   .modal-box {
     --setzkasten-dock-offset: 0px;
   }
