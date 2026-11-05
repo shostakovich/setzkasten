@@ -573,18 +573,19 @@ defmodule Setzkasten.Components.Navigation do
   @doc """
   A short list of choices that each act at once, in a popover or a sheet: rows grouped into
   rounded cards on the surface tint (`:group`, one card each), every row a button with a
-  fixed-width leading slot, its label and a trailing value in tabular figures, divided by
-  hairlines that start at the label. Rows are 36px with a mouse and 44px on touch screens. The
-  arrow keys, Home and End move between the rows of all cards. Without a group (each one's
-  `:if` false) it shows the `:empty` slot, a line in line with the rows' labels.
+  leading slot, its label and a trailing value in tabular figures, divided by hairlines that
+  start at the label. Rows are 36px with a mouse and 44px on touch screens. The arrow keys,
+  Home and End move between the rows of all cards. Without a group (each one's `:if` false) it
+  shows the `:empty` slot, a line in line with the rows' labels.
 
   Inside `<.popover layout={:list}>` the popover's `title` is the section title above the
-  cards, in line with the rows' content.
+  cards, in line with the rows' labels.
 
   `pick_item/1` attrs: `on_click` (an event name with `phx-target`, or a `%JS{}`), `icon`
-  (Lucide) or the `:leading` slot (an emoji; may be empty, the slot keeps its width), the
-  `:trailing` slot, `disabled`, and global attrs on the button (`id`, `phx-value-*`,
-  `autofocus`). Once any row has an icon or a `:leading` slot, every row keeps the slot.
+  (Lucide) or the `:leading` slot (an emoji), the `:trailing` slot, `disabled`, and global
+  attrs on the button (`id`, `phx-value-*`, `autofocus`). The leading slot has a fixed width
+  in every row once any row has an icon or leading content; while none has, it collapses, so
+  a `:leading` that renders nothing (a category without an emoji) counts as none.
 
       <.popover id="cover" title="50,00 € decken aus" anchor={@anchor} show layout={:list}
                 on_cancel={JS.push("cover_closed")}>
@@ -670,14 +671,12 @@ defmodule Setzkasten.Components.Navigation do
       <button
         type="button"
         class={["setzkasten-pick-item", @class]}
-        data-leading={(@icon || @leading != []) && ""}
         disabled={@disabled}
         phx-click={@on_click && click_js(@on_click, assigns[:"phx-target"])}
         {@rest}
       >
-        <span class="setzkasten-pick-leading" aria-hidden="true">
-          <.icon :if={@icon} name={@icon} />{render_slot(@leading)}
-        </span>
+        <%!-- No whitespace inside: the CSS collapses the slot while every row's is :empty. --%>
+        <span class="setzkasten-pick-leading" aria-hidden="true" phx-no-format><.icon :if={@icon} name={@icon} />{render_slot(@leading)}</span>
         <span class="setzkasten-pick-label">{render_slot(@inner_block)}</span>
         <span :if={@trailing != []} class="setzkasten-pick-trailing">{render_slot(@trailing)}</span>
       </button>

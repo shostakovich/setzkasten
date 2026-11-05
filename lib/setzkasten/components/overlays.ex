@@ -537,7 +537,7 @@ defmodule Setzkasten.Components.Overlays do
   the page under it holds still.
 
   `layout={:list}` is the panel for a `pick_list/1`: a narrow padding around its cards and the
-  `title` as a quiet section title in line with the rows. On phones it is a half-height sheet,
+  `title` as a quiet section title in line with the rows' labels. On phones it is a half-height sheet,
   as tall as its list up to half the screen, and a longer list scrolls inside.
 
   Open it from the server with `show={true}` (closing with `show={false}` skips `on_cancel`) or
@@ -624,7 +624,10 @@ defmodule Setzkasten.Components.Overlays do
           id={"#{@id}-title"}
           class={[
             "font-semibold wrap-anywhere",
-            if(@layout == :list, do: "px-3 pt-1 pb-1.5 text-base-content/70", else: "mb-3")
+            if(@layout == :list,
+              do: "setzkasten-popover-list-title pt-1 pb-1.5 text-base-content/70",
+              else: "mb-3"
+            )
           ]}
         >
           {@title}

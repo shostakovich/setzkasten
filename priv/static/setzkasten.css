@@ -1709,17 +1709,24 @@
   }
 }
 
-/* <.pick_list>: rows in rounded cards, hairlines from the label to the card's end. */
+/* <.pick_list>: rows in rounded cards, hairlines from the label to the card's end. The popover
+   around it shares the measures, so its title lines up with the labels. */
 @layer utilities.setzkasten {
-  .setzkasten-pick-list {
+  .setzkasten-pick-list,
+  .setzkasten-popover-list {
     --setzkasten-pick-pad: 0.75rem;
     --setzkasten-pick-gap: 0.625rem;
     --setzkasten-pick-lead: 0px;
+  }
+  :is(.setzkasten-pick-list, .setzkasten-popover-list):has(.setzkasten-pick-leading:not(:empty)) {
+    --setzkasten-pick-lead: calc(1.25rem + var(--setzkasten-pick-gap));
+  }
+  .setzkasten-pick-list {
     display: grid;
     gap: 0.75rem;
   }
-  .setzkasten-pick-list:has([data-leading]) {
-    --setzkasten-pick-lead: calc(1.25rem + var(--setzkasten-pick-gap));
+  .setzkasten-popover-list-title {
+    padding-inline: calc(var(--setzkasten-pick-pad) + var(--setzkasten-pick-lead)) var(--setzkasten-pick-pad);
   }
   .setzkasten-pick-group {
     margin: 0;
@@ -1776,7 +1783,7 @@
     justify-content: center;
     width: 1.25rem;
   }
-  .setzkasten-pick-list:not(:has([data-leading])) .setzkasten-pick-leading {
+  .setzkasten-pick-list:not(:has(.setzkasten-pick-leading:not(:empty))) .setzkasten-pick-leading {
     display: none;
   }
   .setzkasten-pick-label {

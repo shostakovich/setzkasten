@@ -647,7 +647,7 @@ defmodule Setzkasten.OverlaysTest do
              ~r/\.setzkasten-popover:not\(\[data-anchor\], \[data-placed\]\) \{\s*position-anchor/
   end
 
-  test "a list popover narrows its padding and quiets its title in line with the rows" do
+  test "a list popover narrows its padding and quiets its title in line with the row labels" do
     assigns = %{}
 
     doc =
@@ -662,7 +662,12 @@ defmodule Setzkasten.OverlaysTest do
       """)
 
     assert "setzkasten-popover-list" in classes(doc, "#cover")
-    assert Enum.all?(~w(px-3 text-base-content/70), &(&1 in classes(doc, "#cover-title")))
+
+    assert Enum.all?(
+             ~w(setzkasten-popover-list-title text-base-content/70),
+             &(&1 in classes(doc, "#cover-title"))
+           )
+
     refute "mb-3" in classes(doc, "#cover-title")
     assert attr(doc, "#cover", "aria-labelledby") == "cover-title"
 
@@ -672,6 +677,12 @@ defmodule Setzkasten.OverlaysTest do
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-popover-list \{\s*padding: 0.5rem;/
+    # The title starts where the labels do: past the card's padding and the leading slot, if any.
+    assert css =~
+             ~r/\.setzkasten-pick-list,\s*\.setzkasten-popover-list \{\s*--setzkasten-pick-pad/
+
+    assert css =~
+             ~r/\.setzkasten-popover-list-title \{\s*padding-inline: calc\(var\(--setzkasten-pick-pad\) \+ var\(--setzkasten-pick-lead\)\) var\(--setzkasten-pick-pad\);/
   end
 
   test "opened with a pointer, a popover holds focus itself instead of ringing an autofocus button" do

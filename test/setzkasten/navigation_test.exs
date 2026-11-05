@@ -688,9 +688,9 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "#sources", "phx-hook") == "Setzkasten.Components.Navigation.PickList"
     assert count(doc, "#sources > ul.setzkasten-pick-group[role=list]") == 2
     assert count(doc, "ul > li > button.setzkasten-pick-item[type=button]") == 3
-    assert count(doc, "#free [data-leading], #free[data-leading]") == 1
-    assert attr(doc, "#phone", "data-leading") == ""
     assert count(doc, "#free .setzkasten-pick-leading[aria-hidden=true] svg") == 1
+    # An empty :leading renders nothing at all, so the CSS sees it as :empty.
+    assert count(doc, "#phone .setzkasten-pick-leading:empty") == 1
     assert text(doc, "#trip .setzkasten-pick-leading") == "🏖️"
     assert text(doc, "#trip .setzkasten-pick-label") == "Urlaub"
     assert text(doc, "#trip .setzkasten-pick-trailing") == "120,30 €"
@@ -708,7 +708,7 @@ defmodule Setzkasten.NavigationTest do
     <.pick_item id="a">A</.pick_item>
   </:group>
 </.pick_list>|)
-    assert attr(doc, "#a", "data-leading") == nil
+    assert count(doc, "#a .setzkasten-pick-leading:empty") == 1
     assert attr(doc, "#a", "phx-click") == nil
 
     hook = colocated_js("Setzkasten.Components.Navigation")
@@ -729,8 +729,12 @@ defmodule Setzkasten.NavigationTest do
     assert css =~
              "inset-inline: calc(var(--setzkasten-pick-pad) + var(--setzkasten-pick-lead)) 0;"
 
+    # The slot collapses while no row has leading content, and keeps its width once one has.
     assert css =~
-             ~r/\.setzkasten-pick-list:not\(:has\(\[data-leading\]\)\) \.setzkasten-pick-leading \{\s*display: none;/
+             ~r/\.setzkasten-pick-list:not\(:has\(\.setzkasten-pick-leading:not\(:empty\)\)\) \.setzkasten-pick-leading \{\s*display: none;/
+
+    assert css =~
+             ~r/:is\(\.setzkasten-pick-list, \.setzkasten-popover-list\):has\(\.setzkasten-pick-leading:not\(:empty\)\) \{\s*--setzkasten-pick-lead: calc\(1.25rem \+ var\(--setzkasten-pick-gap\)\);/
 
     assert css =~ ~r/\.setzkasten-pick-trailing \{[^}]*font-variant-numeric: tabular-nums;/
   end

@@ -405,6 +405,27 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </.popover>
         <:note>Ohne Gruppe steht der Text bündig mit den Labels der Zeilen.</:note>
       </.demo>
+      <.demo title="Liste ohne Icons und Emojis">
+        <.popover id="pop-plain" title="20,00 € decken aus" layout={:list}>
+          <:trigger>Decken</:trigger>
+          <.pick_list id="pop-plain-sources">
+            <:group>
+              <.pick_item
+                :for={{name, amount} <- [{"Handy", 4_015}, {"Abos", 2_303}, {"Bücher", 1_250}]}
+                id={"pop-plain-#{String.downcase(name)}"}
+                on_click={hide_popover("pop-plain")}
+              >
+                <:leading>{nil}</:leading>{name}
+                <:trailing><.amount value={amount} /></:trailing>
+              </.pick_item>
+            </:group>
+          </.pick_list>
+        </.popover>
+        <:note>
+          Hat keine Zeile ein Icon oder Emoji (ein leeres <code>:leading</code> zählt nicht), fällt
+          die Spalte weg; Titel und Trennlinien beginnen beim Text.
+        </:note>
+      </.demo>
     </.showcase>
 
     <.showcase
