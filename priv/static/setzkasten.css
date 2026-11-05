@@ -999,6 +999,20 @@
   }
 }
 
+/* <.table>'s row actions show with a mouse when the row is hovered, focused or current; they keep
+   their room, so nothing shifts. Touch screens have no hover and always show them. */
+@layer utilities.setzkasten {
+  @media (hover: hover) and (pointer: fine) {
+    .setzkasten-row-actions > * {
+      opacity: 0;
+      transition: opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-out);
+    }
+    tr:is(:hover, :focus-within, [aria-current]:not([aria-current="false"]), [aria-selected="true"]) > .setzkasten-row-actions > * {
+      opacity: 1;
+    }
+  }
+}
+
 /* A folded table group: its rows keep their share of the column widths, so opening it shifts nothing. */
 @layer utilities.setzkasten {
   .table tbody[data-folded] > tr:not(:first-child) {

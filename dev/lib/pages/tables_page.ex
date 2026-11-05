@@ -104,8 +104,13 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           trägt <code>aria-current</code>: Fläche <code>row-selected</code> und ein 3px-Balken vorn.
         </:note>
       </.demo>
-      <.demo title="Gruppe zum Einklappen (fold: :closed)">
-        <.table id="securities" groups={@securities}>
+      <.demo title="Gruppe zum Einklappen (fold: :closed), Zeilenaktion (:action)">
+        <.table
+          id="securities"
+          groups={@securities}
+          row_link={fn _ -> "/tables" end}
+          actions_show_from={:sm}
+        >
           <:col :let={s} label="Wertpapier">
             {s.name}
             <.cell_sub>{join_meta([s.isin, s.symbol])}</.cell_sub>
@@ -113,10 +118,22 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           <:col :let={s} label="Kurs" align={:end}>
             <.amount value={s.price} minor_digits={4} decimals={2} />
           </:col>
+          <:action
+            label={&"Bearbeiten: #{&1.name}"}
+            icon="pencil"
+            id={&"security-#{&1.id}-edit"}
+            on_click={show_modal("security-dialog")}
+          />
         </.table>
+        <.modal id="security-dialog" title="Wertpapier bearbeiten">
+          <p class="py-4 text-sm">Formular des Wertpapiers.</p>
+        </.modal>
         <:note>
           Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte
-          Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich.
+          Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich. Der Stift
+          erscheint mit der Maus beim Überfahren oder mit dem Tastaturfokus und hält seinen
+          Platz; mit dem Finger steht er immer da, unter <code>sm</code> fehlt er
+          (<code>actions_show_from</code>), denn die Zeile führt zur Detailseite.
         </:note>
       </.demo>
       <.demo title="Sortierbar: Gruppen und Kategorien ziehen (Sortable)">
@@ -391,6 +408,14 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       %{id: "active", label: "Im Bestand", rows: @active},
       %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
     ]}>…</.table>
+
+    <%!-- row actions: shown on hover or focus with a mouse, always on touch; fn row -> value --%>
+    <.table id="securities" rows={@securities} row_link={&~p"/wertpapiere/#{&1}"}
+            actions_show_from={:md}>
+      <:col :let={s} label="Wertpapier">{s.name}</:col>
+      <:action label={&"Bearbeiten: #{&1.name}"} icon="pencil"
+               patch={&~p"/wertpapiere/#{&1}/bearbeiten"} />
+    </.table>
 
     <%!-- sortable: groups and the rows within them, rows also into another group --%>
     <table id="budget" class="table" phx-hook="Setzkasten.Components.Data.Sortable"

@@ -228,6 +228,55 @@ defmodule Setzkasten.DataTest do
     assert "only:table-row" in classes(doc, "#e-empty")
   end
 
+  test "table row actions: icon buttons in a last column, attrs per row" do
+    assigns = %{groups: [%{id: "a", label: "A", rows: @rows}]}
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups} actions_show_from={:md}>
+        <:col :let={r} label="Name">{r.name}</:col>
+        <:action
+          label={&"Bearbeiten: #{&1.name}"}
+          icon="pencil"
+          id={&"edit-#{&1.id}"}
+          patch={&if(&1.value > 0, do: "/s/#{&1.id}/edit")}
+        />
+        <:action
+          label="Löschen"
+          icon="trash-2"
+          on_click="delete"
+          confirm={&"„#{&1.name}“ löschen?"}
+        />
+        <:foot>
+          <th>Summe</th>
+        </:foot>
+      </.table>
+      """)
+
+    assert classes(doc, "thead th:last-child") == ~w(w-0 hidden md:table-cell)
+    assert text(doc, "thead th:last-child .sr-only") == "Aktionen"
+    assert attr(doc, "#t-a th[scope=colgroup]", "colspan") == "2"
+    assert classes(doc, "tfoot td") == ~w(hidden md:table-cell)
+
+    cell = "tbody tr:nth-child(2) td.setzkasten-row-actions"
+    assert classes(doc, cell) == ~w(setzkasten-row-actions w-0 py-0! hidden md:table-cell)
+    assert attr(doc, "#{cell} a#edit-1", "aria-label") == "Bearbeiten: SAP"
+    assert attr(doc, "#{cell} a#edit-1", "href") == "/s/1/edit"
+    assert attr(doc, "#{cell} button", "aria-haspopup") == "dialog"
+    assert [%{"event" => "delete"}] = pushes(attr(doc, "#{cell} button", "phx-click"))
+    assert doc |> attr("#{cell} button", "phx-click") |> String.contains?("„SAP“ löschen?")
+
+    # Gold's patch is nil: that row has no edit button, only the delete one.
+    assert count(doc, "#edit-2") == 0
+    assert count(doc, "tbody tr:nth-child(3) td.setzkasten-row-actions button") == 1
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "@media (hover: hover) and (pointer: fine) {\n    .setzkasten-row-actions > * {"
+
+    assert css =~
+             ~r/tr:is\(:hover, :focus-within, .*\) > \.setzkasten-row-actions > \* \{\s*opacity: 1;/
+  end
+
   test "a folding group's head is a button that toggles its rows in the browser" do
     assigns = %{
       groups: [

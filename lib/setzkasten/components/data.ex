@@ -107,6 +107,23 @@ defmodule Setzkasten.Components.Data do
         %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
       ]}>…</.table>
 
+  `:action` entries are icon buttons in a narrow last column, as `list_row`'s from `md`, and
+  take its action attrs (`label`, `icon`, `navigate`/`patch`/`href`/`method`, `on_click` with
+  `phx-target`, `confirm` with `confirm_text` and `confirm_label`, `disabled`, `id`); each may
+  be a value or `fn row -> value`. A row whose action has no target (all of them `nil`) leaves
+  it out. With a mouse they show while the row is hovered, holds keyboard focus or is current,
+  and keep their room otherwise, so no column shifts; touch screens show them always.
+  `actions_show_from` hides the column below a breakpoint, e.g. where the row links to a
+  detail page that has the action too. The column's header is `actions_label` for screen
+  readers; group heads, the empty row and the total row span it.
+
+      <.table id="securities" rows={@securities} row_link={&~p"/wertpapiere/\#{&1}"}
+              actions_show_from={:md}>
+        <:col :let={s} label="Wertpapier">{s.name}</:col>
+        <:action label={&"Bearbeiten: \#{&1.name}"} icon="pencil"
+                 patch={&~p"/wertpapiere/\#{&1}/bearbeiten"} id={&"edit-\#{&1.id}"} />
+      </.table>
+
       <.table id="activity" rows={@entries} size={:sm} zebra>
         <:col :let={e} label="Datum">{e.date}</:col>
         <:col :let={e} label="Betrag" align={:end}><.amount value={e.amount} tone /></:col>
@@ -137,11 +154,39 @@ defmodule Setzkasten.Components.Data do
     attr :class, :any
   end
 
+  attr :actions_label, :string, default: "Aktionen", doc: "the actions column's name"
+
+  attr :actions_show_from, :atom,
+    default: nil,
+    values: [nil | @breakpoints],
+    doc: "the actions column from this breakpoint on"
+
+  attr :confirm_id, :string, default: "confirm-delete"
+
   slot :foot
   slot :empty
 
+  slot :action, doc: "an icon button at the row's end; any attr may be `fn row -> value`" do
+    attr :label, :any, required: true
+    attr :icon, :string
+    attr :navigate, :any
+    attr :patch, :any
+    attr :href, :any
+    attr :method, :string
+    attr :on_click, :any
+    attr :"phx-target", :any
+    attr :confirm, :any
+    attr :confirm_text, :any
+    attr :confirm_label, :any
+    attr :disabled, :any
+    attr :id, :any
+  end
+
   def table(assigns) do
-    assigns = prepare_rows(assigns)
+    assigns =
+      assigns
+      |> prepare_rows()
+      |> assign(:span, length(assigns.col) + if(assigns.action == [], do: 0, else: 1))
 
     ~H"""
     <div class={["overflow-x-auto", !@flush && flat(), @class]} {@rest}>
@@ -149,12 +194,15 @@ defmodule Setzkasten.Components.Data do
         <thead>
           <tr>
             <th :for={col <- @col} scope="col" class={col_class(col)}>{col[:label]}</th>
+            <th :if={@action != []} scope="col" class={["w-0", show_from(@actions_show_from)]}>
+              <span class="sr-only">{@actions_label}</span>
+            </th>
           </tr>
         </thead>
         <tbody :if={@groups == nil} id={@id} phx-update={@stream? && "stream"} data-focus-fallback>
           {table_rows(assigns, @rows)}
           <tr :if={@empty != []} id={"#{@id}-empty"} class="hidden only:table-row">
-            <td colspan={length(@col)}>{render_slot(@empty)}</td>
+            <td colspan={@span}>{render_slot(@empty)}</td>
           </tr>
         </tbody>
         <tbody
@@ -166,7 +214,7 @@ defmodule Setzkasten.Components.Data do
           <tr>
             <th
               scope="colgroup"
-              colspan={length(@col)}
+              colspan={@span}
               class={[
                 "bg-base-200 text-xs font-semibold",
                 group[:fold] && "relative hover:bg-base-300"
@@ -196,7 +244,10 @@ defmodule Setzkasten.Components.Data do
           {table_rows(assigns, group.rows)}
         </tbody>
         <tfoot :if={@foot != []}>
-          <tr class="font-semibold">{render_slot(@foot)}</tr>
+          <tr class="font-semibold">
+            {render_slot(@foot)}
+            <td :if={@action != []} class={show_from(@actions_show_from)}></td>
+          </tr>
         </tfoot>
       </table>
     </div>
@@ -441,6 +492,9 @@ defmodule Setzkasten.Components.Data do
       col={@col}
       row_link={@row_link}
       row_attrs={@row_attrs}
+      action={@action}
+      actions_show_from={@actions_show_from}
+      confirm_id={@confirm_id}
     />
     """
   end
@@ -450,6 +504,9 @@ defmodule Setzkasten.Components.Data do
   attr :col, :list, required: true
   attr :row_link, :any, required: true
   attr :row_attrs, :any, required: true
+  attr :action, :list, required: true
+  attr :actions_show_from, :atom, required: true
+  attr :confirm_id, :string, required: true
 
   defp table_row(assigns) do
     {class, attrs} = tr_attrs(assigns.row_attrs, assigns.item)
@@ -458,7 +515,8 @@ defmodule Setzkasten.Components.Data do
       assign(assigns,
         path: assigns.row_link && assigns.row_link.(assigns.item),
         class: class,
-        attrs: attrs
+        attrs: attrs,
+        actions: row_actions(assigns.action, assigns.item)
       )
 
     ~H"""
@@ -475,9 +533,29 @@ defmodule Setzkasten.Components.Data do
           {render_slot(col, @item)}
         <% end %>
       </td>
+      <td
+        :if={@action != []}
+        class={["setzkasten-row-actions w-0 py-0!", show_from(@actions_show_from)]}
+      >
+        <div class="relative z-10 flex justify-end gap-1">
+          <.icon_action :for={action <- @actions} action={action} confirm_id={@confirm_id} />
+        </div>
+      </td>
     </tr>
     """
   end
+
+  defp row_actions(actions, item) do
+    for action <- actions,
+        action = Map.new(action, &row_value(&1, item)),
+        Enum.any?([:navigate, :patch, :href, :on_click], &action[&1]),
+        do: action
+  end
+
+  defp row_value({key, fun}, item) when is_function(fun, 1) and key != :inner_block,
+    do: {key, fun.(item)}
+
+  defp row_value(pair, _item), do: pair
 
   # `row_attrs` of a row: nil adds nothing, `class` joins the row's classes, the id stays the
   # table's.
@@ -970,32 +1048,12 @@ defmodule Setzkasten.Components.Data do
         :if={@inline_actions != []}
         class={["relative z-10 hidden md:flex gap-1", @actions_class]}
       >
-        <%= for action <- @inline_actions do %>
-          <.link
-            :if={action_link?(action)}
-            navigate={action[:navigate]}
-            patch={action[:patch]}
-            href={action[:href]}
-            method={action[:method]}
-            id={action[:id]}
-            class="btn btn-ghost btn-sm btn-square"
-            aria-label={action_label(action, @title)}
-          >
-            <.icon name={action[:icon] || "chevron-right"} />
-          </.link>
-          <button
-            :if={!action_link?(action)}
-            type="button"
-            id={action[:id]}
-            class="btn btn-ghost btn-sm btn-square"
-            aria-label={action_label(action, @title)}
-            aria-haspopup={action[:confirm] && "dialog"}
-            disabled={action[:disabled]}
-            phx-click={entry_click(action, @confirm_id)}
-          >
-            <.icon name={action[:icon] || "chevron-right"} />
-          </button>
-        <% end %>
+        <.icon_action
+          :for={action <- @inline_actions}
+          action={action}
+          label={action_label(action, @title)}
+          confirm_id={@confirm_id}
+        />
       </div>
       <details
         :if={@action != []}
@@ -1063,6 +1121,41 @@ defmodule Setzkasten.Components.Data do
         </ul>
       </details>
     </li>
+    """
+  end
+
+  attr :action, :map, required: true
+  attr :label, :string, default: nil
+  attr :confirm_id, :string, required: true
+
+  defp icon_action(assigns) do
+    assigns = assign(assigns, :label, assigns.label || assigns.action.label)
+
+    ~H"""
+    <.link
+      :if={action_link?(@action)}
+      navigate={@action[:navigate]}
+      patch={@action[:patch]}
+      href={@action[:href]}
+      method={@action[:method]}
+      id={@action[:id]}
+      class="btn btn-ghost btn-sm btn-square"
+      aria-label={@label}
+    >
+      <.icon name={@action[:icon] || "chevron-right"} />
+    </.link>
+    <button
+      :if={!action_link?(@action)}
+      type="button"
+      id={@action[:id]}
+      class="btn btn-ghost btn-sm btn-square"
+      aria-label={@label}
+      aria-haspopup={@action[:confirm] && "dialog"}
+      disabled={@action[:disabled]}
+      phx-click={entry_click(@action, @confirm_id)}
+    >
+      <.icon name={@action[:icon] || "chevron-right"} />
+    </button>
     """
   end
 
