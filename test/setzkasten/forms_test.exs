@@ -176,6 +176,9 @@ defmodule Setzkasten.FormsTest do
     assert text(doc, "#photo-error-1") == "Höchstens 3 Dateien"
     assert count(doc, "#photo-error-0 svg.lucide") == 1
     assert "text-error-ink" in classes(doc, "#photo-error-0")
+    # The icon hangs before the first line, and a line break in a message breaks the line.
+    assert "mt-0.5" in classes(doc, "#photo-error-0 svg.lucide")
+    assert classes(doc, "#photo-error-0 > span") == ~w(whitespace-pre-line)
     assert classes(doc, "#photo-help") == ~w(label whitespace-normal)
 
     assert field_describedby("photo", ["a", "b"], true) ==
@@ -979,5 +982,60 @@ defmodule Setzkasten.FormsTest do
 
     assert css =~
              ~r/\.setzkasten-option:not\(\[data-current\]\) > \.setzkasten-option-check \{\s*visibility: hidden;/
+  end
+
+  test "an error bubble shows a dense control's errors at once, in the top layer" do
+    msg = "„60*2“ ist kein gültiger Betrag."
+    assigns = %{msg: msg}
+
+    doc =
+      parse(~H"""
+      <input id="cell" aria-invalid="true" aria-describedby={field_describedby("cell", [@msg], nil)} />
+      <.error_bubble id="cell" errors={[@msg, {"is %{n}", [n: 2]}]} align={:end} />
+      """)
+
+    bubble = "#cell-errors"
+    assert attr(doc, bubble, "popover") == "manual"
+    assert attr(doc, bubble, "role") == "alert"
+    assert attr(doc, bubble, "data-for") == "cell"
+    assert attr(doc, bubble, "phx-hook") == "Setzkasten.Components.Forms.ErrorBubble"
+    assert "setzkasten-error-bubble-end" in classes(doc, bubble)
+    assert text(doc, "#{bubble} #cell-error-0") == msg
+    assert text(doc, "#{bubble} #cell-error-1") == "Is 2"
+    assert attr(doc, "input#cell", "aria-describedby") == "cell-error-0"
+
+    assert parse(~H|<.error_bubble id="cell" errors={[]} />|) |> count("[popover]") == 0
+
+    hook = colocated_js("Setzkasten.Components.Forms")
+    assert hook =~ "const control = document.getElementById(this.el.dataset.for)"
+    # Hidden while a scrolling box clips the control or something covers it.
+    assert hook =~
+             ~s|if (style.overflowX !== "visible" \|\| style.overflowY !== "visible") boxes.push(p)|
+
+    assert hook =~ "const hit = document.elementFromPoint(x, y)"
+    assert hook =~ "return hit && (control.contains(hit) || hit.contains(control)) ? r : null"
+    # Placed again when the page around it changes, not for its own changes.
+    assert hook =~ "if (records.some((record) => !this.el.contains(record.target))) this.onMove()"
+    assert hook =~ "this.sizes.observe(document.body)"
+    assert hook =~ "r.bottom + GAP + height <= vh - EDGE ? r.bottom + GAP : r.top - GAP - height"
+
+    assert hook =~
+             ~r/if \(this.shown\) this.el.removeAttribute\("role"\)\s*this.el.showPopover\(\)/
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-error-bubble \{\s*position: fixed;/
+    assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*color: var\(--color-error-ink\);/
+    # The cells under it stay clickable.
+    assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*pointer-events: none;/
+    # Its sentences read from the start, whatever the cell around it sets.
+    assert css =~
+             ~r/\.setzkasten-error-bubble \{[^}]*font-weight: 400;[^}]*text-align: start;\s*white-space: normal;/
+
+    # Wide enough for a sentence a line, and a message breaks where it says so.
+    assert css =~
+             ~r/\.setzkasten-error-bubble \{[^}]*max-width: min\(22rem, calc\(100vw - 1rem\)\);/
+
+    assert css =~ ~r/\.setzkasten-error-bubble p > span \{\s*white-space: pre-line;/
+    assert count(doc, "#{bubble} #cell-error-0 > svg + span") == 1
   end
 end

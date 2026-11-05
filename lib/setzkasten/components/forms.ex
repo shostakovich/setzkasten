@@ -1059,8 +1059,9 @@ defmodule Setzkasten.Components.Forms do
   end
 
   @doc """
-  The error lines of a field, as `input` renders them: `circle-alert` icon, `error-ink`, first
-  letter upper case, ids `<id>-error-0`, `<id>-error-1`, … For controls that are no `<.input>`
+  The error lines of a field, as `input` renders them: `circle-alert` icon before the first line,
+  `error-ink`, first letter upper case, ids `<id>-error-0`, `<id>-error-1`, … A line break in a
+  message breaks the line there, e.g. between two sentences. For controls that are no `<.input>`
   (`live_file_input`, a custom picker); place it after the control inside a `fieldset.fieldset`
   and link the lines with `aria-describedby={field_describedby(id, errors, help)}`.
 
@@ -1094,10 +1095,143 @@ defmodule Setzkasten.Components.Forms do
     <p
       :for={{msg, i} <- Enum.with_index(@messages)}
       id={"#{@id}-error-#{i}"}
-      class="flex items-center gap-1.5 text-sm text-error-ink"
+      class="flex gap-1.5 text-sm text-error-ink"
     >
-      <.icon name="circle-alert" class="size-4 shrink-0" />{upcase_first(msg)}
+      <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" /><span class="whitespace-pre-line">{upcase_first(
+        msg
+      )}</span>
     </p>
+    """
+  end
+
+  @doc """
+  The errors of a dense control with no room for lines under it (an amount in a table cell), in
+  a bubble at the control: shown at once and kept in view, not a tooltip on hover. It sits under
+  the control (above it when the window has no room below), in the top layer, so a scrolling
+  table does not clip it. It hides while the control is out of sight: scrolled out of the
+  window or a scrolling box, or under something else such as a sticky header or a dialog. It
+  follows the control when the page around it changes, and clicks pass through it to the cells
+  under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned
+  amount; its text still reads from the start, in regular weight, whatever the cell sets. It
+  grows up to 22rem wide, and a line break in a message breaks the line there, e.g. between two
+  sentences.
+
+  Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
+  `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
+  errors it renders nothing, so it can stay in place. Screen readers hear new errors once, as
+  they appear, and not again when the control comes back into view.
+
+      <input id="assign-food" class="input input-sm" value={@typed} inputmode="decimal"
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={field_describedby("assign-food", @errors, nil)} />
+      <.error_bubble id="assign-food" errors={@errors} align={:end} />
+  """
+  attr :id, :string, required: true, doc: "the control's id"
+  attr :errors, :list, default: [], doc: "messages or `{msg, opts}` tuples"
+  attr :align, :atom, default: :start, values: [:start, :end]
+  attr :class, :any, default: nil
+
+  def error_bubble(assigns) do
+    assigns = assign(assigns, :messages, Enum.map(assigns.errors, &translate_error/1))
+
+    ~H"""
+    <div
+      :if={@messages != []}
+      id={"#{@id}-errors"}
+      popover="manual"
+      role="alert"
+      class={[
+        "setzkasten-error-bubble shadow-lg",
+        @align == :end && "setzkasten-error-bubble-end",
+        @class
+      ]}
+      data-for={@id}
+      phx-hook=".ErrorBubble"
+    >
+      <p :for={{msg, i} <- Enum.with_index(@messages)} id={"#{@id}-error-#{i}"} class="flex gap-1.5">
+        <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" /><span>{upcase_first(msg)}</span>
+      </p>
+    </div>
+    <script :type={ColocatedHook} name=".ErrorBubble">
+      const EDGE = 8
+      const GAP = 4
+      const clips = (el) => {
+        const boxes = []
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          const style = getComputedStyle(p)
+          if (style.overflowX !== "visible" || style.overflowY !== "visible") boxes.push(p)
+        }
+        return boxes
+      }
+      const sighted = (control) => {
+        const r = control.getBoundingClientRect()
+        if (!r.width) return null
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const clipped = clips(control).some((box) => {
+          const b = box.getBoundingClientRect()
+          return x < b.left || x > b.right || y < b.top || y > b.bottom
+        })
+        if (clipped) return null
+        const hit = document.elementFromPoint(x, y)
+        return hit && (control.contains(hit) || hit.contains(control)) ? r : null
+      }
+      export default {
+        mounted() {
+          this.onMove = () => {
+            cancelAnimationFrame(this.frame)
+            this.frame = requestAnimationFrame(() => this.place())
+          }
+          window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
+          window.addEventListener("resize", this.onMove)
+          this.mutations = new MutationObserver((records) => {
+            if (records.some((record) => !this.el.contains(record.target))) this.onMove()
+          })
+          this.mutations.observe(document.body, { subtree: true, childList: true, attributes: true })
+          this.sizes = new ResizeObserver(this.onMove)
+          this.sizes.observe(document.body)
+          this.place()
+        },
+        updated() { this.place() },
+        destroyed() {
+          cancelAnimationFrame(this.frame)
+          window.removeEventListener("scroll", this.onMove, { capture: true })
+          window.removeEventListener("resize", this.onMove)
+          this.mutations.disconnect()
+          this.sizes.disconnect()
+        },
+        place() {
+          const control = document.getElementById(this.el.dataset.for)
+          if (control !== this.control) {
+            if (this.control) this.sizes.unobserve(this.control)
+            if (control) this.sizes.observe(control)
+            this.control = control
+          }
+          const r = control && sighted(control)
+          const open = this.el.matches(":popover-open")
+          if (!r) {
+            if (open) this.el.hidePopover()
+            return
+          }
+          if (!open) {
+            // Announced as it appears, not again when it comes back into view.
+            if (this.shown) this.el.removeAttribute("role")
+            this.el.showPopover()
+            this.shown = true
+          }
+          const width = this.el.offsetWidth
+          const height = this.el.offsetHeight
+          const vw = document.documentElement.clientWidth
+          const vh = window.innerHeight
+          const rtl = getComputedStyle(this.el).direction === "rtl"
+          const end = this.el.classList.contains("setzkasten-error-bubble-end") !== rtl
+          const left = Math.min(end ? r.right - width : r.left, vw - width - EDGE)
+          const top = r.bottom + GAP + height <= vh - EDGE ? r.bottom + GAP : r.top - GAP - height
+          this.el.style.left = `${Math.max(EDGE, left)}px`
+          this.el.style.top = `${Math.max(EDGE, top)}px`
+        }
+      }
+    </script>
     """
   end
 

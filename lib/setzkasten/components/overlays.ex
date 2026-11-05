@@ -13,6 +13,7 @@ defmodule Setzkasten.Components.Overlays do
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
+  import Setzkasten.Components.Forms, only: [field_error: 1, field_describedby: 3]
 
   @doc """
   Opens the modal `id` (`<.modal>` or `<.confirm_dialog>`).
@@ -99,6 +100,11 @@ defmodule Setzkasten.Components.Overlays do
   on-screen keyboard comes up; from `sm` and in side panels it goes to the first control, as
   the browser does.
 
+  The `:heading` slot takes the title as markup in place of `title`, e.g. a `title_input/1`
+  (a name edited in place) with the id `<id>-title`, which then names the dialog. Such a
+  dialog, too, focuses itself unless a field asks for `autofocus`: the name is renamed on a
+  click or Tab, not edited from the start.
+
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
   stays closed until `show` turns `true` again.
@@ -122,6 +128,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :rest, :global
   slot :inner_block
   slot :actions
+  slot :heading, doc: "the title as markup in place of `title`, e.g. a `title_input/1`"
 
   def modal(assigns) do
     assigns =
@@ -132,7 +139,7 @@ defmodule Setzkasten.Components.Overlays do
       id={@id}
       class={["modal", placement_class(@placement)]}
       tabindex="-1"
-      aria-labelledby={@title && "#{@id}-title"}
+      aria-labelledby={(@title || @heading != []) && "#{@id}-title"}
       phx-hook=".Modal"
       phx-mounted={JS.ignore_attributes(["open"])}
       data-show={show_attr(@show)}
@@ -145,15 +152,20 @@ defmodule Setzkasten.Components.Overlays do
         @class
       ]}>
         <div
-          :if={@title || @close?}
+          :if={@title || @heading != [] || @close?}
           class={[
             "setzkasten-modal-head flex items-start justify-between gap-2",
             "sticky -top-6 z-30 -mx-6 -mt-6 bg-inherit px-6 pt-6"
           ]}
         >
-          <h2 :if={@title} id={"#{@id}-title"} class="min-w-0 text-lg font-semibold wrap-anywhere">
+          <h2
+            :if={@title && @heading == []}
+            id={"#{@id}-title"}
+            class="min-w-0 text-lg font-semibold wrap-anywhere"
+          >
             {@title}
           </h2>
+          <div :if={@heading != []} class="min-w-0 flex-1">{render_slot(@heading)}</div>
           <form :if={@close?} method="dialog" class="ms-auto">
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
@@ -174,6 +186,7 @@ defmodule Setzkasten.Components.Overlays do
       <form method="dialog" class="modal-backdrop">
         <button tabindex="-1">{@close_label}</button>
       </form>
+      <div id={"#{@id}-toasts"} class="setzkasten-modal-toasts" phx-update="ignore"></div>
     </dialog>
     <script :type={ColocatedHook} name=".Modal">
       const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled], [type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"
@@ -191,6 +204,7 @@ defmodule Setzkasten.Components.Overlays do
           this.el.addEventListener("close", () => {
             this.resume()
             this.returnFocus()
+            this.announce("close")
             if (this.silent) { this.silent = false; return }
             const cancel = this.el.getAttribute("data-cancel")
             if (cancel) this.js().exec(cancel)
@@ -198,7 +212,14 @@ defmodule Setzkasten.Components.Overlays do
           this.sync()
         },
         updated() { this.sync() },
-        destroyed() { if (this.unwatch) this.unwatch() },
+        destroyed() {
+          if (this.unwatch) this.unwatch()
+          this.announce("close")
+        },
+        // For the toast stack, which moves into the topmost open modal.
+        announce(change) {
+          document.dispatchEvent(new CustomEvent(`setzkasten:modal-${change}`, { detail: this.el }))
+        },
         sync() {
           const show = this.el.getAttribute("data-show")
           if (show === this.shown) return
@@ -221,15 +242,17 @@ defmodule Setzkasten.Components.Overlays do
           this.suspended = [...document.querySelectorAll(".setzkasten-popover:popover-open")]
             .filter((popover) => !popover.contains(this.el))
           for (const popover of this.suspended) this.js().setAttribute(popover, "data-suspended", "")
-          // A bottom sheet opens on itself, so no field brings up the keyboard unless it asks to.
+          // A bottom sheet (no keyboard unasked) and a dialog titled by a title_input open on themselves.
           const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches
-          if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
+          const itself = sheet || !!this.el.querySelector(".setzkasten-modal-head .setzkasten-title-input")
+          if (itself && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
           this.el.showModal()
+          this.announce("open")
           this.el.removeAttribute("autofocus")
           const asked = [...this.el.querySelectorAll(".modal-box [autofocus]")].find(usable)
           const box = this.el.querySelector(".modal-box")
           if (asked) asked.focus()
-          else if (sheet) this.el.focus()
+          else if (itself) this.el.focus()
           // Chrome focuses a scrolling box itself instead of its first field.
           else if (box && [box, this.el].includes(document.activeElement)) focusIn(box)
         },
@@ -302,6 +325,87 @@ defmodule Setzkasten.Components.Overlays do
           document.addEventListener("pointerdown", stop, true)
           this.unwatch = stop
           check()
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
+  A name edited in place as the title of a `<.modal>` (its `:heading` slot) or sheet: a text
+  field at 1.25rem semibold, a step above the headings under it, on a faint fill that shows at
+  rest that it can be edited and grows stronger on hover and focus. The fill hangs into the
+  gutter, so the text lines up with the content under it. The dialog opens without focusing it.
+  Give it the id `<modal id>-title`, so its value names the dialog; `label` names the field itself for screen readers
+  (e.g. "Name"). Escape puts back the saved `value` and keeps the dialog open; once the value
+  is the saved one, Escape closes the dialog. Saving is the app's: `phx-blur` on the field and
+  `phx-submit` (Enter) on its form. Errors show under it, as `input/1`'s do; `field` works as
+  there.
+
+      <.modal id="category" show={@open} on_cancel={JS.push("close")}>
+        <:heading>
+          <form phx-submit="rename">
+            <.title_input id="category-title" name="name" value={@category.name} label="Name"
+                          errors={@name_errors} required phx-blur="rename" />
+          </form>
+        </:heading>
+        …
+      </.modal>
+  """
+  attr :id, :string, default: nil
+  attr :name, :string
+  attr :value, :any
+  attr :field, Phoenix.HTML.FormField, doc: "a form field, e.g. `@form[:name]`"
+  attr :label, :string, required: true, doc: "the field's name for screen readers"
+  attr :errors, :list, default: []
+  attr :rest, :global, include: ~w(disabled form maxlength minlength pattern placeholder required)
+
+  def title_input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id, errors: errors)
+    |> assign_new(:name, fn -> field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> title_input()
+  end
+
+  def title_input(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:value, fn -> nil end)
+      |> assign_new(:name, fn -> assigns.id end)
+      |> assign(:value, Phoenix.HTML.Form.normalize_value("text", assigns[:value]))
+
+    ~H"""
+    <div class="setzkasten-title-input">
+      <label for={@id} class="sr-only">{@label}</label>
+      <input
+        type="text"
+        id={@id}
+        name={@name}
+        value={@value}
+        class={["input", @errors != [] && "input-error"]}
+        autocomplete="off"
+        enterkeyhint="done"
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={field_describedby(@id, @errors, nil)}
+        data-saved={@value}
+        phx-hook=".TitleInput"
+        {@rest}
+      />
+      <.field_error id={@id} errors={@errors} />
+    </div>
+    <script :type={ColocatedHook} name=".TitleInput">
+      export default {
+        mounted() {
+          this.el.addEventListener("keydown", (e) => {
+            if (e.key !== "Escape" || this.el.value === this.el.dataset.saved) return
+            e.preventDefault()
+            e.stopPropagation()
+            // While a save waits for its reply, data-saved is not yet the value being saved.
+            if (!this.el.form?.classList.contains("phx-submit-loading")) this.el.value = this.el.dataset.saved
+          })
         }
       }
     </script>
@@ -391,6 +495,7 @@ defmodule Setzkasten.Components.Overlays do
       <form method="dialog" class="modal-backdrop">
         <button tabindex="-1">{@close_label}</button>
       </form>
+      <div id={"#{@id}-toasts"} class="setzkasten-modal-toasts" phx-update="ignore"></div>
     </dialog>
     """
   end
@@ -418,13 +523,22 @@ defmodule Setzkasten.Components.Overlays do
   open popover closes it too, without opening it again. It closes on a click outside, on
   Escape, with `hide_popover/1` or `show={false}`; Escape and `hide_popover/1` return focus to
   where it was (the trigger). Its open state survives LiveView patches. Give the first field
-  `autofocus` to start there.
+  `autofocus` to start there. A button with `autofocus` (a pick list's first row) is focused
+  when the keyboard opened the popover; opened with a pointer, the panel takes focus instead,
+  so no focus ring marks a row, and the arrow keys or Tab go on from there.
 
   Placement: below the trigger, its start edge at the trigger's (`align={:end}`: end edges),
-  `position={:top}` above; it flips when there is no room. CSS anchor positioning places it; a
-  colocated hook does where the browser has none, and always for `anchor` (the id of an element
-  elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger` may be left
-  out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
+  `position={:top}` above; it flips when there is no room. When neither side holds it, it takes
+  the side with more room, as tall as that room, and scrolls inside; along the trigger it takes
+  the other edge when that one keeps it inside the window, else it shifts to stay 8px inside. CSS anchor positioning places it while one side holds it; a
+  colocated hook does otherwise, where the browser has none, and always for `anchor` (the id of
+  an element elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger`
+  may be left out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones, and
+  the page under it holds still.
+
+  `layout={:list}` is the panel for a `pick_list/1`: a narrow padding around its cards and the
+  `title` as a quiet section title in line with the rows' labels. On phones it is a half-height sheet,
+  as tall as its list up to half the screen, and a longer list scrolls inside.
 
   Open it from the server with `show={true}` (closing with `show={false}` skips `on_cancel`) or
   with `show_popover/1`. As for `modal/1`, `show` acts when it changes. `on_cancel` runs after every other close, e.g. to clear the server's
@@ -440,8 +554,9 @@ defmodule Setzkasten.Components.Overlays do
         </form>
       </.popover>
 
-      <.popover id="cover" anchor={@cover_cell} show={@cover != nil} on_cancel={JS.push("cover_closed")}>
-        …
+      <.popover id="cover" title="50,00 € decken aus" anchor={@cover_cell} show={@cover != nil}
+                on_cancel={JS.push("cover_closed")} layout={:list}>
+        <.pick_list id="cover-sources">…</.pick_list>
       </.popover>
   """
   attr :id, :string, required: true
@@ -459,6 +574,7 @@ defmodule Setzkasten.Components.Overlays do
 
   attr :show, :boolean, default: nil
   attr :on_cancel, JS, default: nil
+  attr :layout, :atom, default: :form, values: [:form, :list]
   attr :class, :any, default: nil, doc: "on the panel, e.g. a width (`w-80`)"
   attr :rest, :global
   slot :trigger
@@ -489,11 +605,13 @@ defmodule Setzkasten.Components.Overlays do
         id={@id}
         popover="auto"
         role="dialog"
+        tabindex="-1"
         aria-labelledby={@title && "#{@id}-title"}
         class={[
           "setzkasten-popover shadow-lg",
           @align == :end && "setzkasten-popover-end",
           @position == :top && "setzkasten-popover-top",
+          @layout == :list && "setzkasten-popover-list",
           @class
         ]}
         phx-hook=".Popover"
@@ -501,17 +619,33 @@ defmodule Setzkasten.Components.Overlays do
         data-show={show_attr(@show)}
         data-cancel={@on_cancel}
       >
-        <h2 :if={@title} id={"#{@id}-title"} class="mb-3 font-semibold wrap-anywhere">{@title}</h2>
+        <h2
+          :if={@title}
+          id={"#{@id}-title"}
+          class={[
+            "font-semibold wrap-anywhere",
+            if(@layout == :list,
+              do: "setzkasten-popover-list-title pt-1 pb-1.5 text-base-content/70",
+              else: "mb-3"
+            )
+          ]}
+        >
+          {@title}
+        </h2>
         {render_slot(@inner_block)}
       </div>
     </div>
     <script :type={ColocatedHook} name=".Popover">
-      // Anchor positioning with anchor-scope places a popover at its own trigger; without it, and
-      // for an anchor elsewhere, the hook does.
+      // Anchor positioning with anchor-scope places a popover at its own trigger while one side
+      // holds it; otherwise, and for an anchor elsewhere, the hook does.
       const NATIVE = CSS.supports("anchor-scope: all") && CSS.supports("position-area: block-end")
       const phone = window.matchMedia("(width < 40rem)")
       const EDGE = 8
       const GAP = 4
+      const TYPED = "input, textarea, select, [contenteditable]"
+      let pointed = false
+      document.addEventListener("pointerdown", () => { pointed = true }, true)
+      document.addEventListener("keydown", () => { pointed = false }, true)
       export default {
         mounted() {
           this.onMove = () => {
@@ -548,6 +682,7 @@ defmodule Setzkasten.Components.Overlays do
           this.el.addEventListener("toggle", (e) => {
             if (e.newState === "open") {
               this.place()
+              this.quietFocus()
               window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
               window.addEventListener("resize", this.onMove)
               document.addEventListener("pointerdown", this.onPointer, true)
@@ -589,6 +724,14 @@ defmodule Setzkasten.Components.Overlays do
         show() {
           if (this.isOpen() || !this.el.isConnected || this.el.hasAttribute("data-suspended")) return
           this.el.showPopover({ source: this.anchor() || undefined })
+          this.quietFocus()
+        },
+        // Opened with a pointer, an autofocus button shows no focus ring: the panel holds focus.
+        quietFocus() {
+          const active = document.activeElement
+          if (!pointed || active === this.el || !this.el.contains(active)) return
+          if (active.matches(TYPED) || !active.matches(":focus-visible")) return
+          this.el.focus()
         },
         // Hidden while a modal holds it (the confirmed action closes it): it stays closed.
         hide() {
@@ -620,26 +763,33 @@ defmodule Setzkasten.Components.Overlays do
         place() {
           const style = this.el.style
           const anchor = this.anchor()
-          if (!anchor || phone.matches || (NATIVE && !this.el.hasAttribute("data-anchor"))) {
-            style.removeProperty("left")
-            style.removeProperty("top")
-            return
+          const reset = () => {
+            for (const property of ["left", "top", "max-height"]) style.removeProperty(property)
+            if (this.el.hasAttribute("data-placed")) this.js().removeAttribute(this.el, "data-placed")
           }
+          if (!anchor || phone.matches) return reset()
           const a = anchor.getBoundingClientRect()
           const width = this.el.offsetWidth
-          const height = this.el.offsetHeight
+          const height = this.el.scrollHeight + this.el.offsetHeight - this.el.clientHeight
           const vw = document.documentElement.clientWidth
-          const vh = window.innerHeight
+          const below = window.innerHeight - EDGE - a.bottom - GAP
+          const above = a.top - GAP - EDGE
           const rtl = getComputedStyle(this.el).direction === "rtl"
           const end = this.el.classList.contains("setzkasten-popover-end") !== rtl
-          const left = Math.min(Math.max(EDGE, end ? a.right - width : a.left), vw - width - EDGE)
-          const above = a.top - GAP - height
-          const below = a.bottom + GAP
-          const top = this.el.classList.contains("setzkasten-popover-top")
-            ? (above >= EDGE ? above : below)
-            : (below + height <= vh - EDGE || above < EDGE ? below : above)
-          style.left = `${Math.max(EDGE, left)}px`
-          style.top = `${Math.max(EDGE, top)}px`
+          const starts = end ? [a.right - width, a.left] : [a.left, a.right - width]
+          const inside = (left) => left >= EDGE && left + width <= vw - EDGE
+          const native = NATIVE && !this.el.hasAttribute("data-anchor")
+          if (native && (height <= below || height <= above) && starts.some(inside)) return reset()
+          // Neither side holds it: the side with more room, scrolling inside.
+          const up = this.el.classList.contains("setzkasten-popover-top")
+            ? height <= above || (height > below && above >= below)
+            : height > below && (height <= above || above > below)
+          const room = Math.max(0, up ? above : below)
+          if (native && !this.el.hasAttribute("data-placed")) this.js().setAttribute(this.el, "data-placed", "")
+          style.maxHeight = `${room}px`
+          const start = starts.find(inside) ?? starts[0]
+          style.left = `${Math.max(EDGE, Math.min(start, vw - width - EDGE))}px`
+          style.top = `${up ? a.top - GAP - Math.min(height, room) : a.bottom + GAP}px`
         }
       }
     </script>

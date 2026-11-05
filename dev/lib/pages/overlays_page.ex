@@ -6,7 +6,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
   alias Phoenix.LiveView.JS
 
   def title, do: "Dialoge"
-  def summary, do: "modal, confirm_dialog, popover, disclosure, tooltip"
+  def summary, do: "modal, title_input, confirm_dialog, popover, pick_list, disclosure, tooltip"
 
   def render(assigns) do
     ~H"""
@@ -44,6 +44,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </.button>
         <.button phx-click={show_modal("new-security")} aria-haspopup="dialog">
           Oben verankert, mit autofocus
+        </.button>
+        <.button phx-click={show_modal("category-trip")} aria-haspopup="dialog">
+          Titel zum Umbenennen, Toast im Dialog
         </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
@@ -168,6 +171,31 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           </.action_bar>
         </form>
       </.modal>
+      <.modal id="category-trip">
+        <:heading>
+          <form id="category-trip-name" phx-submit="rename_trip">
+            <.title_input
+              id="category-trip-title"
+              name="name"
+              value={@trip}
+              label="Name"
+              errors={if String.trim(@trip_typed) == "", do: ["Der Name fehlt."], else: []}
+              required
+              phx-blur="rename_trip"
+            />
+          </form>
+        </:heading>
+        <p class="py-4 text-sm">
+          Ziel <.amount value={60_000} /> bis Juli, diesen Monat fehlen <.amount value={6_000} />.
+        </p>
+        <.button id="category-trip-assign" phx-click={JS.push("toast", value: %{kind: "assigned"})}>
+          60,00 € zuweisen
+        </.button>
+        <p class="pt-3 text-sm text-base-content/70">
+          Der Name ist der Titel: Enter oder Verlassen speichert, Escape stellt ihn zurück. Der
+          Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
+        </p>
+      </.modal>
       <.long_choice id="long-choice" placement={:center} />
       <.long_choice id="long-choice-panel" placement={:end} />
       <.modal id="category-panel" title="Kategorie Lebensmittel" placement={:end}>
@@ -267,8 +295,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         Freier Inhalt an seinem Auslöser, meist ein kleines Formular; kein Menü. Liegt in der
         obersten Ebene (Popover-API) und entkommt so scrollenden Tabellen. Schließt bei Klick
         daneben, mit Escape und <code>hide_popover/1</code>; Escape gibt den Fokus zurück. Platziert
-        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Unter <code>sm</code>
-        ein Blatt von unten.
+        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Hat keine Seite
+        genug Platz, nimmt es die größere und scrollt innen. Unter <code>sm</code> ein Blatt von
+        unten.
       </:intro>
       <.demo title="Formular, align={:end}, position={:top}" class="flex flex-wrap gap-3">
         <.popover id="pop-rename" title="Kategorie umbenennen">
@@ -329,28 +358,72 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.popover
           :if={@cover}
           id="pop-cover"
-          title="Überzug decken"
+          title={"#{cover_need(@cover)} decken aus"}
           anchor={"cover-#{@cover}"}
           align={:end}
           show
+          layout={:list}
           on_cancel={JS.push("cover_closed")}
         >
-          <form id="pop-cover-form" class="grid gap-3" phx-submit="cover">
-            <.input
-              name="from"
-              id="pop-cover-from"
-              type="select"
-              label="Decken aus"
-              options={["Zu verteilen", "Urlaub", "Geschenke"]}
-              autofocus
-            />
-            <.button type="submit" size={:sm} variant={:primary} class="justify-self-end">
-              Decken
-            </.button>
-          </form>
+          <.pick_list id="pop-cover-sources">
+            <:group>
+              <.pick_item
+                id="pop-cover-free"
+                icon="inbox"
+                on_click={JS.push("cover", value: %{from: "Zu verteilen"})}
+                autofocus
+              >
+                Zu verteilen<:trailing><.amount value={60_000} tone /></:trailing>
+              </.pick_item>
+            </:group>
+            <:group>
+              <.pick_item
+                :for={{emoji, name, amount} <- cover_sources()}
+                id={"pop-cover-#{String.downcase(name)}"}
+                on_click={JS.push("cover", value: %{from: name})}
+              >
+                <:leading>{emoji}</:leading>{name}
+                <:trailing><.amount value={amount} /></:trailing>
+              </.pick_item>
+            </:group>
+          </.pick_list>
         </.popover>
         <:note>
           Der Betrag öffnet das Popover über den Server; es entkommt dem Rahmen der Tabelle.
+          <code>layout={:list}</code>
+          mit <code>&lt;.pick_list&gt;</code>: Karten, 36px-Zeilen
+          (44px auf Touch), Pfeiltasten; ein Eintrag deckt und zeigt einen Toast mit Rückgängig.
+        </:note>
+      </.demo>
+      <.demo title="Liste ohne Einträge (:empty)">
+        <.popover id="pop-empty" title="12,00 € decken aus" layout={:list}>
+          <:trigger>Decken</:trigger>
+          <.pick_list id="pop-empty-sources">
+            <:group :if={false}></:group>
+            <:empty>Kein Geld in „Zu verteilen“ oder anderen Kategorien.</:empty>
+          </.pick_list>
+        </.popover>
+        <:note>Ohne Gruppe steht der Text bündig mit den Labels der Zeilen.</:note>
+      </.demo>
+      <.demo title="Liste ohne Icons und Emojis">
+        <.popover id="pop-plain" title="20,00 € decken aus" layout={:list}>
+          <:trigger>Decken</:trigger>
+          <.pick_list id="pop-plain-sources">
+            <:group>
+              <.pick_item
+                :for={{name, amount} <- [{"Handy", 4_015}, {"Abos", 2_303}, {"Bücher", 1_250}]}
+                id={"pop-plain-#{String.downcase(name)}"}
+                on_click={hide_popover("pop-plain")}
+              >
+                <:leading>{nil}</:leading>{name}
+                <:trailing><.amount value={amount} /></:trailing>
+              </.pick_item>
+            </:group>
+          </.pick_list>
+        </.popover>
+        <:note>
+          Hat keine Zeile ein Icon oder Emoji (ein leeres <code>:leading</code> zählt nicht), fällt
+          die Spalte weg; Titel und Trennlinien beginnen beim Text.
         </:note>
       </.demo>
     </.showcase>
@@ -465,6 +538,17 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </.form>
     </.modal>
 
+    <%!-- a name edited in place as the title; the field's id names the dialog --%>
+    <.modal id="category">
+      <:heading>
+        <form phx-submit="rename">
+          <.title_input id="category-title" name="name" value={@category.name} label="Name"
+                        errors={@name_errors} required phx-blur="rename" />
+        </form>
+      </:heading>
+      …
+    </.modal>
+
     <%!-- a form that grows as you type: held at the top from sm; focus on the autofocus field --%>
     <.modal id="new-security" title="Wertpapier hinzufügen" placement={:top}>
       <.segmented mode={:radio} field={@form[:by]} label="Hinzufügen per" … />
@@ -501,9 +585,24 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </form>
     </.popover>
 
-    <%!-- opened by the server at a cell elsewhere --%>
-    <.popover :if={@cover} id="cover" title="Überzug decken" anchor={"cover-#{@cover}"}
-              align={:end} show on_cancel={JS.push("cover_closed")}>…</.popover>
+    <%!-- opened by the server at a cell elsewhere, a pick list inside --%>
+    <.popover :if={@cover} id="cover" title="42,10 € decken aus" anchor={"cover-#{@cover}"}
+              align={:end} show layout={:list} on_cancel={JS.push("cover_closed")}>
+      <.pick_list id="cover-sources">
+        <:group>
+          <.pick_item icon="inbox" on_click={JS.push("cover", value: %{from: "free"})}>
+            Zu verteilen<:trailing><.amount value={@free} tone /></:trailing>
+          </.pick_item>
+        </:group>
+        <:group>
+          <.pick_item :for={c <- @sources} on_click={JS.push("cover", value: %{from: c.id})}>
+            <:leading>{c.emoji}</:leading>{c.name}
+            <:trailing><.amount value={c.available} /></:trailing>
+          </.pick_item>
+        </:group>
+        <:empty>Kein Geld in „Zu verteilen“ oder anderen Kategorien.</:empty>
+      </.pick_list>
+    </.popover>
     """
   end
 
@@ -524,6 +623,28 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
     """
+  end
+
+  defp cover_need(cell) do
+    {_, _, amount} = List.keyfind(cover_cells(), cell, 0)
+    Setzkasten.Format.money(-amount)
+  end
+
+  defp cover_sources do
+    [
+      {"🛟", "Notgroschen", 41_539},
+      {"🛒", "Lebensmittel", 37_325},
+      {"📈", "Sparplan", 15_000},
+      {"🏖️", "Urlaub", 12_030},
+      {"🧴", "Haushalt", 11_653},
+      {"👕", "Kleidung", 9_010},
+      {"🎄", "Weihnachten", 7_500},
+      {"⛽", "Tanken", 7_080},
+      {"🍕", "Restaurant", 5_150},
+      {nil, "Handy", 4_015},
+      {"🎧", "Abos", 2_303},
+      {"💡", "Strom", 600}
+    ]
   end
 
   defp cover_cells do

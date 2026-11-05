@@ -664,4 +664,180 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "li:last-child button", "aria-current") == nil
     refute "menu-active" in classes(doc, "li:last-child button")
   end
+
+  test "a pick list groups button rows into cards, with a leading slot once any row has one" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.pick_list id="sources">
+        <:group>
+          <.pick_item id="free" icon="inbox" on_click={JS.push("cover", value: %{from: "free"})}>
+            Zu verteilen<:trailing>60,00 €</:trailing>
+          </.pick_item>
+        </:group>
+        <:group>
+          <.pick_item id="trip" on_click="cover" phx-value-from="trip">
+            <:leading>🏖️</:leading>Urlaub<:trailing>120,30 €</:trailing>
+          </.pick_item>
+          <.pick_item id="phone" on_click="cover" disabled><:leading></:leading>Handy</.pick_item>
+        </:group>
+      </.pick_list>
+      """)
+
+    assert attr(doc, "#sources", "phx-hook") == "Setzkasten.Components.Navigation.PickList"
+    assert count(doc, "#sources > ul.setzkasten-pick-group[role=list]") == 2
+    assert count(doc, "ul > li > button.setzkasten-pick-item[type=button]") == 3
+    assert count(doc, "#free .setzkasten-pick-leading[aria-hidden=true] svg") == 1
+    # An empty :leading renders nothing at all, so the CSS sees it as :empty.
+    assert count(doc, "#phone .setzkasten-pick-leading:empty") == 1
+    assert text(doc, "#trip .setzkasten-pick-leading") == "🏖️"
+    assert text(doc, "#trip .setzkasten-pick-label") == "Urlaub"
+    assert text(doc, "#trip .setzkasten-pick-trailing") == "120,30 €"
+    assert count(doc, "#phone .setzkasten-pick-trailing") == 0
+    assert attr(doc, "#phone", "disabled") != nil
+    assert attr(doc, "#trip", "phx-value-from") == "trip"
+
+    assert [%{"event" => "cover", "value" => %{"from" => "free"}}] =
+             pushes(attr(doc, "#free", "phx-click"))
+
+    assert [%{"event" => "cover"}] = pushes(attr(doc, "#trip", "phx-click"))
+
+    doc = parse(~H|<.pick_list id="p">
+  <:group>
+    <.pick_item id="a">A</.pick_item>
+  </:group>
+</.pick_list>|)
+    assert count(doc, "#a .setzkasten-pick-leading:empty") == 1
+    assert attr(doc, "#a", "phx-click") == nil
+
+    hook = colocated_js("Setzkasten.Components.Navigation")
+    assert hook =~ ~s|const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]|
+    assert hook =~ ~s|this.el.querySelectorAll(".setzkasten-pick-item:not(:disabled)")|
+    # The arrows also work while the popover around the list holds focus.
+    assert hook =~ ~s|this.scope = this.el.closest("[popover]") \|\| this.el|
+    assert hook =~ "if (e.target !== this.scope && !this.el.contains(e.target)) return"
+    assert hook =~ ~s|this.scope.removeEventListener("keydown", this.onKey)|
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-pick-item \{[^}]*min-height: 2.25rem;/
+
+    assert css =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-pick-item \{\s*min-height: 2.75rem;/
+
+    # The hairline starts at the label, past the leading slot.
+    assert css =~
+             "inset-inline: calc(var(--setzkasten-pick-pad) + var(--setzkasten-pick-lead)) 0;"
+
+    # The slot collapses while no row has leading content, and keeps its width once one has.
+    assert css =~
+             ~r/\.setzkasten-pick-list:not\(:has\(\.setzkasten-pick-leading:not\(:empty\)\)\) \.setzkasten-pick-leading \{\s*display: none;/
+
+    assert css =~
+             ~r/:is\(\.setzkasten-pick-list, \.setzkasten-popover-list\):has\(\.setzkasten-pick-leading:not\(:empty\)\) \{\s*--setzkasten-pick-lead: calc\(1.25rem \+ var\(--setzkasten-pick-gap\)\);/
+
+    assert css =~ ~r/\.setzkasten-pick-trailing \{[^}]*font-variant-numeric: tabular-nums;/
+  end
+
+  test "a pick list's cards have a hairline on the light popover, where their tint alone is too faint" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/--setzkasten-popover-control: var\(--color-base-200\);\s*--setzkasten-pick-card-edge: color-mix\(in oklab, var\(--color-base-content\) 10%, transparent\);/
+
+    assert length(String.split(css, "--setzkasten-pick-card-edge: transparent;")) == 3
+
+    assert css =~
+             ~r/\.setzkasten-pick-group \{[^}]*outline: 1px solid var\(--setzkasten-pick-card-edge\);\s*outline-offset: -1px;/
+  end
+
+  test "a pick item pushes its event name to its phx-target" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.pick_list id="sources">
+        <:group>
+          <.pick_item id="trip" on_click="cover" phx-target={3} phx-value-from="trip">
+            Urlaub
+          </.pick_item>
+        </:group>
+      </.pick_list>
+      """)
+
+    assert [%{"event" => "cover", "target" => 3}] = pushes(attr(doc, "#trip", "phx-click"))
+    assert attr(doc, "#trip", "phx-target") == nil
+    assert attr(doc, "#trip", "phx-value-from") == "trip"
+  end
+
+  test "a pick list without groups shows its empty line in line with the labels" do
+    doc = parse(sources_list(%{sources: []}))
+    assert count(doc, "#sources ul") == 0
+    assert text(doc, "#sources > p.setzkasten-pick-empty") == "Kein Geld in anderen Kategorien."
+
+    doc = parse(sources_list(%{sources: ["Urlaub"]}))
+    assert count(doc, "#sources ul") == 1
+    assert count(doc, ".setzkasten-pick-empty") == 0
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-pick-empty \{\s*padding: 0.375rem var\(--setzkasten-pick-pad\);/
+  end
+
+  defp sources_list(assigns) do
+    ~H"""
+    <.pick_list id="sources">
+      <:group :if={@sources != []}>
+        <.pick_item :for={name <- @sources}>{name}</.pick_item>
+      </:group>
+      <:empty>Kein Geld in anderen Kategorien.</:empty>
+    </.pick_list>
+    """
+  end
+
+  test "a dropdown item shows a subtitle and is dimmed, not red, while disabled" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="month" label="Monat">
+        <:trigger>…</:trigger>
+        <:item id="fill" icon="target" disabled subtitle="Zu verteilen ist leer">Füllen</:item>
+        <:item id="reset" icon="rotate-ccw" danger>Zurücksetzen</:item>
+        <:item id="off" danger disabled>Löschen</:item>
+      </.dropdown>
+      """)
+
+    assert text(doc, "#fill > span.grid > span:first-child") == "Füllen"
+    assert text(doc, "#fill > span.grid > span.text-xs") == "Zu verteilen ist leer"
+    assert "text-base-content/70" in classes(doc, "#fill span.text-xs")
+    assert count(doc, "#reset > span.grid") == 0
+    assert "text-error-ink" in classes(doc, "#reset")
+    refute "text-error-ink" in classes(doc, "#off")
+
+    menu = classes(doc, "#month > ul")
+    assert Enum.all?(["w-max", "min-w-56", "max-w-[min(20rem,calc(100vw-2rem))]"], &(&1 in menu))
+    refute "w-56" in menu
+
+    hook = colocated_js("Setzkasten.Components.Navigation")
+    assert hook =~ "const GUTTER = 16"
+    assert hook =~ ~s|this.el.addEventListener("toggle", () => this.fit())|
+    assert hook =~ "const left = this.el.getBoundingClientRect().left + menu.offsetLeft"
+    # A closing menu keeps its shift through the exit transition.
+    assert hook =~
+             ~r/if \(!menu \|\| !this.el.open\) return\s*menu.style.removeProperty\("transform"\)/
+
+    assert hook =~ "updated() { this.fit() }"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.menu \.menu-disabled \{\s*color: color-mix\(in oklab, var\(--color-base-content\) 50%, transparent\);/
+  end
+
+  test "an open ghost trigger keeps a fill in both themes" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.btn-ghost:is\(\[aria-expanded="true"\], details\[open\] > summary\),\s*\.setzkasten-popover-root:has\(> \.setzkasten-popover:popover-open\) > \.btn-ghost\[popovertarget\] \{\s*--btn-bg: color-mix\(in oklab, currentColor 12%, transparent\);/
+  end
 end

@@ -34,6 +34,8 @@ defmodule Setzkasten.Dev.CatalogLive do
        deleted: 0,
        level: 0,
        cover: nil,
+       trip: "🏖️ Urlaub",
+       trip_typed: "🏖️ Urlaub",
        picked: [],
        sort: "date",
        basket: @basket,
@@ -131,7 +133,28 @@ defmodule Setzkasten.Dev.CatalogLive do
     {:noreply,
      socket
      |> assign(cover: nil)
-     |> put_flash(:info, "Gedeckt (Demo) aus „#{from}“.")}
+     |> put_toast("Aus „#{from}“ gedeckt (Demo).",
+       action: "Rückgängig",
+       on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "uncovered"})
+     )}
+  end
+
+  def handle_event("rename_trip", params, socket) do
+    name = String.trim(params["name"] || params["value"] || "")
+
+    cond do
+      name == "" ->
+        {:noreply, assign(socket, trip_typed: "")}
+
+      name == socket.assigns.trip ->
+        {:noreply, assign(socket, trip_typed: name)}
+
+      true ->
+        {:noreply,
+         socket
+         |> assign(trip: name, trip_typed: name)
+         |> put_toast("Umbenannt in „#{name}“ (Demo).")}
+    end
   end
 
   def handle_event("import", %{"import" => %{"file" => file}} = params, socket) do
@@ -164,6 +187,20 @@ defmodule Setzkasten.Dev.CatalogLive do
        on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "undone"})
      )}
   end
+
+  def handle_event("toast", %{"kind" => "assigned"}, socket) do
+    {:noreply,
+     put_toast(socket, "60,00 € „Urlaub“ zugewiesen (Demo).",
+       action: "Rückgängig",
+       on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "unassigned"})
+     )}
+  end
+
+  def handle_event("toast", %{"kind" => "unassigned"}, socket),
+    do: {:noreply, put_toast(socket, "Zuweisen rückgängig gemacht (Demo).")}
+
+  def handle_event("toast", %{"kind" => "uncovered"}, socket),
+    do: {:noreply, put_toast(socket, "Decken rückgängig gemacht (Demo).")}
 
   def handle_event("toast", %{"kind" => "undone"}, socket),
     do: {:noreply, put_toast(socket, "Bananen wieder auf der Liste")}

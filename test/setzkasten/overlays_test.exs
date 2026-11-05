@@ -26,6 +26,71 @@ defmodule Setzkasten.OverlaysTest do
     assert count(doc, ".modal-action .btn") == 1
   end
 
+  test "a modal's title can be a name edited in place, which names the dialog" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="category">
+        <:heading>
+          <form phx-submit="rename">
+            <.title_input
+              id="category-title"
+              name="name"
+              value="Urlaub"
+              label="Name"
+              errors={["Der Name fehlt."]}
+              required
+              phx-blur="rename"
+            />
+          </form>
+        </:heading>
+        Body
+      </.modal>
+      """)
+
+    assert attr(doc, "dialog", "aria-labelledby") == "category-title"
+    assert count(doc, ".setzkasten-modal-head h2") == 0
+    assert count(doc, ".setzkasten-modal-head .setzkasten-title-input input#category-title") == 1
+
+    input = "input#category-title"
+    assert attr(doc, input, "value") == "Urlaub"
+    assert attr(doc, input, "data-saved") == "Urlaub"
+    assert attr(doc, input, "name") == "name"
+    assert attr(doc, input, "phx-blur") == "rename"
+    assert attr(doc, input, "required") != nil
+    assert attr(doc, input, "phx-hook") == "Setzkasten.Components.Overlays.TitleInput"
+    assert attr(doc, input, "aria-invalid") == "true"
+    assert attr(doc, input, "aria-describedby") == "category-title-error-0"
+    assert text(doc, "label.sr-only[for=category-title]") == "Name"
+    assert text(doc, "#category-title-error-0") == "Der Name fehlt."
+
+    form = to_form(%{"name" => "Reise"}, as: :category)
+    assigns = %{form: form}
+    doc = parse(~H|<.title_input field={@form[:name]} label="Name" />|)
+    assert attr(doc, "input#category_name", "value") == "Reise"
+    assert attr(doc, "input#category_name", "name") == "category[name]"
+    assert attr(doc, "input#category_name", "aria-invalid") == nil
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    # Escape puts the saved name back and keeps the dialog open, unless nothing changed.
+    assert hook =~
+             ~s|if (e.key !== "Escape" \|\| this.el.value === this.el.dataset.saved) return|
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.25rem;/
+    # The fill hangs into the gutter, so the text lines up with the column.
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input \{[^}]*margin-inline: calc\(-1 \* var\(--setzkasten-title-pad\)\);[^}]*padding-inline: calc\(var\(--setzkasten-title-pad\) - var\(--border, 1px\)\);/
+
+    # A faint fill at rest shows that it can be edited, a stronger one on hover and focus.
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input \{[^}]*background-color: color-mix\(in oklab, var\(--color-base-content\) 5%, transparent\);/
+
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input:is\(:hover, :focus\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 9%, transparent\);/
+  end
+
   test "a scrolling dialog focuses its first field, not the box" do
     hook = colocated_js("Setzkasten.Components.Overlays")
     assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
@@ -43,11 +108,15 @@ defmodule Setzkasten.OverlaysTest do
     assert hook =~
              ~s|const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches|
 
+    # As does a dialog whose title is a name edited in place, so the name is not focused from the start.
     assert hook =~
-             ~s|if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")|
+             ~s|const itself = sheet \|\| !!this.el.querySelector(".setzkasten-modal-head .setzkasten-title-input")|
 
     assert hook =~
-             ~r/if \(asked\) asked.focus\(\)\s*else if \(sheet\) this.el.focus\(\)/
+             ~s|if (itself && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")|
+
+    assert hook =~
+             ~r/if \(asked\) asked.focus\(\)\s*else if \(itself\) this.el.focus\(\)/
   end
 
   test "a top-anchored modal is the bottom sheet on phones and held at the top from sm" do
@@ -82,6 +151,15 @@ defmodule Setzkasten.OverlaysTest do
 
     assert css =~
              ~r/:is\(\.modal-start, \.modal-end\) > \.modal-box:not\(\.setzkasten-sidebar\) \{\s*border-bottom: env\(safe-area-inset-bottom\) solid transparent;/
+  end
+
+  test "a side panel draws no hairline along the screen's edge" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.modal-start > \.modal-box \{\s*border-inline-start-width: 0;/
+    assert css =~ ~r/\.modal-end > \.modal-box \{\s*border-inline-end-width: 0;/
+
+    assert css =~
+             ~r/@media \(width < 40rem\) \{\s*:is\(\.modal-start, \.modal-end\) > \.modal-box \{\s*border-inline-width: 0;/
   end
 
   test "side panel placement and server-driven show" do
@@ -473,7 +551,7 @@ defmodule Setzkasten.OverlaysTest do
              ~r/\} else \{\s*this.stopTracking\(\)\s*if \(!this.el.hasAttribute\("data-suspended"\)\) this.returnFocus\(\)\s*\}/
 
     assert hook =~ ~s|CSS.supports("anchor-scope: all")|
-    assert hook =~ ~s|(NATIVE && !this.el.hasAttribute("data-anchor"))|
+    assert hook =~ ~s|const native = NATIVE && !this.el.hasAttribute("data-anchor")|
     # A click on the anchor of an open popover closes it and does not reopen it.
     assert hook =~ ~s|if (anchor && anchor.contains(e.target)) this.swallow = e.timeStamp|
     assert hook =~ ~s|document.addEventListener("click", this.onClick, true)|
@@ -548,5 +626,93 @@ defmodule Setzkasten.OverlaysTest do
   test "the page keeps its scrollbar's room, so an open modal shifts nothing" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/@layer utilities\.setzkasten \{\s*:root \{\s*scrollbar-gutter: stable;/
+  end
+
+  test "a popover that fits neither side takes the larger one and scrolls inside" do
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    # The content's full height, also while a max-height clips it.
+    assert hook =~
+             "const height = this.el.scrollHeight + this.el.offsetHeight - this.el.clientHeight"
+
+    assert hook =~
+             "if (native && (height <= below || height <= above) && starts.some(inside)) return reset()"
+
+    assert hook =~ "height > below && (height <= above || above > below)"
+    assert hook =~ "height <= above || (height > below && above >= below)"
+    assert hook =~ ~s|this.js().setAttribute(this.el, "data-placed", "")|
+    assert hook =~ "style.maxHeight = `${room}px`"
+    # As native flip-inline: the other edge when it keeps the panel inside the window.
+    assert hook =~ "const start = starts.find(inside) ?? starts[0]"
+    assert hook =~ "Math.max(EDGE, Math.min(start, vw - width - EDGE))"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    # The hook's placement replaces anchor positioning, which would keep the panel below.
+    assert css =~
+             ~r/\.setzkasten-popover:not\(\[data-anchor\], \[data-placed\]\) \{\s*position-anchor/
+  end
+
+  test "a list popover narrows its padding and quiets its title in line with the row labels" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.popover id="cover" title="50,00 € decken aus" anchor="cell" layout={:list}>
+        <.pick_list id="sources">
+          <:group>
+            <.pick_item>Urlaub</.pick_item>
+          </:group>
+        </.pick_list>
+      </.popover>
+      """)
+
+    assert "setzkasten-popover-list" in classes(doc, "#cover")
+
+    assert Enum.all?(
+             ~w(setzkasten-popover-list-title text-base-content/70),
+             &(&1 in classes(doc, "#cover-title"))
+           )
+
+    refute "mb-3" in classes(doc, "#cover-title")
+    assert attr(doc, "#cover", "aria-labelledby") == "cover-title"
+
+    doc = parse(~H|<.popover id="p" title="Farbe" anchor="cell">x</.popover>|)
+    refute "setzkasten-popover-list" in classes(doc, "#p")
+    assert "mb-3" in classes(doc, "#p-title")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-popover-list \{\s*padding: 0.5rem;/
+    # The title starts where the labels do: past the card's padding and the leading slot, if any.
+    assert css =~
+             ~r/\.setzkasten-pick-list,\s*\.setzkasten-popover-list \{\s*--setzkasten-pick-pad/
+
+    assert css =~
+             ~r/\.setzkasten-popover-list-title \{\s*padding-inline: calc\(var\(--setzkasten-pick-pad\) \+ var\(--setzkasten-pick-lead\)\) var\(--setzkasten-pick-pad\);/
+  end
+
+  test "opened with a pointer, a popover holds focus itself instead of ringing an autofocus button" do
+    assigns = %{}
+    doc = parse(~H|<.popover id="p" anchor="cell">x</.popover>|)
+    assert attr(doc, "#p", "tabindex") == "-1"
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ ~s|document.addEventListener("pointerdown", () => { pointed = true }, true)|
+    assert hook =~ ~s|document.addEventListener("keydown", () => { pointed = false }, true)|
+    assert hook =~ ~s|if (active.matches(TYPED) \|\| !active.matches(":focus-visible")) return|
+
+    assert hook =~
+             ~r/this.el.showPopover\(\{ source: this.anchor\(\) \|\| undefined \}\)\s*this.quietFocus\(\)/
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-popover:focus-visible \{\s*outline: none;/
+  end
+
+  test "on phones a list popover is a half-height sheet over a page that holds still" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media \(width < 40rem\) \{\s*\.setzkasten-popover-list\[popover\] \{\s*max-height: 50dvh;[^}]*overscroll-behavior: contain;/
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-popover\[popover\]:popover-open\) \{\s*overflow: hidden;/
   end
 end

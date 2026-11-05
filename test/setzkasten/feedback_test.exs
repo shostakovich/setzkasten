@@ -153,7 +153,7 @@ defmodule Setzkasten.FeedbackTest do
              Phoenix.Flash.get(conn.assigns.flash, :toast)
   end
 
-  test "an action toast: neutral surface, its text and one ghost action, no ✕" do
+  test "an action toast: neutral surface, its text and one primary ghost action, no ✕" do
     assigns = %{
       flash: %{
         "toast" => %{
@@ -178,7 +178,12 @@ defmodule Setzkasten.FeedbackTest do
     assert count(doc, "#{toast} button") == 1
     assert text(doc, "#{toast} button") == "Rückgängig"
     assert attr(doc, "#{toast} button", "aria-label") == nil
-    assert Enum.all?(~w(btn btn-ghost btn-sm), &(&1 in classes(doc, "#{toast} button")))
+
+    assert Enum.all?(
+             ~w(btn btn-ghost btn-sm text-primary),
+             &(&1 in classes(doc, "#{toast} button"))
+           )
+
     assert text(doc, "#{toast} p") == "Bananen abgehakt"
 
     click = attr(doc, "#{toast} button", "phx-click")
@@ -307,6 +312,36 @@ defmodule Setzkasten.FeedbackTest do
 
     doc = parse(~H|<.flash_group flash={@flash} close_label="Close" />|)
     assert attr(doc, "#client-error button", "aria-label") == "Close"
+  end
+
+  test "the toast stack moves into the topmost open modal and back, so its actions stay usable" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.flash_group flash={%{}} />
+      <.modal id="category" title="Urlaub">…</.modal>
+      <.confirm_dialog />
+      """)
+
+    assert attr(doc, "#flash-group", "phx-hook") == "Setzkasten.Components.Feedback.FlashGroup"
+
+    # An ignored host: a patch of the dialog alone leaves the moved stack in place.
+    for id <- ~w(category-toasts confirm-delete-toasts) do
+      assert attr(doc, "dialog > ##{id}.setzkasten-modal-toasts", "phx-update") == "ignore"
+    end
+
+    hook = colocated_js("Setzkasten.Components.Feedback")
+    assert hook =~ ~s|document.addEventListener("setzkasten:modal-open", this.onOpen)|
+    assert hook =~ ~s|dialog.querySelector(":scope > .setzkasten-modal-toasts")|
+    assert hook =~ "this.homing.observe(this.home, { childList: true })"
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ ~r/this.el.showModal\(\)\s*this.announce\("open"\)/
+    assert hook =~ ~r/this.returnFocus\(\)\s*this.announce\("close"\)/
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-modal-toasts \{\s*display: contents;/
   end
 
   test "badge with dot by default, solid for alarms" do

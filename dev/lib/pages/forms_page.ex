@@ -7,7 +7,8 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
   def title, do: "Formulare"
 
   def summary,
-    do: "input, combobox, file_drop, field_error, field_help, action_bar, Formular mit Fehlern"
+    do:
+      "input, combobox, file_drop, field_error, field_help, error_bubble, action_bar, Formular mit Fehlern"
 
   @initial %{
     "title" => "",
@@ -205,14 +206,16 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
 
     <.showcase
       id="field-error"
-      name="<.field_error>, <.field_help>"
+      name="<.field_error>, <.field_help>, <.error_bubble>"
       title="Fehler und Hinweis für eigene Felder"
       code={code(2)}
     >
       <:intro>
         Fehler- und Hinweiszeilen wie bei <code>&lt;.input&gt;</code>
         für Felder, die keins sind (Datei-Upload, eigene Auswahl). <code>field_describedby/3</code>
-        verknüpft sie mit dem Feld.
+        verknüpft sie mit dem Feld. <code>&lt;.error_bubble&gt;</code>
+        zeigt den Fehler eines
+        dichten Felds (Tabellenzelle) sofort als Blase daran.
       </:intro>
       <.demo
         title="Zeitraum in einer Zeile: sichtbare Labels, Feld und Button enden unten bündig"
@@ -250,6 +253,39 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
           </.field_help>
         </fieldset>
         <:note>Icon und Text in Grundfarbe: Gelb ist als Schrift zu schwach.</:note>
+      </.demo>
+      <.demo title="Fehlerblase an einem Feld in einer scrollenden Tabelle" class="max-w-md">
+        <div class="max-h-40 overflow-auto rounded-box border border-base-content/10">
+          <table class="table table-sm">
+            <thead class="sticky top-0 z-10 bg-base-100">
+              <tr>
+                <th>Kategorie</th>
+                <th class="text-end">Zugewiesen</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={{id, label, value, errors} <- bubble_cells()}>
+                <td>{label}</td>
+                <td class="w-32">
+                  <input
+                    id={id}
+                    class={["input input-sm text-end tabular-nums", errors != [] && "input-error"]}
+                    value={value}
+                    inputmode="decimal"
+                    aria-label={"#{label}, zugewiesen"}
+                    aria-invalid={errors != [] && "true"}
+                    aria-describedby={field_describedby(id, errors, nil)}
+                  />
+                  <.error_bubble id={id} errors={errors} align={:end} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <:note>
+          In der obersten Ebene, so schneidet die Tabelle sie nicht ab; verschwindet, wenn das
+          Feld aus der Tabelle oder dem Fenster scrollt oder unter dem Tabellenkopf liegt.
+        </:note>
       </.demo>
     </.showcase>
 
@@ -599,6 +635,12 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     </fieldset>
     <.field_error field={@form[:receipt]} />
     <.field_help id={@uploads.receipt.ref} tone={:warning}>Scan ist unscharf</.field_help>
+
+    <%!-- a dense field in a table cell --%>
+    <input id="assign-food" class="input input-sm" value={@typed}
+      aria-invalid={@errors != [] && "true"}
+      aria-describedby={field_describedby("assign-food", @errors, nil)} />
+    <.error_bubble id="assign-food" errors={@errors} align={:end} />
     """
   end
 
@@ -613,5 +655,16 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       <.button type="submit" variant={:primary} phx-disable-with="Speichert …">Speichern</.button>
     </.action_bar>
     """
+  end
+
+  defp bubble_cells do
+    [
+      {"bubble-food", "Lebensmittel", "350,00", []},
+      {"bubble-fuel", "Tanken", "60*2",
+       ["„60*2“ ist kein gültiger Betrag.\nRechnen geht mit + und −, etwa 50+20."]},
+      {"bubble-gifts", "Geschenke", "25,00", []},
+      {"bubble-drugstore", "Drogerie", "40,00", []},
+      {"bubble-clothes", "Kleidung", "80,00", []}
+    ]
   end
 end

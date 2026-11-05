@@ -267,7 +267,7 @@ defmodule Setzkasten.Components.Feedback do
       <button
         :if={@toast.action}
         type="button"
-        class="btn btn-ghost btn-sm -my-1.5 -me-2 shrink-0"
+        class="btn btn-ghost btn-sm -my-1.5 -me-2 shrink-0 text-primary"
         phx-click={clear_flash(:toast, @toast.id) |> JS.concat(click_js(@toast.on_action, nil))}
       >
         {@toast.action}
@@ -300,7 +300,7 @@ defmodule Setzkasten.Components.Feedback do
   @doc """
   A toast for a done action, from a LiveView or a controller (`Plug.Conn`): `message`, and
   with `action` (its label) and `on_action` (an event name for the LiveView, or a `%JS{}`) one
-  ghost button at its end that closes the toast and runs `on_action` (a toast that `on_action`
+  ghost button in the primary colour at its end that closes the toast and runs `on_action` (a toast that `on_action`
   puts stays). `<.flash_group>` shows it at the bottom on the popover surface; it closes itself
   after 5 s (paused while the pointer is over it or focus is inside). It is a flash (key
   `:toast`), so it survives a `push_navigate` or redirect; a newer toast replaces it, and
@@ -332,7 +332,9 @@ defmodule Setzkasten.Components.Feedback do
 
   @doc """
   All flashes of a page in one toast stack at the bottom, in a polite live region: info, error,
-  the toast of `put_toast/3`, and the connection-lost messages.
+  the toast of `put_toast/3`, and the connection-lost messages. While a `<.modal>` or
+  `<.confirm_dialog>` is open, the stack moves into the topmost one, so its toasts stay usable
+  (the page outside a modal dialog is inert).
 
       <.flash_group flash={@flash} />
   """
@@ -349,6 +351,7 @@ defmodule Setzkasten.Components.Feedback do
       id={@id}
       aria-live="polite"
       class={toast_class()}
+      phx-hook=".FlashGroup"
     >
       <.flash_alert id="flash-info" kind={:info} msg={@flash["info"]} close_label={@close_label} />
       <.flash_alert id="flash-error" kind={:error} msg={@flash["error"]} close_label={@close_label} />
@@ -378,6 +381,40 @@ defmodule Setzkasten.Components.Feedback do
         <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
     </div>
+    <script :type={ColocatedHook} name=".FlashGroup">
+      export default {
+        mounted() {
+          this.home = this.el.parentNode
+          this.dialogs = [...document.querySelectorAll("dialog:modal")]
+          this.onOpen = (e) => {
+            this.dialogs = [...this.dialogs.filter((d) => d !== e.detail), e.detail]
+            this.place()
+          }
+          this.onClose = (e) => {
+            this.dialogs = this.dialogs.filter((d) => d !== e.detail)
+            this.place()
+          }
+          document.addEventListener("setzkasten:modal-open", this.onOpen)
+          document.addEventListener("setzkasten:modal-close", this.onClose)
+          // A patch of the page moves the stack back to its place there.
+          this.homing = new MutationObserver(() => this.place())
+          this.homing.observe(this.home, { childList: true })
+          this.place()
+        },
+        destroyed() {
+          document.removeEventListener("setzkasten:modal-open", this.onOpen)
+          document.removeEventListener("setzkasten:modal-close", this.onClose)
+          this.homing.disconnect()
+        },
+        place() {
+          const dialog = this.dialogs.filter((d) => d.isConnected && d.open).at(-1)
+          const host = dialog
+            ? dialog.querySelector(":scope > .setzkasten-modal-toasts") || dialog
+            : this.home
+          if (this.el.parentNode !== host && host.isConnected) host.appendChild(this.el)
+        }
+      }
+    </script>
     """
   end
 
