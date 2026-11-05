@@ -552,6 +552,8 @@ defmodule Setzkasten.Components.Navigation do
           })
           this.el.addEventListener("toggle", () => this.fit())
         },
+        // A patch drops the menu's style attribute.
+        updated() { this.fit() },
         // Layout offsets, not the bounding box: the enter animation scales and moves the menu.
         fit() {
           const menu = this.el.querySelector(":scope > .dropdown-content")

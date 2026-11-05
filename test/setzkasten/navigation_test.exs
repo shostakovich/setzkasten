@@ -763,6 +763,8 @@ defmodule Setzkasten.NavigationTest do
     assert hook =~
              ~r/if \(!menu \|\| !this.el.open\) return\s*menu.style.removeProperty\("transform"\)/
 
+    assert hook =~ "updated() { this.fit() }"
+
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
     assert css =~
