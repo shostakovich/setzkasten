@@ -34,6 +34,8 @@ defmodule Setzkasten.Dev.CatalogLive do
        deleted: 0,
        level: 0,
        cover: nil,
+       trip: "🏖️ Urlaub",
+       trip_typed: "🏖️ Urlaub",
        picked: [],
        sort: "date",
        basket: @basket,
@@ -135,6 +137,24 @@ defmodule Setzkasten.Dev.CatalogLive do
        action: "Rückgängig",
        on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "uncovered"})
      )}
+  end
+
+  def handle_event("rename_trip", params, socket) do
+    name = String.trim(params["name"] || params["value"] || "")
+
+    cond do
+      name == "" ->
+        {:noreply, assign(socket, trip_typed: "")}
+
+      name == socket.assigns.trip ->
+        {:noreply, assign(socket, trip_typed: name)}
+
+      true ->
+        {:noreply,
+         socket
+         |> assign(trip: name, trip_typed: name)
+         |> put_toast("Umbenannt in „#{name}“ (Demo).")}
+    end
   end
 
   def handle_event("import", %{"import" => %{"file" => file}} = params, socket) do

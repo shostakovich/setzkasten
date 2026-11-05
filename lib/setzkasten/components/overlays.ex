@@ -13,6 +13,7 @@ defmodule Setzkasten.Components.Overlays do
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
+  import Setzkasten.Components.Forms, only: [field_error: 1, field_describedby: 3]
 
   @doc """
   Opens the modal `id` (`<.modal>` or `<.confirm_dialog>`).
@@ -99,6 +100,9 @@ defmodule Setzkasten.Components.Overlays do
   on-screen keyboard comes up; from `sm` and in side panels it goes to the first control, as
   the browser does.
 
+  The `:heading` slot takes the title as markup in place of `title`, e.g. a `title_input/1`
+  (a name edited in place) with the id `<id>-title`, which then names the dialog.
+
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
   stays closed until `show` turns `true` again.
@@ -122,6 +126,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :rest, :global
   slot :inner_block
   slot :actions
+  slot :heading, doc: "the title as markup in place of `title`, e.g. a `title_input/1`"
 
   def modal(assigns) do
     assigns =
@@ -132,7 +137,7 @@ defmodule Setzkasten.Components.Overlays do
       id={@id}
       class={["modal", placement_class(@placement)]}
       tabindex="-1"
-      aria-labelledby={@title && "#{@id}-title"}
+      aria-labelledby={(@title || @heading != []) && "#{@id}-title"}
       phx-hook=".Modal"
       phx-mounted={JS.ignore_attributes(["open"])}
       data-show={show_attr(@show)}
@@ -145,15 +150,20 @@ defmodule Setzkasten.Components.Overlays do
         @class
       ]}>
         <div
-          :if={@title || @close?}
+          :if={@title || @heading != [] || @close?}
           class={[
             "setzkasten-modal-head flex items-start justify-between gap-2",
             "sticky -top-6 z-30 -mx-6 -mt-6 bg-inherit px-6 pt-6"
           ]}
         >
-          <h2 :if={@title} id={"#{@id}-title"} class="min-w-0 text-lg font-semibold wrap-anywhere">
+          <h2
+            :if={@title && @heading == []}
+            id={"#{@id}-title"}
+            class="min-w-0 text-lg font-semibold wrap-anywhere"
+          >
             {@title}
           </h2>
+          <div :if={@heading != []} class="min-w-0 flex-1">{render_slot(@heading)}</div>
           <form :if={@close?} method="dialog" class="ms-auto">
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
@@ -312,6 +322,85 @@ defmodule Setzkasten.Components.Overlays do
           document.addEventListener("pointerdown", stop, true)
           this.unwatch = stop
           check()
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
+  A name edited in place as the title of a `<.modal>` (its `:heading` slot) or sheet: a text
+  field set like the title, its frame showing on hover and focus. Give it the id `<modal
+  id>-title`, so its value names the dialog; `label` names the field itself for screen readers
+  (e.g. "Name"). Escape puts back the saved `value` and keeps the dialog open; once the value
+  is the saved one, Escape closes the dialog. Saving is the app's: `phx-blur` on the field and
+  `phx-submit` (Enter) on its form. Errors show under it, as `input/1`'s do; `field` works as
+  there.
+
+      <.modal id="category" show={@open} on_cancel={JS.push("close")}>
+        <:heading>
+          <form phx-submit="rename">
+            <.title_input id="category-title" name="name" value={@category.name} label="Name"
+                          errors={@name_errors} required phx-blur="rename" />
+          </form>
+        </:heading>
+        …
+      </.modal>
+  """
+  attr :id, :string, default: nil
+  attr :name, :string
+  attr :value, :any
+  attr :field, Phoenix.HTML.FormField, doc: "a form field, e.g. `@form[:name]`"
+  attr :label, :string, required: true, doc: "the field's name for screen readers"
+  attr :errors, :list, default: []
+  attr :rest, :global, include: ~w(disabled form maxlength minlength pattern placeholder required)
+
+  def title_input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id, errors: errors)
+    |> assign_new(:name, fn -> field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> title_input()
+  end
+
+  def title_input(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:value, fn -> nil end)
+      |> assign_new(:name, fn -> assigns.id end)
+      |> assign(:value, Phoenix.HTML.Form.normalize_value("text", assigns[:value]))
+
+    ~H"""
+    <div class="setzkasten-title-input">
+      <label for={@id} class="sr-only">{@label}</label>
+      <input
+        type="text"
+        id={@id}
+        name={@name}
+        value={@value}
+        class={["input", @errors != [] && "input-error"]}
+        autocomplete="off"
+        enterkeyhint="done"
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={field_describedby(@id, @errors, nil)}
+        data-saved={@value}
+        phx-hook=".TitleInput"
+        {@rest}
+      />
+      <.field_error id={@id} errors={@errors} />
+    </div>
+    <script :type={ColocatedHook} name=".TitleInput">
+      export default {
+        mounted() {
+          this.el.addEventListener("keydown", (e) => {
+            if (e.key !== "Escape" || this.el.value === this.el.dataset.saved) return
+            e.preventDefault()
+            e.stopPropagation()
+            // While a save waits for its reply, data-saved is not yet the value being saved.
+            if (!this.el.form?.classList.contains("phx-submit-loading")) this.el.value = this.el.dataset.saved
+          })
         }
       }
     </script>

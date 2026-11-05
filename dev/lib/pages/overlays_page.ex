@@ -6,7 +6,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
   alias Phoenix.LiveView.JS
 
   def title, do: "Dialoge"
-  def summary, do: "modal, confirm_dialog, popover, pick_list, disclosure, tooltip"
+  def summary, do: "modal, title_input, confirm_dialog, popover, pick_list, disclosure, tooltip"
 
   def render(assigns) do
     ~H"""
@@ -46,7 +46,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           Oben verankert, mit autofocus
         </.button>
         <.button phx-click={show_modal("category-trip")} aria-haspopup="dialog">
-          Toast im Dialog
+          Titel zum Umbenennen, Toast im Dialog
         </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
@@ -171,7 +171,20 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           </.action_bar>
         </form>
       </.modal>
-      <.modal id="category-trip" title="🏖️ Urlaub">
+      <.modal id="category-trip">
+        <:heading>
+          <form id="category-trip-name" phx-submit="rename_trip">
+            <.title_input
+              id="category-trip-title"
+              name="name"
+              value={@trip}
+              label="Name"
+              errors={if String.trim(@trip_typed) == "", do: ["Der Name fehlt."], else: []}
+              required
+              phx-blur="rename_trip"
+            />
+          </form>
+        </:heading>
         <p class="py-4 text-sm">
           Ziel <.amount value={60_000} /> bis Juli, diesen Monat fehlen <.amount value={6_000} />.
         </p>
@@ -179,7 +192,8 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           60,00 € zuweisen
         </.button>
         <p class="pt-3 text-sm text-base-content/70">
-          Der Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
+          Der Name ist der Titel: Enter oder Verlassen speichert, Escape stellt ihn zurück. Der
+          Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
         </p>
       </.modal>
       <.long_choice id="long-choice" placement={:center} />
@@ -501,6 +515,17 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           <.button type="submit" variant={:primary}>Anlegen</.button>
         </.action_bar>
       </.form>
+    </.modal>
+
+    <%!-- a name edited in place as the title; the field's id names the dialog --%>
+    <.modal id="category">
+      <:heading>
+        <form phx-submit="rename">
+          <.title_input id="category-title" name="name" value={@category.name} label="Name"
+                        errors={@name_errors} required phx-blur="rename" />
+        </form>
+      </:heading>
+      …
     </.modal>
 
     <%!-- a form that grows as you type: held at the top from sm; focus on the autofocus field --%>

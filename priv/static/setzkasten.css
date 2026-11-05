@@ -1133,6 +1133,28 @@
   --setzkasten-selection-top: calc(var(--setzkasten-bars-top) + 1rem + var(--setzkasten-selection-height, 3.5rem));
 }
 
+/* <.title_input>: the field is set as the modal's title, its text where the title's would be. */
+@layer utilities.setzkasten {
+  .setzkasten-title-input > .input {
+    width: calc(100% + 0.75rem + 1px);
+    height: auto;
+    margin-inline-start: calc(-0.75rem - 1px);
+    padding-block: 0.125rem;
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .setzkasten-title-input > .input:is(:hover, :focus) {
+    border-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+  }
+  .setzkasten-title-input > .input[aria-invalid="true"] {
+    border-color: var(--color-error-ink);
+  }
+}
+
 /* The toast stack moves into an open modal; there it takes no place in the dialog's grid. */
 @layer utilities.setzkasten {
   .setzkasten-modal-toasts {

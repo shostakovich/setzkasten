@@ -26,6 +26,65 @@ defmodule Setzkasten.OverlaysTest do
     assert count(doc, ".modal-action .btn") == 1
   end
 
+  test "a modal's title can be a name edited in place, which names the dialog" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="category">
+        <:heading>
+          <form phx-submit="rename">
+            <.title_input
+              id="category-title"
+              name="name"
+              value="Urlaub"
+              label="Name"
+              errors={["Der Name fehlt."]}
+              required
+              phx-blur="rename"
+            />
+          </form>
+        </:heading>
+        Body
+      </.modal>
+      """)
+
+    assert attr(doc, "dialog", "aria-labelledby") == "category-title"
+    assert count(doc, ".setzkasten-modal-head h2") == 0
+    assert count(doc, ".setzkasten-modal-head .setzkasten-title-input input#category-title") == 1
+
+    input = "input#category-title"
+    assert attr(doc, input, "value") == "Urlaub"
+    assert attr(doc, input, "data-saved") == "Urlaub"
+    assert attr(doc, input, "name") == "name"
+    assert attr(doc, input, "phx-blur") == "rename"
+    assert attr(doc, input, "required") != nil
+    assert attr(doc, input, "phx-hook") == "Setzkasten.Components.Overlays.TitleInput"
+    assert attr(doc, input, "aria-invalid") == "true"
+    assert attr(doc, input, "aria-describedby") == "category-title-error-0"
+    assert text(doc, "label.sr-only[for=category-title]") == "Name"
+    assert text(doc, "#category-title-error-0") == "Der Name fehlt."
+
+    form = to_form(%{"name" => "Reise"}, as: :category)
+    assigns = %{form: form}
+    doc = parse(~H|<.title_input field={@form[:name]} label="Name" />|)
+    assert attr(doc, "input#category_name", "value") == "Reise"
+    assert attr(doc, "input#category_name", "name") == "category[name]"
+    assert attr(doc, "input#category_name", "aria-invalid") == nil
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    # Escape puts the saved name back and keeps the dialog open, unless nothing changed.
+    assert hook =~
+             ~s|if (e.key !== "Escape" \|\| this.el.value === this.el.dataset.saved) return|
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    # Its text lines up where the plain title's would, the field's padding outside.
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input \{\s*width: calc\(100% \+ 0.75rem \+ 1px\);\s*height: auto;\s*margin-inline-start: calc\(-0.75rem - 1px\);/
+
+    assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.125rem;/
+  end
+
   test "a scrolling dialog focuses its first field, not the box" do
     hook = colocated_js("Setzkasten.Components.Overlays")
     assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
