@@ -78,11 +78,13 @@ defmodule Setzkasten.OverlaysTest do
              ~s|if (e.key !== "Escape" \|\| this.el.value === this.el.dataset.saved) return|
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
-    # Its text lines up where the plain title's would, the field's padding outside.
+    assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.25rem;/
+    # A faint fill at rest shows that it can be edited, a stronger one on hover and focus.
     assert css =~
-             ~r/\.setzkasten-title-input > \.input \{\s*width: calc\(100% \+ 0.75rem \+ 1px\);\s*height: auto;\s*margin-inline-start: calc\(-0.75rem - 1px\);/
+             ~r/\.setzkasten-title-input > \.input \{[^}]*background-color: color-mix\(in oklab, var\(--color-base-content\) 5%, transparent\);/
 
-    assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.125rem;/
+    assert css =~
+             ~r/\.setzkasten-title-input > \.input:is\(:hover, :focus\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 9%, transparent\);/
   end
 
   test "a scrolling dialog focuses its first field, not the box" do

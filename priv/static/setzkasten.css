@@ -1148,22 +1148,23 @@
   --setzkasten-selection-top: calc(var(--setzkasten-bars-top) + 1rem + var(--setzkasten-selection-height, 3.5rem));
 }
 
-/* <.title_input>: the field is set as the modal's title, its text where the title's would be. */
+/* <.title_input>: the field is the modal's title, a step above its headings, and a faint fill
+   shows at rest that it can be edited. */
 @layer utilities.setzkasten {
   .setzkasten-title-input > .input {
-    width: calc(100% + 0.75rem + 1px);
+    width: 100%;
     height: auto;
-    margin-inline-start: calc(-0.75rem - 1px);
-    padding-block: 0.125rem;
-    font-size: 1.125rem;
+    padding-block: 0.25rem;
+    font-size: 1.25rem;
     line-height: 1.75rem;
     font-weight: 600;
     border-color: transparent;
-    background-color: transparent;
+    background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
     box-shadow: none;
+    transition: background-color var(--setzkasten-duration-press) linear;
   }
   .setzkasten-title-input > .input:is(:hover, :focus) {
-    border-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 9%, transparent);
   }
   .setzkasten-title-input > .input[aria-invalid="true"] {
     border-color: var(--color-error-ink);
