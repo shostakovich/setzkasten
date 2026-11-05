@@ -661,7 +661,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     [
       {"bubble-food", "Lebensmittel", "350,00", []},
       {"bubble-fuel", "Tanken", "60*2",
-       ["„60*2“ ist kein gültiger Betrag. Rechnen geht mit + und −, etwa 50+20."]},
+       ["„60*2“ ist kein gültiger Betrag.\nRechnen geht mit + und −, etwa 50+20."]},
       {"bubble-gifts", "Geschenke", "25,00", []},
       {"bubble-drugstore", "Drogerie", "40,00", []},
       {"bubble-clothes", "Kleidung", "80,00", []}

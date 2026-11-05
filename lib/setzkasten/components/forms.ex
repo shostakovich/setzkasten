@@ -1109,7 +1109,9 @@ defmodule Setzkasten.Components.Forms do
   window or a scrolling box, or under something else such as a sticky header or a dialog. It
   follows the control when the page around it changes, and clicks pass through it to the cells
   under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned
-  amount; its text still reads from the start, in regular weight, whatever the cell sets.
+  amount; its text still reads from the start, in regular weight, whatever the cell sets. It
+  grows up to 22rem wide, and a line break in a message breaks the line there, e.g. between two
+  sentences.
 
   Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
   `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
@@ -1144,7 +1146,7 @@ defmodule Setzkasten.Components.Forms do
       phx-hook=".ErrorBubble"
     >
       <p :for={{msg, i} <- Enum.with_index(@messages)} id={"#{@id}-error-#{i}"} class="flex gap-1.5">
-        <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" />{upcase_first(msg)}
+        <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" /><span>{upcase_first(msg)}</span>
       </p>
     </div>
     <script :type={ColocatedHook} name=".ErrorBubble">

@@ -1804,7 +1804,7 @@
     inset: auto;
     margin: 0;
     width: max-content;
-    max-width: min(18rem, calc(100vw - 1rem));
+    max-width: min(22rem, calc(100vw - 1rem));
     padding: 0.375rem 0.625rem;
     color: var(--color-error-ink);
     background-color: var(--color-popover);
@@ -1817,6 +1817,9 @@
     white-space: normal;
     text-wrap: pretty;
     pointer-events: none;
+  }
+  .setzkasten-error-bubble p > span {
+    white-space: pre-line;
   }
 }
 

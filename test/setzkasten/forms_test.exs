@@ -1027,5 +1027,12 @@ defmodule Setzkasten.FormsTest do
     # Its sentences read from the start, whatever the cell around it sets.
     assert css =~
              ~r/\.setzkasten-error-bubble \{[^}]*font-weight: 400;[^}]*text-align: start;\s*white-space: normal;/
+
+    # Wide enough for a sentence a line, and a message breaks where it says so.
+    assert css =~
+             ~r/\.setzkasten-error-bubble \{[^}]*max-width: min\(22rem, calc\(100vw - 1rem\)\);/
+
+    assert css =~ ~r/\.setzkasten-error-bubble p > span \{\s*white-space: pre-line;/
+    assert count(doc, "#{bubble} #cell-error-0 > svg + span") == 1
   end
 end
