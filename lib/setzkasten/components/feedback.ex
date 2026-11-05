@@ -267,7 +267,7 @@ defmodule Setzkasten.Components.Feedback do
       <button
         :if={@toast.action}
         type="button"
-        class="btn btn-ghost btn-sm -my-1.5 -me-2 shrink-0"
+        class="btn btn-ghost btn-sm -my-1.5 -me-2 shrink-0 text-primary"
         phx-click={clear_flash(:toast, @toast.id) |> JS.concat(click_js(@toast.on_action, nil))}
       >
         {@toast.action}
@@ -300,7 +300,7 @@ defmodule Setzkasten.Components.Feedback do
   @doc """
   A toast for a done action, from a LiveView or a controller (`Plug.Conn`): `message`, and
   with `action` (its label) and `on_action` (an event name for the LiveView, or a `%JS{}`) one
-  ghost button at its end that closes the toast and runs `on_action` (a toast that `on_action`
+  ghost button in the primary colour at its end that closes the toast and runs `on_action` (a toast that `on_action`
   puts stays). `<.flash_group>` shows it at the bottom on the popover surface; it closes itself
   after 5 s (paused while the pointer is over it or focus is inside). It is a flash (key
   `:toast`), so it survives a `push_navigate` or redirect; a newer toast replaces it, and

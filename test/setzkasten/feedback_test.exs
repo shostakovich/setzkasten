@@ -153,7 +153,7 @@ defmodule Setzkasten.FeedbackTest do
              Phoenix.Flash.get(conn.assigns.flash, :toast)
   end
 
-  test "an action toast: neutral surface, its text and one ghost action, no ✕" do
+  test "an action toast: neutral surface, its text and one primary ghost action, no ✕" do
     assigns = %{
       flash: %{
         "toast" => %{
@@ -178,7 +178,12 @@ defmodule Setzkasten.FeedbackTest do
     assert count(doc, "#{toast} button") == 1
     assert text(doc, "#{toast} button") == "Rückgängig"
     assert attr(doc, "#{toast} button", "aria-label") == nil
-    assert Enum.all?(~w(btn btn-ghost btn-sm), &(&1 in classes(doc, "#{toast} button")))
+
+    assert Enum.all?(
+             ~w(btn btn-ghost btn-sm text-primary),
+             &(&1 in classes(doc, "#{toast} button"))
+           )
+
     assert text(doc, "#{toast} p") == "Bananen abgehakt"
 
     click = attr(doc, "#{toast} button", "phx-click")
