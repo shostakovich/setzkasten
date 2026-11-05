@@ -48,7 +48,7 @@ defmodule Setzkasten.FormsTest do
              ~r/\.fieldset:has\(> :is\(label, legend\)\.sr-only:first-child\) \{\s*padding-block: 0;/
   end
 
-  test "an identifier field: monospace capitals, no spell checking, as wide as its maxlength" do
+  test "an identifier field: monospace capitals, no spell checking, as wide as its size or maxlength" do
     assigns = %{}
 
     doc =
@@ -73,6 +73,20 @@ defmodule Setzkasten.FormsTest do
 
     assert attr(doc, "#iban", "size") == nil
     assert "setzkasten-identifier" in classes(doc, "#iban")
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" identifier size="13" />
+      <.input name="both" id="both" label="ISIN" identifier size="13" maxlength="20" />
+      <.input name="plain" id="plain" label="Name" size="8" />
+      """)
+
+    assert attr(doc, "#isin", "size") == "13"
+    assert "w-auto" in classes(doc, "#isin")
+    assert attr(doc, "#isin", "maxlength") == nil
+    assert attr(doc, "#both", "size") == "13"
+    assert attr(doc, "#plain", "size") == "8"
+    assert "w-full" in classes(doc, "#plain")
 
     doc = parse(~H|<.identifier class="text-xs">IE00BK5BQT80</.identifier>|)
     assert classes(doc, "span") == ~w(setzkasten-identifier text-xs)
@@ -216,7 +230,7 @@ defmodule Setzkasten.FormsTest do
     assert attr(doc, "input[type=checkbox]", "aria-checked") == nil
   end
 
-  test "a checkbox or toggle in a stack takes a label's room above, a bare one none" do
+  test "a checkbox or toggle after another field takes a label's room above, a bare one none" do
     assigns = %{}
 
     doc =
@@ -231,7 +245,7 @@ defmodule Setzkasten.FormsTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
     assert css =~
-             ~r/@media not \(pointer: coarse\) \{\s*\.setzkasten-check-field \{\s*padding-top: 1rem;\s*\}\s*\.setzkasten-check-field \+ \.setzkasten-check-field \{\s*padding-top: 0\.5rem;/
+             ~r/@media not \(pointer: coarse\) \{\s*\.fieldset \+ \.setzkasten-check-field \{\s*padding-top: 1rem;\s*\}\s*\.setzkasten-check-field \+ \.setzkasten-check-field \{\s*padding-top: 0\.5rem;/
   end
 
   test "checkbox and radio without a colour variant take the 50 % field border" do

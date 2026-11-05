@@ -30,6 +30,7 @@ defmodule Setzkasten.Components.Forms do
   growing the row, also with `hide_label`. In a stack of fields a checkbox or toggle starts
   where a labelled field's label would (its control lines up with the label's text), and
   one right under another stays close; on touch screens its 44px row already makes that room.
+  The first field of a stack, or one on its own, keeps no such room.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
@@ -39,11 +40,12 @@ defmodule Setzkasten.Components.Forms do
   `identifier` (text-like types) is the field for a code such as an ISIN, IBAN or ticker
   symbol: the monospace face of `identifier/1`, the value shown in capitals (the server still
   receives what was typed, so it upcases it), and `autocapitalize="characters"`,
-  `autocorrect="off"`, `spellcheck="false"`, `autocomplete="off"` unless given. With
-  `maxlength` (and no `prefix`, `suffix`, `icon` or `inline`) the field is as wide as that
-  many characters, so its width hints at the length.
+  `autocorrect="off"`, `spellcheck="false"`, `autocomplete="off"` unless given. With `size`
+  or `maxlength` (and no `prefix`, `suffix`, `icon` or `inline`) the field is as wide as that
+  many characters, so its width hints at the length; `size` fits a field that takes longer
+  pastes, such as an ISIN with spaces the server strips.
 
-      <.input field={@form[:isin]} label="ISIN" identifier maxlength="12" placeholder="XX0000000000" />
+      <.input field={@form[:isin]} label="ISIN" identifier size="13" placeholder="XX0000000000" />
 
   `inline` (text-like types) puts the field and the inner block, the form's button, in one
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
@@ -272,12 +274,14 @@ defmodule Setzkasten.Components.Forms do
 
     boxed = assigns.prefix || assigns.suffix || assigns.icon
 
+    fit = assigns.identifier && !boxed && !assigns.inline && fit_width(assigns.rest)
+    rest = assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
+
     assigns =
       assign(assigns,
         boxed: boxed,
-        fit:
-          assigns.identifier && !boxed && !assigns.inline && fit_size(assigns.rest[:maxlength]),
-        rest: assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
+        fit: fit,
+        rest: if(fit, do: Map.delete(rest, :size), else: rest)
       )
 
     ~H"""
@@ -401,12 +405,14 @@ defmodule Setzkasten.Components.Forms do
     )
   end
 
+  defp fit_width(%{size: size}), do: parse_length(size, 0)
   # One character more than the longest value leaves room for the caret.
-  defp fit_size(nil), do: nil
+  defp fit_width(%{maxlength: maxlength}), do: parse_length(maxlength, 1)
+  defp fit_width(_rest), do: nil
 
-  defp fit_size(maxlength) do
-    case Integer.parse(to_string(maxlength)) do
-      {length, ""} -> length + 1
+  defp parse_length(value, extra) do
+    case Integer.parse(to_string(value)) do
+      {length, ""} -> length + extra
       _ -> nil
     end
   end

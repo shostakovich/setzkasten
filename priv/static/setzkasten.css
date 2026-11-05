@@ -523,11 +523,12 @@
   }
 }
 
-/* A checkbox or toggle field has no label row above its control: on fine pointers it takes the room
-   of one, so its control starts where a labelled field's label does; touch rows are 44px already. */
+/* A checkbox or toggle field has no label row above its control: on fine pointers, after another
+   field, it takes the room of one, so its control starts where a labelled field's label does; touch
+   rows are 44px already. */
 @layer utilities.setzkasten {
   @media not (pointer: coarse) {
-    .setzkasten-check-field {
+    .fieldset + .setzkasten-check-field {
       padding-top: 1rem;
     }
     .setzkasten-check-field + .setzkasten-check-field {
