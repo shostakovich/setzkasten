@@ -46,8 +46,9 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         <div class="flex gap-12">
           <div class="grid justify-items-end">
             <.amount
-              :for={price <- [1_324_600, 341_250, 1_245_000, 7_812_345, 120_000_000]}
+              :for={price <- [1_324_600, 341_250, 1_245_000, nil, 7_812_345, 120_000_000]}
               value={price}
+              placeholder="–"
               minor_digits={4}
               decimals={2..4}
               pad_decimals={4}
@@ -64,7 +65,9 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
         </div>
         <:note>
           Links mit unsichtbaren Ziffern bis zur vierten Stelle, rechts ohne: die Stellen, die ein
-          Kurs hat, ab zwei, ohne angehängte Nullen.
+          Kurs hat, ab zwei, ohne angehängte Nullen. Ein fehlender Kurs steht als
+          <code>placeholder="–"</code>
+          vor dem Komma.
         </:note>
       </.demo>
     </.showcase>
@@ -469,6 +472,8 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
     <%!-- prices with two to four places, lined up on the comma in a column --%>
     <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
+    <%!-- a missing price in the same slot --%>
+    <.amount value={nil} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />
     """
   end
 

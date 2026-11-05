@@ -658,6 +658,27 @@ defmodule Setzkasten.DataTest do
     assert text(doc, "data") == "781,2345 €"
   end
 
+  test "amount placeholder keeps the slot of the comma, places and unit" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.amount value={nil} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />|
+      )
+
+    assert count(doc, "data") == 0
+    assert text(doc, "span.tabular-nums") == "–,0000\u00A0€"
+    assert text(doc, "span.invisible") == ",0000\u00A0€"
+    assert attr(doc, "span.invisible", "aria-hidden") == "true"
+
+    doc =
+      parse(
+        ~H|<.amount value={nil} placeholder="–" decimals={0} currency="USD" currency_display={:code} />|
+      )
+
+    assert doc |> find("span.invisible") |> LazyHTML.to_html() =~ ">\u00A0USD<"
+  end
+
   test "amount in minor units of a currency without cents" do
     assigns = %{}
 

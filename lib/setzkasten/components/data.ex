@@ -1230,6 +1230,12 @@ defmodule Setzkasten.Components.Data do
 
       <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
 
+  `placeholder` stands in for a nil `value`, e.g. `"–"` for a missing price: it takes the place
+  of the last whole digit and keeps the room of the comma, the places and the unit invisibly,
+  so it sits in the column's slot beside the comma.
+
+      <.amount value={@price} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />
+
       <.amount value={-7420} signed tone />
       <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
@@ -1254,6 +1260,8 @@ defmodule Setzkasten.Components.Data do
     default: nil,
     doc: "room for this many decimal places, so a column aligns on the comma"
 
+  attr :placeholder, :string, default: nil, doc: "shown in the number's slot when `value` is nil"
+
   attr :signed, :boolean, default: false
 
   attr :tone, :any,
@@ -1268,6 +1276,32 @@ defmodule Setzkasten.Components.Data do
 
   def amount(%{animate: true, rest: rest}) when not is_map_key(rest, :id) do
     raise ArgumentError, "<.amount animate> needs an id: LiveView hooks run on elements with one"
+  end
+
+  def amount(%{value: nil, placeholder: placeholder} = assigns) when is_binary(placeholder) do
+    decimals = assigns.decimals || assigns.minor_digits
+    places = max(assigns.pad_decimals || 0, most_places(decimals))
+
+    {_number, unit} =
+      0
+      |> Format.money(
+        currency: assigns.currency,
+        currency_display: assigns.currency_display,
+        minor_digits: assigns.minor_digits,
+        decimals: 0
+      )
+      |> String.split("\u00A0", parts: 2)
+      |> List.to_tuple()
+
+    fraction = if places > 0, do: "," <> String.duplicate("0", places), else: ""
+    assigns = assign(assigns, :slot, fraction <> "\u00A0" <> unit)
+
+    ~H"""
+    <span
+      class={["tabular-nums whitespace-nowrap", @size == :lg && "text-lg font-semibold", @class]}
+      {@rest}
+    >{@placeholder}<span class="invisible select-none" aria-hidden="true">{@slot}</span></span>
+    """
   end
 
   def amount(assigns) do
