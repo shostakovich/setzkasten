@@ -81,7 +81,7 @@ defmodule Setzkasten.OverlaysTest do
     assert css =~ ~r/\.setzkasten-title-input > \.input \{[^}]*font-size: 1.25rem;/
     # The fill hangs into the gutter, so the text lines up with the column.
     assert css =~
-             ~r/\.setzkasten-title-input > \.input \{[^}]*margin-inline: calc\(-1 \* var\(--setzkasten-title-pad\)\);[^}]*padding-inline: var\(--setzkasten-title-pad\);/
+             ~r/\.setzkasten-title-input > \.input \{[^}]*margin-inline: calc\(-1 \* var\(--setzkasten-title-pad\)\);[^}]*padding-inline: calc\(var\(--setzkasten-title-pad\) - var\(--border, 1px\)\);/
 
     # A faint fill at rest shows that it can be edited, a stronger one on hover and focus.
     assert css =~

@@ -1158,7 +1158,7 @@
     height: auto;
     margin-inline: calc(-1 * var(--setzkasten-title-pad));
     padding-block: 0.25rem;
-    padding-inline: var(--setzkasten-title-pad);
+    padding-inline: calc(var(--setzkasten-title-pad) - var(--border, 1px));
     font-size: 1.25rem;
     line-height: 1.75rem;
     font-weight: 600;
