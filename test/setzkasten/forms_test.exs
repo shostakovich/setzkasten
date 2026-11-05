@@ -98,6 +98,24 @@ defmodule Setzkasten.FormsTest do
     assert css =~ ~r/\.setzkasten-identifier-field \{\s*text-transform: uppercase;/
   end
 
+  test "a live help line is there before it has text, as a polite live region" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" help_live />
+      <.input name="sym" id="sym" label="Symbol" help="Sucht …" help_live />
+      <.input name="name" id="name" label="Name" />
+      """)
+
+    assert attr(doc, "#isin-help", "aria-live") == "polite"
+    assert text(doc, "#isin-help") == ""
+    assert attr(doc, "#isin", "aria-describedby") == "isin-help"
+    assert text(doc, "#sym-help") == "Sucht …"
+    assert count(doc, "#name-help") == 0
+    assert attr(doc, "#name", "aria-describedby") == nil
+  end
+
   test "text input with label, help and describedby" do
     assigns = %{form: form(%{"title" => "Wocheneinkauf"})}
     doc = parse(~H|<.input field={@form[:title]} label="Titel" help="Kurz" />|)

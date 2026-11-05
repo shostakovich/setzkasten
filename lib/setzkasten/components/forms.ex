@@ -35,7 +35,8 @@ defmodule Setzkasten.Components.Forms do
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
   marks the help line as a warning (`triangle-alert` icon and text in `warning-ink`); it stays
-  linked by `aria-describedby`.
+  linked by `aria-describedby`. `help_live` (text-like types) makes the help line a polite live
+  region, there even while empty, for a help that answers in the background (a lookup).
 
   `identifier` (text-like types) is the field for a code such as an ISIN, IBAN or ticker
   symbol: the monospace face of `identifier/1`, the value shown in capitals (the server still
@@ -77,6 +78,7 @@ defmodule Setzkasten.Components.Forms do
   attr :hide_label, :boolean, default: false
   attr :help, :string, default: nil
   attr :help_tone, :atom, default: nil, values: [nil, :warning]
+  attr :help_live, :boolean, default: false, doc: "text-like types: the help is a live region"
   attr :inline, :boolean, default: false, doc: "field and inner block (a button) in one join"
 
   attr :bare, :boolean,
@@ -293,7 +295,14 @@ defmodule Setzkasten.Components.Forms do
       </div>
       <.text_field :if={!@inline} {field_attrs(assigns)} />
       <.field_error id={@id} errors={@errors} />
-      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
+      <.field_help
+        :if={@help || @help_live}
+        id={@id}
+        tone={@help_tone}
+        aria-live={@help_live && "polite"}
+      >
+        {@help}
+      </.field_help>
     </fieldset>
     """
   end
@@ -385,7 +394,10 @@ defmodule Setzkasten.Components.Forms do
     |> assign_new(:value, fn -> nil end)
     |> assign_new(:name, fn -> assigns.id end)
     |> assign_new(:options, fn -> [] end)
-    |> assign(:describedby, field_describedby(assigns.id, assigns.errors, assigns.help))
+    |> assign(
+      :describedby,
+      field_describedby(assigns.id, assigns.errors, assigns.help || assigns.help_live)
+    )
   end
 
   defp numeric_rest(%{numeric: true, rest: rest}), do: Map.put_new(rest, :inputmode, "decimal")
