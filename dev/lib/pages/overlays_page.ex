@@ -18,7 +18,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     >
       <:intro>
         Natives <code>&lt;dialog&gt;</code>: auf dem Handy ein Blatt von unten, ab <code>sm</code>
-        mittig; <code>:end</code>/<code>:start</code>
+        mittig oder oben verankert (<code>:top</code>); <code>:end</code>/<code>:start</code>
         als Seitenpanel. Escape, Klick auf den
         Hintergrund und Fokus-Rückgabe kommen vom Browser.
       </:intro>
@@ -41,6 +41,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </.button>
         <.button phx-click={show_modal("long-choice-panel")} aria-haspopup="dialog">
           Lange Auswahl im Seitenpanel
+        </.button>
+        <.button phx-click={show_modal("new-security")} aria-haspopup="dialog">
+          Oben verankert, mit autofocus
         </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
@@ -116,6 +119,52 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
             <.button type="submit" variant={:primary} phx-click={hide_modal("long-form")}>
               Anlegen
             </.button>
+          </.action_bar>
+        </form>
+      </.modal>
+      <.modal id="new-security" title="Wertpapier hinzufügen" placement={:top}>
+        <form class="grid gap-2 pt-2" phx-submit="noop">
+          <.segmented
+            id="ns-by"
+            label="Hinzufügen per"
+            mode={:radio}
+            name="ns[by]"
+            hide_label
+            value="isin"
+            block
+            options={[{"ISIN", "isin"}, {"Yahoo-Symbol", "symbol"}]}
+          />
+          <.input
+            name="ns[isin]"
+            id="ns-isin"
+            label="ISIN"
+            identifier
+            maxlength="12"
+            placeholder="XX0000000000"
+            autofocus
+            help="Name und Kursquelle kommen aus der ISIN."
+          />
+          <.input name="ns[name]" id="ns-name" label="Name" />
+          <.input
+            name="ns[own_symbol]"
+            id="ns-own-symbol"
+            type="toggle"
+            label="Eigenes Yahoo-Symbol"
+            phx-click={JS.toggle(to: "#ns-symbol-field")}
+          />
+          <div id="ns-symbol-field" class="hidden">
+            <.input
+              name="ns[symbol]"
+              id="ns-symbol"
+              label="Yahoo-Symbol"
+              identifier
+              placeholder="XYZ.DE"
+              help="Ohne Symbol kommen die Kurse von der Börse der ISIN."
+            />
+          </div>
+          <.action_bar>
+            <.button type="button" phx-click={hide_modal("new-security")}>Abbrechen</.button>
+            <.button type="submit" variant={:primary}>Hinzufügen</.button>
           </.action_bar>
         </form>
       </.modal>
@@ -414,6 +463,13 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           <.button type="submit" variant={:primary}>Anlegen</.button>
         </.action_bar>
       </.form>
+    </.modal>
+
+    <%!-- a form that grows as you type: held at the top from sm; focus on the autofocus field --%>
+    <.modal id="new-security" title="Wertpapier hinzufügen" placement={:top}>
+      <.segmented mode={:radio} field={@form[:by]} label="Hinzufügen per" … />
+      <.input field={@form[:isin]} label="ISIN" identifier maxlength="12" autofocus />
+      …
     </.modal>
     """
   end

@@ -5,7 +5,7 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
   import Setzkasten.Dev.Demo
 
   def title, do: "Werte und Diagramme"
-  def summary, do: "amount, stat, description_list, bar, avatar, chart_card, legend"
+  def summary, do: "amount, identifier, stat, description_list, bar, avatar, chart_card, legend"
 
   def render(assigns) do
     ~H"""
@@ -41,6 +41,60 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
             <.amount value={6_327_914} decimals={0} />
           </:item>
         </.description_list>
+      </.demo>
+      <.demo title="Am Komma ausgerichtet: decimals={2..4} pad_decimals={4}">
+        <div class="flex gap-12">
+          <div class="grid justify-items-end">
+            <.amount
+              :for={price <- [1_324_600, 341_250, 1_245_000, nil, 7_812_345, 120_000_000]}
+              value={price}
+              placeholder="–"
+              minor_digits={4}
+              decimals={2..4}
+              pad_decimals={4}
+            />
+          </div>
+          <div class="grid justify-items-end">
+            <.amount
+              :for={price <- [1_324_600, 341_250, 1_245_000, 7_812_345, 120_000_000]}
+              value={price}
+              minor_digits={4}
+              decimals={2..4}
+            />
+          </div>
+        </div>
+        <:note>
+          Links mit unsichtbaren Ziffern bis zur vierten Stelle, rechts ohne: die Stellen, die ein
+          Kurs hat, ab zwei, ohne angehängte Nullen. Ein fehlender Kurs steht als
+          <code>placeholder="–"</code>
+          vor dem Komma.
+        </:note>
+      </.demo>
+    </.showcase>
+
+    <.showcase id="identifier" name="<.identifier>" title="Kennung">
+      <:intro>
+        Codes wie ISIN, WKN, IBAN und Börsenkürzel in Festbreitenschrift: 0 und O, 1, I und l
+        sind nicht zu verwechseln, auf die Versalhöhe des Fließtexts gebracht.
+      </:intro>
+      <.demo title="Im Text, in der Meta-Zeile">
+        <.description_list class="grid sm:grid-cols-2 sm:gap-x-8">
+          <:item label="ISIN">
+            <.identifier>IE00BK5BQT80</.identifier>
+          </:item>
+          <:item label="WKN">
+            <.identifier>A1JX52</.identifier>
+          </:item>
+          <:item label="IBAN">
+            <.identifier>DE02 1203 0000 0000 2020 51</.identifier>
+          </:item>
+          <:item label="Figtree zum Vergleich">IE00BK5BQT80 · O0 Il1</:item>
+        </.description_list>
+        <p class="text-sm text-base-content/70">
+          Vanguard FTSE All-World<.meta_sep /><.identifier>IE00BK5BQT80</.identifier><.meta_sep /><.identifier>
+            VWCE.DE
+          </.identifier>
+        </p>
       </.demo>
     </.showcase>
 
@@ -416,6 +470,10 @@ defmodule Setzkasten.Dev.Pages.ValuesPage do
     <.amount value={6_327_914} decimals={0} />
     <.amount value={110} currency="USD" currency_display={:code} />
     <.amount value={4850} currency="JPY" minor_digits={0} currency_display={:code} />
+    <%!-- prices with two to four places, lined up on the comma in a column --%>
+    <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
+    <%!-- a missing price in the same slot --%>
+    <.amount value={nil} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />
     """
   end
 

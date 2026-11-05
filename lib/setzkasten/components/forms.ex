@@ -27,12 +27,26 @@ defmodule Setzkasten.Components.Forms do
   from the native checked state. `bare` (checkbox and toggle) drops the field's padding and
   row height, so the control lines up with a heading beside it (a card's `:actions`); on touch
   screens a hit area centred on the label, at least 44px each way, keeps the target without
-  growing the row, also with `hide_label`.
+  growing the row, also with `hide_label`. In a stack of fields a checkbox or toggle starts
+  where a labelled field's label would (its control lines up with the label's text), and
+  one right under another stays close; on touch screens its 44px row already makes that room.
+  The first field of a stack, or one on its own, keeps no such room.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
-  marks the help line as a warning (`triangle-alert` icon, full base-content text); it stays
-  linked by `aria-describedby`.
+  marks the help line as a warning (`triangle-alert` icon and text in `warning-ink`); it stays
+  linked by `aria-describedby`. `help_live` (text-like types) makes the help line a polite live
+  region, there even while empty, for a help that answers in the background (a lookup).
+
+  `identifier` (text-like types) is the field for a code such as an ISIN, IBAN or ticker
+  symbol: the monospace face of `identifier/1`, the value shown in capitals (the server still
+  receives what was typed, so it upcases it), and `autocapitalize="characters"`,
+  `autocorrect="off"`, `spellcheck="false"`, `autocomplete="off"` unless given. With `size`
+  or `maxlength` (and no `prefix`, `suffix`, `icon` or `inline`) the field is as wide as that
+  many characters, so its width hints at the length; `size` fits a field that takes longer
+  pastes, such as an ISIN with spaces the server strips.
+
+      <.input field={@form[:isin]} label="ISIN" identifier size="13" placeholder="XX0000000000" />
 
   `inline` (text-like types) puts the field and the inner block, the form's button, in one
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
@@ -64,6 +78,7 @@ defmodule Setzkasten.Components.Forms do
   attr :hide_label, :boolean, default: false
   attr :help, :string, default: nil
   attr :help_tone, :atom, default: nil, values: [nil, :warning]
+  attr :help_live, :boolean, default: false, doc: "text-like types: the help is a live region"
   attr :inline, :boolean, default: false, doc: "field and inner block (a button) in one join"
 
   attr :bare, :boolean,
@@ -74,6 +89,10 @@ defmodule Setzkasten.Components.Forms do
   attr :suffix, :string, default: nil
   attr :icon, :string, default: nil, doc: "Lucide icon at the start of the field (search)"
   attr :numeric, :boolean, default: false
+
+  attr :identifier, :boolean,
+    default: false,
+    doc: "a code (ISIN, IBAN, ticker): monospace, capitals, no spell checking"
 
   attr :options, :list,
     doc: "options for select and radio_group (a radio option may be a map with `:description`)"
@@ -114,7 +133,11 @@ defmodule Setzkasten.Components.Forms do
       end)
 
     ~H"""
-    <div class={if @bare, do: "inline-flex min-w-0 flex-col", else: "fieldset min-w-0"}>
+    <div class={
+      if @bare,
+        do: "inline-flex min-w-0 flex-col",
+        else: "fieldset setzkasten-check-field min-w-0"
+    }>
       <label class={[
         "flex items-center gap-3 text-sm",
         if(@bare,
@@ -251,10 +274,16 @@ defmodule Setzkasten.Components.Forms do
   def input(assigns) do
     assigns = prepare(assigns)
 
+    boxed = assigns.prefix || assigns.suffix || assigns.icon
+
+    fit = assigns.identifier && !boxed && !assigns.inline && fit_width(assigns.rest)
+    rest = assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
+
     assigns =
       assign(assigns,
-        boxed: assigns.prefix || assigns.suffix || assigns.icon,
-        rest: numeric_rest(assigns)
+        boxed: boxed,
+        fit: fit,
+        rest: if(fit, do: Map.delete(rest, :size), else: rest)
       )
 
     ~H"""
@@ -266,7 +295,14 @@ defmodule Setzkasten.Components.Forms do
       </div>
       <.text_field :if={!@inline} {field_attrs(assigns)} />
       <.field_error id={@id} errors={@errors} />
-      <.field_help :if={@help} id={@id} tone={@help_tone}>{@help}</.field_help>
+      <.field_help
+        :if={@help || @help_live}
+        id={@id}
+        tone={@help_tone}
+        aria-live={@help_live && "polite"}
+      >
+        {@help}
+      </.field_help>
     </fieldset>
     """
   end
@@ -274,7 +310,7 @@ defmodule Setzkasten.Components.Forms do
   defp field_attrs(assigns) do
     Map.take(
       assigns,
-      ~w(type id name value errors numeric icon prefix suffix boxed class describedby rest)a
+      ~w(type id name value errors numeric identifier fit icon prefix suffix boxed class describedby rest)a
     )
   end
 
@@ -284,6 +320,8 @@ defmodule Setzkasten.Components.Forms do
   attr :value, :any, required: true
   attr :errors, :list, required: true
   attr :numeric, :boolean, required: true
+  attr :identifier, :boolean, required: true
+  attr :fit, :any, required: true
   attr :icon, :string, required: true
   attr :prefix, :string, required: true
   attr :suffix, :string, required: true
@@ -306,7 +344,7 @@ defmodule Setzkasten.Components.Forms do
         id={@id}
         name={@name}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={@numeric && "text-end tabular-nums"}
+        class={[@numeric && "text-end tabular-nums", @identifier && identifier_class()]}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@describedby}
         {@rest}
@@ -319,11 +357,14 @@ defmodule Setzkasten.Components.Forms do
       id={@id}
       name={@name}
       value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+      size={@fit}
       class={[
-        "input w-full",
+        "input",
+        if(@fit, do: "w-auto max-w-full justify-self-start", else: "w-full"),
         @join && "join-item",
         @errors != [] && "input-error",
         @numeric && "text-end tabular-nums",
+        @identifier && identifier_class(),
         @class
       ]}
       aria-invalid={@errors != [] && "true"}
@@ -353,11 +394,42 @@ defmodule Setzkasten.Components.Forms do
     |> assign_new(:value, fn -> nil end)
     |> assign_new(:name, fn -> assigns.id end)
     |> assign_new(:options, fn -> [] end)
-    |> assign(:describedby, field_describedby(assigns.id, assigns.errors, assigns.help))
+    |> assign(
+      :describedby,
+      field_describedby(assigns.id, assigns.errors, assigns.help || assigns.help_live)
+    )
   end
 
   defp numeric_rest(%{numeric: true, rest: rest}), do: Map.put_new(rest, :inputmode, "decimal")
   defp numeric_rest(%{rest: rest}), do: rest
+
+  defp identifier_rest(rest, false), do: rest
+
+  defp identifier_rest(rest, true) do
+    Map.merge(
+      %{
+        autocapitalize: "characters",
+        autocorrect: "off",
+        spellcheck: "false",
+        autocomplete: "off"
+      },
+      rest
+    )
+  end
+
+  defp fit_width(%{size: size}), do: parse_length(size, 0)
+  # One character more than the longest value leaves room for the caret.
+  defp fit_width(%{maxlength: maxlength}), do: parse_length(maxlength, 1)
+  defp fit_width(_rest), do: nil
+
+  defp parse_length(value, extra) do
+    case Integer.parse(to_string(value)) do
+      {length, ""} -> length + extra
+      _ -> nil
+    end
+  end
+
+  defp identifier_class, do: "setzkasten-identifier setzkasten-identifier-field"
 
   defp control_class("checkbox"), do: "checkbox checkbox-primary"
   defp control_class("toggle"), do: "toggle toggle-primary"
@@ -1031,8 +1103,9 @@ defmodule Setzkasten.Components.Forms do
 
   @doc """
   The help line of a field, as `input` renders it, with the id `<id>-help`. See `field_error/1`.
-  `tone={:warning}` adds a `triangle-alert` icon and sets the text in full base-content (the
-  warning fill is too faint as text). Global attrs (e.g. `aria-live`) land on the `<p>`.
+  `tone={:warning}` adds a `triangle-alert` icon and sets icon and text in `warning-ink`, as
+  error lines are in `error-ink` (4.5:1 on the page and the popover surface, light and dark).
+  Global attrs (e.g. `aria-live`) land on the `<p>`.
 
       <.field_help id="iban" tone={:warning}>Konto ist noch nicht bestätigt</.field_help>
   """
@@ -1046,7 +1119,7 @@ defmodule Setzkasten.Components.Forms do
     ~H"""
     <p
       id={"#{@id}-help"}
-      class={["label whitespace-normal", @tone == :warning && "text-base-content", @class]}
+      class={["label whitespace-normal", @tone == :warning && "text-warning-ink", @class]}
       {@rest}
     >
       <.icon :if={@tone == :warning} name="triangle-alert" class="size-4 shrink-0" />

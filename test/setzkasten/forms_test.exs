@@ -48,6 +48,74 @@ defmodule Setzkasten.FormsTest do
              ~r/\.fieldset:has\(> :is\(label, legend\)\.sr-only:first-child\) \{\s*padding-block: 0;/
   end
 
+  test "an identifier field: monospace capitals, no spell checking, as wide as its size or maxlength" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" identifier maxlength="12" />
+      <.input name="sym" id="sym" label="Symbol" identifier spellcheck="true" />
+      <.input name="iban" id="iban" label="IBAN" identifier maxlength="34" prefix="DE" />
+      """)
+
+    assert classes(doc, "#isin") ==
+             ~w(input w-auto max-w-full justify-self-start setzkasten-identifier setzkasten-identifier-field)
+
+    assert attr(doc, "#isin", "size") == "13"
+    assert attr(doc, "#isin", "autocapitalize") == "characters"
+    assert attr(doc, "#isin", "autocorrect") == "off"
+    assert attr(doc, "#isin", "spellcheck") == "false"
+    assert attr(doc, "#isin", "autocomplete") == "off"
+
+    assert attr(doc, "#sym", "spellcheck") == "true"
+    assert attr(doc, "#sym", "size") == nil
+    assert "w-full" in classes(doc, "#sym")
+
+    assert attr(doc, "#iban", "size") == nil
+    assert "setzkasten-identifier" in classes(doc, "#iban")
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" identifier size="13" />
+      <.input name="both" id="both" label="ISIN" identifier size="13" maxlength="20" />
+      <.input name="plain" id="plain" label="Name" size="8" />
+      """)
+
+    assert attr(doc, "#isin", "size") == "13"
+    assert "w-auto" in classes(doc, "#isin")
+    assert attr(doc, "#isin", "maxlength") == nil
+    assert attr(doc, "#both", "size") == "13"
+    assert attr(doc, "#plain", "size") == "8"
+    assert "w-full" in classes(doc, "#plain")
+
+    doc = parse(~H|<.identifier class="text-xs">IE00BK5BQT80</.identifier>|)
+    assert classes(doc, "span") == ~w(setzkasten-identifier text-xs)
+    assert attr(doc, "span", "translate") == "no"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-identifier \{\s*font-family: var\(--font-mono\);/
+    assert css =~ "font-variant-numeric: tabular-nums slashed-zero;"
+    assert css =~ ~r/\.setzkasten-identifier-field \{\s*text-transform: uppercase;/
+  end
+
+  test "a live help line is there before it has text, as a polite live region" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="isin" id="isin" label="ISIN" help_live />
+      <.input name="sym" id="sym" label="Symbol" help="Sucht …" help_live />
+      <.input name="name" id="name" label="Name" />
+      """)
+
+    assert attr(doc, "#isin-help", "aria-live") == "polite"
+    assert text(doc, "#isin-help") == ""
+    assert attr(doc, "#isin", "aria-describedby") == "isin-help"
+    assert text(doc, "#sym-help") == "Sucht …"
+    assert count(doc, "#name-help") == 0
+    assert attr(doc, "#name", "aria-describedby") == nil
+  end
+
   test "text input with label, help and describedby" do
     assigns = %{form: form(%{"title" => "Wocheneinkauf"})}
     doc = parse(~H|<.input field={@form[:title]} label="Titel" help="Kurz" />|)
@@ -178,6 +246,24 @@ defmodule Setzkasten.FormsTest do
     # The native checked state is the switch's on/off; an aria-checked would go stale.
     assert attr(doc, "input[type=checkbox]", "role") == "switch"
     assert attr(doc, "input[type=checkbox]", "aria-checked") == nil
+  end
+
+  test "a checkbox or toggle after another field takes a label's room above, a bare one none" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input name="a" id="a" type="toggle" label="A" />
+      <.input name="b" id="b" type="checkbox" label="B" bare />
+      """)
+
+    assert classes(doc, "div:has(> label > #a)") == ~w(fieldset setzkasten-check-field min-w-0)
+    refute "setzkasten-check-field" in classes(doc, "div:has(> label > #b)")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media not \(pointer: coarse\) \{\s*\.fieldset \+ \.setzkasten-check-field \{\s*padding-top: 1rem;\s*\}\s*\.setzkasten-check-field \+ \.setzkasten-check-field \{\s*padding-top: 0\.5rem;/
   end
 
   test "checkbox and radio without a colour variant take the 50 % field border" do
@@ -445,7 +531,7 @@ defmodule Setzkasten.FormsTest do
     assert classes(doc, "fieldset > :first-child") == ["sr-only"]
   end
 
-  test "a warning help line has an icon, full text colour and stays described" do
+  test "a warning help line has an icon, the warning ink and stays described" do
     assigns = %{}
 
     doc =
@@ -455,7 +541,7 @@ defmodule Setzkasten.FormsTest do
 
     assert attr(doc, "input", "aria-describedby") == "iban-help"
     assert count(doc, "#iban-help svg.lucide") == 1
-    assert "text-base-content" in classes(doc, "#iban-help")
+    assert "text-warning-ink" in classes(doc, "#iban-help")
     assert text(doc, "#iban-help") == "Nicht bestätigt"
 
     doc = parse(~H|<.input name="t" id="t" label="Titel" help="Kurz" />|)
@@ -473,7 +559,7 @@ defmodule Setzkasten.FormsTest do
 
     assert attr(doc, "#photo-help", "aria-live") == "polite"
     assert count(doc, "#photo-help svg.lucide") == 1
-    assert classes(doc, "#photo-help") == ~w(label whitespace-normal text-base-content mt-1)
+    assert classes(doc, "#photo-help") == ~w(label whitespace-normal text-warning-ink mt-1)
   end
 
   test "inline input joins the field and its button, errors below the join" do

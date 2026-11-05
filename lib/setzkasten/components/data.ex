@@ -84,8 +84,9 @@ defmodule Setzkasten.Components.Data do
   Flat by default: the table sits on the page between `border-y` hairlines and
   runs edge to edge on phones. `flush` drops both for a card's `:list` slot or a modal.
 
-  `:col` attrs: `label`, `align` (`:end` right-aligns with tabular figures), `show_from`
-  (`:sm` … `:"2xl"`, hides the column below), `class`. `row_link` turns the first cell into a
+  `:col` attrs: `label`, `hide_label` (the label for screen readers only, e.g. a column of
+  marks), `align` (`:end` right-aligns with tabular figures), `show_from` (`:sm` … `:"2xl"`,
+  hides the column below), `class`. `row_link` turns the first cell into a
   link stretched over the row; a row for which it returns `nil` has no link and no hover.
   `row_attrs` returns extra attributes for a row's `<tr>` (`aria-current`, `data-*`,
   `hidden`, …) as a map or keyword list, or `nil` for none; its `class` is added to the row's
@@ -96,6 +97,35 @@ defmodule Setzkasten.Components.Data do
   Both get the row item, also with streams and `groups`. `groups` is a list of
   `%{id, label, rows}`, one `<tbody>` each. `:foot` holds the cells of the total row (use
   `show_from/1` on hidden columns).
+
+  A group with `label: nil` has no head row, e.g. the main rows above a folding group.
+  A group with `fold: :open` or `fold: :closed` (and a label) folds: its head row is a button
+  (`aria-expanded`, `aria-controls` naming its `<tbody>`, a chevron, the number of rows) that
+  shows and hides the rows in the browser, starting as given. The open state survives patches.
+  Folded rows keep their part in the column widths (`visibility: collapse`), so the table does
+  not shift when a group opens.
+
+      <.table id="securities" groups={[
+        %{id: "active", label: nil, rows: @active},
+        %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
+      ]}>…</.table>
+
+  `:action` entries are icon buttons in a narrow last column, as `list_row`'s from `md`, and
+  take its action attrs (`label`, `icon`, `navigate`/`patch`/`href`/`method`, `on_click` with
+  `phx-target`, `confirm` with `confirm_text` and `confirm_label`, `disabled`, `id`); each may
+  be a value or `fn row -> value`. A row whose action has no target (all of them `nil`) leaves
+  it out. With a mouse they show while the row is hovered, holds keyboard focus or is current,
+  and keep their room otherwise, so no column shifts; touch screens show them always.
+  `actions_show_from` hides the column below a breakpoint, e.g. where the row links to a
+  detail page that has the action too. The column's header is `actions_label` for screen
+  readers; group heads, the empty row and the total row span it.
+
+      <.table id="securities" rows={@securities} row_link={&~p"/wertpapiere/\#{&1}"}
+              actions_show_from={:md}>
+        <:col :let={s} label="Wertpapier">{s.name}</:col>
+        <:action label={&"Bearbeiten: \#{&1.name}"} icon="pencil"
+                 patch={&~p"/wertpapiere/\#{&1}/bearbeiten"} id={&"edit-\#{&1.id}"} />
+      </.table>
 
       <.table id="activity" rows={@entries} size={:sm} zebra>
         <:col :let={e} label="Datum">{e.date}</:col>
@@ -122,41 +152,116 @@ defmodule Setzkasten.Components.Data do
 
   slot :col, required: true do
     attr :label, :string
+    attr :hide_label, :boolean
     attr :align, :atom, values: [:start, :end]
     attr :show_from, :atom, values: @breakpoints
     attr :class, :any
   end
 
+  attr :actions_label, :string, default: "Aktionen", doc: "the actions column's name"
+
+  attr :actions_show_from, :atom,
+    default: nil,
+    values: [nil | @breakpoints],
+    doc: "the actions column from this breakpoint on"
+
+  attr :confirm_id, :string, default: "confirm-delete"
+
   slot :foot
   slot :empty
 
+  slot :action, doc: "an icon button at the row's end; any attr may be `fn row -> value`" do
+    attr :label, :any, required: true
+    attr :icon, :string
+    attr :navigate, :any
+    attr :patch, :any
+    attr :href, :any
+    attr :method, :string
+    attr :on_click, :any
+    attr :"phx-target", :any
+    attr :confirm, :any
+    attr :confirm_text, :any
+    attr :confirm_label, :any
+    attr :disabled, :any
+    attr :id, :any
+  end
+
   def table(assigns) do
-    assigns = prepare_rows(assigns)
+    if Enum.any?(assigns.groups || [], &(&1[:fold] && !&1[:label])) do
+      raise ArgumentError, "a <.table> group with fold needs a label: its head row is the toggle"
+    end
+
+    assigns =
+      assigns
+      |> prepare_rows()
+      |> assign(:span, length(assigns.col) + if(assigns.action == [], do: 0, else: 1))
 
     ~H"""
     <div class={["overflow-x-auto", !@flush && flat(), @class]} {@rest}>
       <table class={["table tabular-nums", size_class(@size), @zebra && "table-zebra"]}>
         <thead>
           <tr>
-            <th :for={col <- @col} scope="col" class={col_class(col)}>{col[:label]}</th>
+            <th :for={col <- @col} scope="col" class={col_class(col)}>
+              <span :if={col[:hide_label]} class="sr-only">{col[:label]}</span>
+              <%= if !col[:hide_label] do %>
+                {col[:label]}
+              <% end %>
+            </th>
+            <th :if={@action != []} scope="col" class={["w-0", show_from(@actions_show_from)]}>
+              <span class="sr-only">{@actions_label}</span>
+            </th>
           </tr>
         </thead>
         <tbody :if={@groups == nil} id={@id} phx-update={@stream? && "stream"} data-focus-fallback>
           {table_rows(assigns, @rows)}
           <tr :if={@empty != []} id={"#{@id}-empty"} class="hidden only:table-row">
-            <td colspan={length(@col)}>{render_slot(@empty)}</td>
+            <td colspan={@span}>{render_slot(@empty)}</td>
           </tr>
         </tbody>
-        <tbody :for={group <- @groups || []} id={"#{@id}-#{group.id}"} data-focus-fallback>
-          <tr>
-            <th scope="colgroup" colspan={length(@col)} class="bg-base-200 text-xs font-semibold">
-              {group.label}
+        <tbody
+          :for={group <- @groups || []}
+          id={"#{@id}-#{group.id}"}
+          data-focus-fallback
+          data-folded={group[:fold] == :closed}
+        >
+          <tr :if={group[:label]}>
+            <th
+              scope="colgroup"
+              colspan={@span}
+              class={[
+                "bg-base-200 text-xs font-semibold",
+                group[:fold] && "relative hover:bg-base-300"
+              ]}
+            >
+              <button
+                :if={group[:fold]}
+                type="button"
+                class={["group flex w-full cursor-pointer items-center text-start", stretched()]}
+                aria-expanded={to_string(group[:fold] == :open)}
+                aria-controls={"#{@id}-#{group.id}"}
+                phx-click={toggle_group()}
+              >
+                <.icon
+                  name="chevron-right"
+                  class="-ms-0.5 me-1 size-3.5 shrink-0 transition-transform group-aria-expanded:rotate-90 motion-reduce:transition-none"
+                />
+                {group.label}
+                <span class="ms-2 font-normal text-base-content/70 tabular-nums">
+                  {length(group.rows)}
+                </span>
+              </button>
+              <%= if !group[:fold] do %>
+                {group.label}
+              <% end %>
             </th>
           </tr>
           {table_rows(assigns, group.rows)}
         </tbody>
         <tfoot :if={@foot != []}>
-          <tr class="font-semibold">{render_slot(@foot)}</tr>
+          <tr class="font-semibold">
+            {render_slot(@foot)}
+            <td :if={@action != []} class={show_from(@actions_show_from)}></td>
+          </tr>
         </tfoot>
       </table>
     </div>
@@ -273,7 +378,7 @@ defmodule Setzkasten.Components.Data do
           if (at < 0) return this.release()
           this.clear()
           const item = all[at].el
-          const shown = all.filter((m) => m.el.getClientRects().length)
+          const shown = all.filter((m) => m.el.getClientRects().length && getComputedStyle(m.el).visibility !== "collapse")
           for (const m of shown) m.box = m.el.getBoundingClientRect()
           const box = all[at].box
           if (!box) return this.release()
@@ -401,6 +506,9 @@ defmodule Setzkasten.Components.Data do
       col={@col}
       row_link={@row_link}
       row_attrs={@row_attrs}
+      action={@action}
+      actions_show_from={@actions_show_from}
+      confirm_id={@confirm_id}
     />
     """
   end
@@ -410,6 +518,9 @@ defmodule Setzkasten.Components.Data do
   attr :col, :list, required: true
   attr :row_link, :any, required: true
   attr :row_attrs, :any, required: true
+  attr :action, :list, required: true
+  attr :actions_show_from, :atom, required: true
+  attr :confirm_id, :string, required: true
 
   defp table_row(assigns) do
     {class, attrs} = tr_attrs(assigns.row_attrs, assigns.item)
@@ -418,7 +529,8 @@ defmodule Setzkasten.Components.Data do
       assign(assigns,
         path: assigns.row_link && assigns.row_link.(assigns.item),
         class: class,
-        attrs: attrs
+        attrs: attrs,
+        actions: row_actions(assigns.action, assigns.item)
       )
 
     ~H"""
@@ -435,9 +547,29 @@ defmodule Setzkasten.Components.Data do
           {render_slot(col, @item)}
         <% end %>
       </td>
+      <td
+        :if={@action != []}
+        class={["setzkasten-row-actions w-0 py-0!", show_from(@actions_show_from)]}
+      >
+        <div class="relative z-10 flex justify-end gap-1">
+          <.icon_action :for={action <- @actions} action={action} confirm_id={@confirm_id} />
+        </div>
+      </td>
     </tr>
     """
   end
+
+  defp row_actions(actions, item) do
+    for action <- actions,
+        action = Map.new(action, &row_value(&1, item)),
+        Enum.any?([:navigate, :patch, :href, :on_click], &action[&1]),
+        do: action
+  end
+
+  defp row_value({key, fun}, item) when is_function(fun, 1) and key != :inner_block,
+    do: {key, fun.(item)}
+
+  defp row_value(pair, _item), do: pair
 
   # `row_attrs` of a row: nil adds nothing, `class` joins the row's classes, the id stays the
   # table's.
@@ -450,6 +582,11 @@ defmodule Setzkasten.Components.Data do
   end
 
   defp flat, do: @flat
+
+  defp toggle_group do
+    JS.toggle_attribute({"data-folded", ""}, to: {:closest, "tbody"})
+    |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+  end
 
   # Not daisyUI's table-sm: its 12px text and narrower padding would not line up with :md.
   defp size_class(:md), do: nil
@@ -925,32 +1062,12 @@ defmodule Setzkasten.Components.Data do
         :if={@inline_actions != []}
         class={["relative z-10 hidden md:flex gap-1", @actions_class]}
       >
-        <%= for action <- @inline_actions do %>
-          <.link
-            :if={action_link?(action)}
-            navigate={action[:navigate]}
-            patch={action[:patch]}
-            href={action[:href]}
-            method={action[:method]}
-            id={action[:id]}
-            class="btn btn-ghost btn-sm btn-square"
-            aria-label={action_label(action, @title)}
-          >
-            <.icon name={action[:icon] || "chevron-right"} />
-          </.link>
-          <button
-            :if={!action_link?(action)}
-            type="button"
-            id={action[:id]}
-            class="btn btn-ghost btn-sm btn-square"
-            aria-label={action_label(action, @title)}
-            aria-haspopup={action[:confirm] && "dialog"}
-            disabled={action[:disabled]}
-            phx-click={entry_click(action, @confirm_id)}
-          >
-            <.icon name={action[:icon] || "chevron-right"} />
-          </button>
-        <% end %>
+        <.icon_action
+          :for={action <- @inline_actions}
+          action={action}
+          label={action_label(action, @title)}
+          confirm_id={@confirm_id}
+        />
       </div>
       <details
         :if={@action != []}
@@ -1021,6 +1138,41 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
+  attr :action, :map, required: true
+  attr :label, :string, default: nil
+  attr :confirm_id, :string, required: true
+
+  defp icon_action(assigns) do
+    assigns = assign(assigns, :label, assigns.label || assigns.action.label)
+
+    ~H"""
+    <.link
+      :if={action_link?(@action)}
+      navigate={@action[:navigate]}
+      patch={@action[:patch]}
+      href={@action[:href]}
+      method={@action[:method]}
+      id={@action[:id]}
+      class="btn btn-ghost btn-sm btn-square"
+      aria-label={@label}
+    >
+      <.icon name={@action[:icon] || "chevron-right"} />
+    </.link>
+    <button
+      :if={!action_link?(@action)}
+      type="button"
+      id={@action[:id]}
+      class="btn btn-ghost btn-sm btn-square"
+      aria-label={@label}
+      aria-haspopup={@action[:confirm] && "dialog"}
+      disabled={@action[:disabled]}
+      phx-click={entry_click(@action, @confirm_id)}
+    >
+      <.icon name={@action[:icon] || "chevron-right"} />
+    </button>
+    """
+  end
+
   attr :strike, :boolean, required: true
   slot :inner_block, required: true
 
@@ -1076,6 +1228,21 @@ defmodule Setzkasten.Components.Data do
   `minor_digits` says how many decimal places the integer's minor unit has: 2 by default, 0 for
   yen, 3 for dinar; `decimals` follows it unless given.
 
+  A range in `decimals` shows the places a value has: `2..4` rounds to four and drops trailing
+  zeros down to two (prices: 132,46 · 34,125 · 781,2345). `pad_decimals` keeps room for that
+  many places (invisible tabular figures after the unit, left out of copying and screen
+  readers), so mixed precisions line up on the comma in a right-aligned column without
+  written zeros while the unit stays beside the number. The units must match for the commas
+  to line up.
+
+      <.amount value={@price} minor_digits={4} decimals={2..4} pad_decimals={4} />
+
+  `placeholder` stands in for a nil `value`, e.g. `"–"` for a missing price: it takes the place
+  of the last whole digit and keeps the room of the comma, the places and the unit invisibly,
+  so it sits in the column's slot beside the comma.
+
+      <.amount value={@price} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />
+
       <.amount value={-7420} signed tone />
       <.amount value={@account.balance} tone={:negative} />
       <.amount value={6_327_914} decimals={0} />
@@ -1091,7 +1258,17 @@ defmodule Setzkasten.Components.Data do
   attr :currency, :string, default: "EUR"
   attr :currency_display, :atom, default: :symbol, values: [:symbol, :code]
   attr :minor_digits, :integer, default: 2, doc: "decimal places of the integer's minor unit"
-  attr :decimals, :integer, default: nil, doc: "shown decimal places; `minor_digits` by default"
+
+  attr :decimals, :any,
+    default: nil,
+    doc: "shown decimal places, or a range `2..4`; `minor_digits` by default"
+
+  attr :pad_decimals, :integer,
+    default: nil,
+    doc: "room for this many decimal places, so a column aligns on the comma"
+
+  attr :placeholder, :string, default: nil, doc: "shown in the number's slot when `value` is nil"
+
   attr :signed, :boolean, default: false
 
   attr :tone, :any,
@@ -1108,12 +1285,59 @@ defmodule Setzkasten.Components.Data do
     raise ArgumentError, "<.amount animate> needs an id: LiveView hooks run on elements with one"
   end
 
+  def amount(%{value: nil, placeholder: placeholder} = assigns) when is_binary(placeholder) do
+    decimals = assigns.decimals || assigns.minor_digits
+    places = max(assigns.pad_decimals || 0, most_places(decimals))
+
+    {_number, unit} =
+      0
+      |> Format.money(
+        currency: assigns.currency,
+        currency_display: assigns.currency_display,
+        minor_digits: assigns.minor_digits,
+        decimals: 0
+      )
+      |> String.split("\u00A0", parts: 2)
+      |> List.to_tuple()
+
+    fraction = if places > 0, do: "," <> String.duplicate("0", places), else: ""
+    assigns = assign(assigns, :slot, fraction <> "\u00A0" <> unit)
+
+    ~H"""
+    <span
+      class={["tabular-nums whitespace-nowrap", @size == :lg && "text-lg font-semibold", @class]}
+      {@rest}
+    >{@placeholder}<span class="invisible select-none" aria-hidden="true">{@slot}</span></span>
+    """
+  end
+
   def amount(assigns) do
-    assigns = assign(assigns, :decimals, assigns.decimals || assigns.minor_digits)
+    decimals = assigns.decimals || assigns.minor_digits
+
+    {number, unit} =
+      assigns.value
+      |> Format.money(
+        currency: assigns.currency,
+        currency_display: assigns.currency_display,
+        signed: assigns.signed,
+        minor_digits: assigns.minor_digits,
+        decimals: decimals
+      )
+      |> String.split("\u00A0", parts: 2)
+      |> List.to_tuple()
+
+    assigns =
+      assign(assigns,
+        decimals: decimals,
+        number: number,
+        unit: unit,
+        pad: decimal_pad(number, assigns.pad_decimals),
+        machine_places: max(assigns.minor_digits, most_places(decimals))
+      )
 
     ~H"""
     <data
-      value={Format.machine(@value, minor_digits: @minor_digits)}
+      value={Format.machine(@value, minor_digits: @minor_digits, decimals: @machine_places)}
       phx-hook={@animate && "Setzkasten.Components.Data.LiveValue"}
       class={[
         "tabular-nums whitespace-nowrap",
@@ -1122,20 +1346,49 @@ defmodule Setzkasten.Components.Data do
         @class
       ]}
       {@rest}
-    >{Format.money(@value,
-      currency: @currency,
-      currency_display: @currency_display,
-      signed: @signed,
-      minor_digits: @minor_digits,
-      decimals: @decimals
-    )}</data>
+    >{@number <> "\u00A0" <> @unit}<span :if={@pad} class="invisible select-none" aria-hidden="true">{@pad}</span></data>
     """
   end
+
+  # Invisible tabular zeros, not U+2007: Figtree's figure space is wider than its tabular figures.
+  defp decimal_pad(_number, nil), do: nil
+
+  defp decimal_pad(number, places) do
+    shown = number |> String.split(",") |> Enum.at(1, "") |> String.length()
+
+    case places - shown do
+      missing when missing <= 0 -> nil
+      missing when shown == 0 -> "," <> String.duplicate("0", missing)
+      missing -> String.duplicate("0", missing)
+    end
+  end
+
+  defp most_places(_first..last//_), do: last
+  defp most_places(places), do: places
 
   defp tone_class(-1, _tone), do: "text-error-ink"
   defp tone_class(1, true), do: "text-success-ink"
   defp tone_class(1, :negative), do: nil
   defp tone_class(0, _tone), do: "text-base-content/70"
+
+  @doc """
+  A code such as an ISIN, WKN, IBAN or ticker symbol, in running text, a meta line or
+  `cell_sub`: the theme's monospace stack (`font-mono`), so 0 and O, 1, I and l differ, with a
+  slashed zero where the font has one, scaled to the text's cap height. Browsers leave it
+  untranslated. The class `setzkasten-identifier` does the same on any element;
+  `<.input identifier>` is the field for one.
+
+      <.cell_sub><.identifier>{s.isin}</.identifier><.meta_sep /><.identifier>{s.symbol}</.identifier></.cell_sub>
+  """
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def identifier(assigns) do
+    ~H"""
+    <span class={["setzkasten-identifier", @class]} translate="no" {@rest}>{render_slot(@inner_block)}</span>
+    """
+  end
 
   @doc """
   A KPI tile: daisyUI `stat` on base-100 with a hairline and `tabular-nums`.

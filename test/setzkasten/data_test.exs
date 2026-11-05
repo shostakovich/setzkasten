@@ -228,6 +228,143 @@ defmodule Setzkasten.DataTest do
     assert "only:table-row" in classes(doc, "#e-empty")
   end
 
+  test "table row actions: icon buttons in a last column, attrs per row" do
+    assigns = %{groups: [%{id: "a", label: "A", rows: @rows}]}
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups} actions_show_from={:md}>
+        <:col :let={r} label="Name">{r.name}</:col>
+        <:action
+          label={&"Bearbeiten: #{&1.name}"}
+          icon="pencil"
+          id={&"edit-#{&1.id}"}
+          patch={&if(&1.value > 0, do: "/s/#{&1.id}/edit")}
+        />
+        <:action
+          label="Löschen"
+          icon="trash-2"
+          on_click="delete"
+          confirm={&"„#{&1.name}“ löschen?"}
+        />
+        <:foot>
+          <th>Summe</th>
+        </:foot>
+      </.table>
+      """)
+
+    assert classes(doc, "thead th:last-child") == ~w(w-0 hidden md:table-cell)
+    assert text(doc, "thead th:last-child .sr-only") == "Aktionen"
+    assert attr(doc, "#t-a th[scope=colgroup]", "colspan") == "2"
+    assert classes(doc, "tfoot td") == ~w(hidden md:table-cell)
+
+    cell = "tbody tr:nth-child(2) td.setzkasten-row-actions"
+    assert classes(doc, cell) == ~w(setzkasten-row-actions w-0 py-0! hidden md:table-cell)
+    assert attr(doc, "#{cell} a#edit-1", "aria-label") == "Bearbeiten: SAP"
+    assert attr(doc, "#{cell} a#edit-1", "href") == "/s/1/edit"
+    assert attr(doc, "#{cell} button", "aria-haspopup") == "dialog"
+    assert [%{"event" => "delete"}] = pushes(attr(doc, "#{cell} button", "phx-click"))
+    assert doc |> attr("#{cell} button", "phx-click") |> String.contains?("„SAP“ löschen?")
+
+    # Gold's patch is nil: that row has no edit button, only the delete one.
+    assert count(doc, "#edit-2") == 0
+    assert count(doc, "tbody tr:nth-child(3) td.setzkasten-row-actions button") == 1
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ "@media (hover: hover) and (pointer: fine) {\n    .setzkasten-row-actions > * {"
+
+    assert css =~
+             ~r/tr:is\(:hover, :focus-within, .*\) > \.setzkasten-row-actions > \* \{\s*opacity: 1;/
+  end
+
+  test "a group without a label has no head row; a folding one needs a label" do
+    assigns = %{
+      groups: [
+        %{id: "main", label: nil, rows: @rows},
+        %{id: "old", label: "Ausgemustert", rows: @rows, fold: :closed}
+      ]
+    }
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r} label="Name">{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "#t-main th") == 0
+    assert count(doc, "#t-main tr") == 2
+    assert count(doc, "#t-old th button") == 1
+
+    assigns = %{groups: [%{id: "x", label: nil, rows: @rows, fold: :closed}]}
+
+    assert_raise ArgumentError, ~r/needs a label/, fn ->
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r}>{r.name}</:col>
+      </.table>
+      """)
+    end
+  end
+
+  test "a column's label can be for screen readers only" do
+    assigns = %{rows: @rows}
+
+    doc =
+      parse(~H"""
+      <.table id="t" rows={@rows}>
+        <:col :let={r} label="Name">{r.name}</:col>
+        <:col :let={r} label="Hinweise" hide_label>{r.name}</:col>
+      </.table>
+      """)
+
+    assert text(doc, "thead th:first-child") == "Name"
+    assert count(doc, "thead th:first-child .sr-only") == 0
+    assert text(doc, "thead th:last-child .sr-only") == "Hinweise"
+  end
+
+  test "a folding group's head is a button that toggles its rows in the browser" do
+    assigns = %{
+      groups: [
+        %{id: "a", label: "Aktiv", rows: @rows},
+        %{id: "b", label: "Ausgemustert", rows: @rows, fold: :closed},
+        %{id: "c", label: "Offen", rows: @rows, fold: :open}
+      ]
+    }
+
+    doc =
+      parse(~H"""
+      <.table id="t" groups={@groups}>
+        <:col :let={r} label="Name">{r.name}</:col>
+      </.table>
+      """)
+
+    assert count(doc, "#t-a button") == 0
+    assert text(doc, "#t-a th") == "Aktiv"
+
+    assert attr(doc, "#t-b", "data-folded") == ""
+    assert attr(doc, "#t-b th button", "aria-expanded") == "false"
+    assert attr(doc, "#t-b th button", "aria-controls") == "t-b"
+    assert text(doc, "#t-b th button span") == "2"
+    assert count(doc, "#t-b th button svg") == 1
+
+    assert attr(doc, "#t-c", "data-folded") == nil
+    assert attr(doc, "#t-c th button", "aria-expanded") == "true"
+
+    ops = doc |> attr("#t-b button", "phx-click") |> Jason.decode!()
+
+    assert ops == [
+             ["toggle_attr", %{"attr" => ["data-folded", ""], "to" => %{"closest" => "tbody"}}],
+             ["toggle_attr", %{"attr" => ["aria-expanded", "true", "false"]}]
+           ]
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/tbody\[data-folded\] > tr:not\(:first-child\) \{\s*visibility: collapse;/
+
+    hook = colocated_js("Setzkasten.Components.Data")
+    assert hook =~ ~s|getComputedStyle(m.el).visibility !== "collapse"|
+  end
+
   test "table supports streams" do
     stream = Phoenix.LiveView.LiveStream.new(:items, 0, @rows, [])
     assigns = %{stream: stream}
@@ -512,6 +649,50 @@ defmodule Setzkasten.DataTest do
     doc = parse(~H|<.amount value={-40} decimals={0} signed tone />|)
     assert text(doc, "data") == "0\u00A0€"
     assert "text-base-content/70" in classes(doc, "data")
+  end
+
+  test "amount pads with invisible figures after its unit to line up on the comma" do
+    assigns = %{}
+
+    doc =
+      parse(~H|<.amount value={341_250} minor_digits={4} decimals={2..4} pad_decimals={4} />|)
+
+    assert text(doc, "data") == "34,125\u00A0€0"
+    assert doc |> find("data") |> LazyHTML.to_html() =~ "34,125\u00A0€<span"
+    assert attr(doc, "data", "value") == "34.1250"
+    assert text(doc, "data span") == "0"
+    assert classes(doc, "data span") == ~w(invisible select-none)
+    assert attr(doc, "data span", "aria-hidden") == "true"
+
+    doc = parse(~H|<.amount value={1200} decimals={0} pad_decimals={2} />|)
+    assert text(doc, "data span") == ",00"
+
+    doc =
+      parse(~H|<.amount value={7_812_345} minor_digits={4} decimals={2..4} pad_decimals={4} />|)
+
+    assert count(doc, "data span") == 0
+    assert text(doc, "data") == "781,2345 €"
+  end
+
+  test "amount placeholder keeps the slot of the comma, places and unit" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.amount value={nil} placeholder="–" minor_digits={4} decimals={2..4} pad_decimals={4} />|
+      )
+
+    assert count(doc, "data") == 0
+    assert text(doc, "span.tabular-nums") == "–,0000\u00A0€"
+    assert text(doc, "span.invisible") == ",0000\u00A0€"
+    assert attr(doc, "span.invisible", "aria-hidden") == "true"
+
+    doc =
+      parse(
+        ~H|<.amount value={nil} placeholder="–" decimals={0} currency="USD" currency_display={:code} />|
+      )
+
+    assert doc |> find("span.invisible") |> LazyHTML.to_html() =~ ">\u00A0USD<"
   end
 
   test "amount in minor units of a currency without cents" do

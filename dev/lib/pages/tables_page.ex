@@ -15,6 +15,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         entries: Data.entries(),
         costs: Data.costs(),
         posts: Enum.take(Data.posts(), 2),
+        securities: Data.securities(),
         holdings: Data.holdings()
       )
 
@@ -101,6 +102,71 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           36px-Zeilen mit der Feinzeigerhöhe, 44px mit dem Finger; Felder und Buttons in Zellen
           sind 32px hoch, so bleibt die Zeile beim Bearbeiten gleich hoch. Die bearbeitete Zeile
           trägt <code>aria-current</code>: Fläche <code>row-selected</code> und ein 3px-Balken vorn.
+        </:note>
+      </.demo>
+      <.demo title="Gruppe zum Einklappen (fold: :closed), Zeilenaktion (:action)">
+        <.table
+          id="securities"
+          groups={@securities}
+          row_link={fn _ -> "/tables" end}
+          actions_show_from={:sm}
+        >
+          <:col :let={s} label="Wertpapier">
+            {s.name}
+            <.cell_sub>
+              <.identifier>{s.isin}</.identifier><.meta_sep :if={s.symbol} /><.identifier :if={
+                s.symbol
+              }>
+                {s.symbol}
+              </.identifier>
+            </.cell_sub>
+          </:col>
+          <:col :let={s} label="Kurs" align={:end}>
+            <.amount value={s.price} minor_digits={4} decimals={2..4} pad_decimals={4} />
+          </:col>
+          <:action
+            label={&"Bearbeiten: #{&1.name}"}
+            icon="pencil"
+            id={&"security-#{&1.id}-edit"}
+            on_click={show_modal("security-dialog")}
+          />
+        </.table>
+        <.modal id="security-dialog" title="Wertpapier bearbeiten" placement={:top}>
+          <form class="grid gap-2" phx-submit="noop">
+            <.input
+              name="sec[isin]"
+              id="sec-isin"
+              label="ISIN"
+              identifier
+              maxlength="12"
+              value="DE000A0S9GB0"
+            />
+            <.input
+              name="sec[feed]"
+              id="sec-feed"
+              type="select"
+              label="Kursquelle"
+              options={[{"Yahoo", "yahoo"}, {"Ohne Kursabruf", "none"}]}
+              value="none"
+              help="Ohne Kursabruf bleiben die gespeicherten Kurse stehen, neue kommen keine."
+              help_tone={:warning}
+            />
+            <.input name="sec[retired]" id="sec-retired" type="toggle" label="Ausgemustert" />
+            <.action_bar>
+              <.button type="button" phx-click={hide_modal("security-dialog")}>Abbrechen</.button>
+              <.button type="submit" variant={:primary}>Speichern</.button>
+            </.action_bar>
+          </form>
+        </.modal>
+        <:note>
+          Die Hauptzeilen stehen ohne Kopf (<code>label: nil</code>), nur die Gruppe darunter hat
+          einen. Die Kopfzeile ist der Schalter: Pfeil, Anzahl, <code>aria-expanded</code>. Eingeklappte
+          Zeilen behalten ihren Anteil an den Spaltenbreiten, nichts verschiebt sich. Der Stift
+          erscheint mit der Maus beim Überfahren oder mit dem Tastaturfokus und hält seinen
+          Platz; mit dem Finger steht er immer da, unter <code>sm</code> fehlt er
+          (<code>actions_show_from</code>), denn die Zeile führt zur Detailseite. Kurse mit zwei
+          bis vier Stellen stehen am Komma untereinander (<code>decimals={"{2..4}"}</code>
+          <code>pad_decimals={"{4}"}</code>).
         </:note>
       </.demo>
       <.demo title="Sortierbar: Gruppen und Kategorien ziehen (Sortable)">
@@ -368,6 +434,20 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       row_link={&if(&1.editable, do: ~p"/buchungen/#{&1}")}
       row_attrs={&%{"aria-current": &1.id == @current && "true", "data-kind": &1.kind}}>
       …
+    </.table>
+
+    <%!-- a group that folds: its head row toggles it, closed at first; label nil: no head --%>
+    <.table id="securities" groups={[
+      %{id: "active", label: nil, rows: @active},
+      %{id: "retired", label: "Ausgemustert", rows: @retired, fold: :closed}
+    ]}>…</.table>
+
+    <%!-- row actions: shown on hover or focus with a mouse, always on touch; fn row -> value --%>
+    <.table id="securities" rows={@securities} row_link={&~p"/wertpapiere/#{&1}"}
+            actions_show_from={:md}>
+      <:col :let={s} label="Wertpapier">{s.name}</:col>
+      <:action label={&"Bearbeiten: #{&1.name}"} icon="pencil"
+               patch={&~p"/wertpapiere/#{&1}/bearbeiten"} />
     </.table>
 
     <%!-- sortable: groups and the rows within them, rows also into another group --%>

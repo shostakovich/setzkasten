@@ -523,6 +523,20 @@
   }
 }
 
+/* A checkbox or toggle field has no label row above its control: on fine pointers, after another
+   field, it takes the room of one, so its control starts where a labelled field's label does; touch
+   rows are 44px already. */
+@layer utilities.setzkasten {
+  @media not (pointer: coarse) {
+    .fieldset + .setzkasten-check-field {
+      padding-top: 1rem;
+    }
+    .setzkasten-check-field + .setzkasten-check-field {
+      padding-top: 0.5rem;
+    }
+  }
+}
+
 /* Inactive tabs: daisyUI draws them in base-content 50 % (below 4.5:1 for text).
    70 % as for all secondary text. */
 @layer utilities.setzkasten {
@@ -766,8 +780,18 @@
   .modal-bottom > .modal-box {
     max-height: calc(100dvh - 5em);
   }
-  .modal-box:focus-visible {
+  .modal-box:focus-visible,
+  .modal:focus-visible {
     outline: none;
+  }
+  @media (width >= 40rem) {
+    .setzkasten-modal-top {
+      align-items: start;
+    }
+    .setzkasten-modal-top > .modal-box {
+      margin-top: max(1.5rem, 12dvh);
+      max-height: calc(100dvh - max(1.5rem, 12dvh) - 1.5rem);
+    }
   }
 }
 
@@ -996,6 +1020,45 @@
     & > :first-child:dir(rtl) {
       box-shadow: inset -3px 0 0 var(--color-selected);
     }
+  }
+}
+
+/* Codes (ISIN, IBAN, ticker): a monospace face tells 0 from O and 1 from I and l, which Figtree's
+   do not; cap-height matching keeps it from looking larger than the text around it. */
+@layer utilities.setzkasten {
+  .setzkasten-identifier {
+    font-family: var(--font-mono);
+    font-size-adjust: cap-height 0.712;
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-variant-ligatures: none;
+    letter-spacing: 0.02em;
+  }
+  .setzkasten-identifier-field {
+    text-transform: uppercase;
+  }
+  .setzkasten-identifier-field::placeholder {
+    text-transform: none;
+  }
+}
+
+/* <.table>'s row actions show with a mouse when the row is hovered, focused or current; they keep
+   their room, so nothing shifts. Touch screens have no hover and always show them. */
+@layer utilities.setzkasten {
+  @media (hover: hover) and (pointer: fine) {
+    .setzkasten-row-actions > * {
+      opacity: 0;
+      transition: opacity var(--setzkasten-duration-exit) var(--setzkasten-ease-out);
+    }
+    tr:is(:hover, :focus-within, [aria-current]:not([aria-current="false"]), [aria-selected="true"]) > .setzkasten-row-actions > * {
+      opacity: 1;
+    }
+  }
+}
+
+/* A folded table group: its rows keep their share of the column widths, so opening it shifts nothing. */
+@layer utilities.setzkasten {
+  .table tbody[data-folded] > tr:not(:first-child) {
+    visibility: collapse;
   }
 }
 
