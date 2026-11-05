@@ -1109,7 +1109,7 @@ defmodule Setzkasten.Components.Forms do
   window or a scrolling box, or under something else such as a sticky header or a dialog. It
   follows the control when the page around it changes, and clicks pass through it to the cells
   under it. `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned
-  amount.
+  amount; its text still reads from the start, in regular weight, whatever the cell sets.
 
   Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
   `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without

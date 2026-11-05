@@ -1024,5 +1024,8 @@ defmodule Setzkasten.FormsTest do
     assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*color: var\(--color-error-ink\);/
     # The cells under it stay clickable.
     assert css =~ ~r/\.setzkasten-error-bubble \{[^}]*pointer-events: none;/
+    # Its sentences read from the start, whatever the cell around it sets.
+    assert css =~
+             ~r/\.setzkasten-error-bubble \{[^}]*font-weight: 400;[^}]*text-align: start;\s*white-space: normal;/
   end
 end
