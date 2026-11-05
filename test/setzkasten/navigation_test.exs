@@ -759,6 +759,9 @@ defmodule Setzkasten.NavigationTest do
     assert hook =~ "const GUTTER = 16"
     assert hook =~ ~s|this.el.addEventListener("toggle", () => this.fit())|
     assert hook =~ "const left = this.el.getBoundingClientRect().left + menu.offsetLeft"
+    # A closing menu keeps its shift through the exit transition.
+    assert hook =~
+             ~r/if \(!menu \|\| !this.el.open\) return\s*menu.style.removeProperty\("transform"\)/
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 

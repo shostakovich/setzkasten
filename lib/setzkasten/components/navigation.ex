@@ -555,9 +555,8 @@ defmodule Setzkasten.Components.Navigation do
         // Layout offsets, not the bounding box: the enter animation scales and moves the menu.
         fit() {
           const menu = this.el.querySelector(":scope > .dropdown-content")
-          if (!menu) return
+          if (!menu || !this.el.open) return
           menu.style.removeProperty("transform")
-          if (!this.el.open) return
           const left = this.el.getBoundingClientRect().left + menu.offsetLeft
           const right = left + menu.offsetWidth
           const vw = document.documentElement.clientWidth
