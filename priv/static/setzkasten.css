@@ -1670,6 +1670,9 @@
     .setzkasten-popover[popover]:popover-open::backdrop {
       background-color: oklch(0% 0 0 / 0.4);
     }
+    :root:has(.setzkasten-popover[popover]:popover-open) {
+      overflow: hidden;
+    }
   }
 }
 
@@ -1680,7 +1683,9 @@
   }
   @media (width < 40rem) {
     .setzkasten-popover-list[popover] {
+      max-height: 50dvh;
       padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+      overscroll-behavior: contain;
     }
   }
 }

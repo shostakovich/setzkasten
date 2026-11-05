@@ -658,4 +658,14 @@ defmodule Setzkasten.OverlaysTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-popover-list \{\s*padding: 0.5rem;/
   end
+
+  test "on phones a list popover is a half-height sheet over a page that holds still" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/@media \(width < 40rem\) \{\s*\.setzkasten-popover-list\[popover\] \{\s*max-height: 50dvh;[^}]*overscroll-behavior: contain;/
+
+    assert css =~
+             ~r/:root:has\(\.setzkasten-popover\[popover\]:popover-open\) \{\s*overflow: hidden;/
+  end
 end

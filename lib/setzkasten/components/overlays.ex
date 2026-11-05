@@ -526,10 +526,12 @@ defmodule Setzkasten.Components.Overlays do
   the other edge when that one keeps it inside the window, else it shifts to stay 8px inside. CSS anchor positioning places it while one side holds it; a
   colocated hook does otherwise, where the browser has none, and always for `anchor` (the id of
   an element elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger`
-  may be left out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
+  may be left out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones, and
+  the page under it holds still.
 
   `layout={:list}` is the panel for a `pick_list/1`: a narrow padding around its cards and the
-  `title` as a quiet section title in line with the rows.
+  `title` as a quiet section title in line with the rows. On phones it is a half-height sheet,
+  as tall as its list up to half the screen, and a longer list scrolls inside.
 
   Open it from the server with `show={true}` (closing with `show={false}` skips `on_cancel`) or
   with `show_popover/1`. As for `modal/1`, `show` acts when it changes. `on_cancel` runs after every other close, e.g. to clear the server's
