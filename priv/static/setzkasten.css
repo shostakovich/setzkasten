@@ -140,6 +140,7 @@
     --setzkasten-danger-fg: oklch(100.00% 0 0);
     --setzkasten-popover-border: none;
     --setzkasten-popover-control: var(--color-base-200);
+    --setzkasten-pick-card-edge: color-mix(in oklab, var(--color-base-content) 10%, transparent);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -217,6 +218,7 @@
       --setzkasten-danger-fg: var(--color-error-content);
       --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
       --setzkasten-popover-control: var(--color-base-300);
+      --setzkasten-pick-card-edge: transparent;
     }
   }
 
@@ -295,6 +297,7 @@
     --setzkasten-danger-fg: var(--color-error-content);
     --setzkasten-popover-border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
     --setzkasten-popover-control: var(--color-base-300);
+    --setzkasten-pick-card-edge: transparent;
   }
 }
 
@@ -1724,6 +1727,9 @@
     overflow: clip;
     border-radius: var(--radius-field);
     background-color: var(--setzkasten-popover-control);
+    /* An outline, not a border or inset shadow: drawn over the rows' hover fill. */
+    outline: 1px solid var(--setzkasten-pick-card-edge);
+    outline-offset: -1px;
   }
   .setzkasten-pick-item {
     position: relative;

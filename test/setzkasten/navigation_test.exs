@@ -735,6 +735,18 @@ defmodule Setzkasten.NavigationTest do
     assert css =~ ~r/\.setzkasten-pick-trailing \{[^}]*font-variant-numeric: tabular-nums;/
   end
 
+  test "a pick list's cards have a hairline on the light popover, where their tint alone is too faint" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/--setzkasten-popover-control: var\(--color-base-200\);\s*--setzkasten-pick-card-edge: color-mix\(in oklab, var\(--color-base-content\) 10%, transparent\);/
+
+    assert length(String.split(css, "--setzkasten-pick-card-edge: transparent;")) == 3
+
+    assert css =~
+             ~r/\.setzkasten-pick-group \{[^}]*outline: 1px solid var\(--setzkasten-pick-card-edge\);\s*outline-offset: -1px;/
+  end
+
   test "a pick item pushes its event name to its phx-target" do
     assigns = %{}
 
