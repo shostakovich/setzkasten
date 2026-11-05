@@ -731,6 +731,25 @@ defmodule Setzkasten.NavigationTest do
     assert css =~ ~r/\.setzkasten-pick-trailing \{[^}]*font-variant-numeric: tabular-nums;/
   end
 
+  test "a pick item pushes its event name to its phx-target" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.pick_list id="sources">
+        <:group>
+          <.pick_item id="trip" on_click="cover" phx-target={3} phx-value-from="trip">
+            Urlaub
+          </.pick_item>
+        </:group>
+      </.pick_list>
+      """)
+
+    assert [%{"event" => "cover", "target" => 3}] = pushes(attr(doc, "#trip", "phx-click"))
+    assert attr(doc, "#trip", "phx-target") == nil
+    assert attr(doc, "#trip", "phx-value-from") == "trip"
+  end
+
   test "a dropdown item shows a subtitle and is dimmed, not red, while disabled" do
     assigns = %{}
 
