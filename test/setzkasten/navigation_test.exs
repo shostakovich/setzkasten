@@ -664,4 +664,112 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "li:last-child button", "aria-current") == nil
     refute "menu-active" in classes(doc, "li:last-child button")
   end
+
+  test "a pick list groups button rows into cards, with a leading slot once any row has one" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.pick_list id="sources">
+        <:group>
+          <.pick_item id="free" icon="inbox" on_click={JS.push("cover", value: %{from: "free"})}>
+            Zu verteilen<:trailing>60,00 €</:trailing>
+          </.pick_item>
+        </:group>
+        <:group>
+          <.pick_item id="trip" on_click="cover" phx-value-from="trip">
+            <:leading>🏖️</:leading>Urlaub<:trailing>120,30 €</:trailing>
+          </.pick_item>
+          <.pick_item id="phone" on_click="cover" disabled><:leading></:leading>Handy</.pick_item>
+        </:group>
+      </.pick_list>
+      """)
+
+    assert attr(doc, "#sources", "phx-hook") == "Setzkasten.Components.Navigation.PickList"
+    assert count(doc, "#sources > ul.setzkasten-pick-group[role=list]") == 2
+    assert count(doc, "ul > li > button.setzkasten-pick-item[type=button]") == 3
+    assert count(doc, "#free [data-leading], #free[data-leading]") == 1
+    assert attr(doc, "#phone", "data-leading") == ""
+    assert count(doc, "#free .setzkasten-pick-leading[aria-hidden=true] svg") == 1
+    assert text(doc, "#trip .setzkasten-pick-leading") == "🏖️"
+    assert text(doc, "#trip .setzkasten-pick-label") == "Urlaub"
+    assert text(doc, "#trip .setzkasten-pick-trailing") == "120,30 €"
+    assert count(doc, "#phone .setzkasten-pick-trailing") == 0
+    assert attr(doc, "#phone", "disabled") != nil
+    assert attr(doc, "#trip", "phx-value-from") == "trip"
+
+    assert [%{"event" => "cover", "value" => %{"from" => "free"}}] =
+             pushes(attr(doc, "#free", "phx-click"))
+
+    assert [%{"event" => "cover"}] = pushes(attr(doc, "#trip", "phx-click"))
+
+    doc = parse(~H|<.pick_list id="p">
+  <:group>
+    <.pick_item id="a">A</.pick_item>
+  </:group>
+</.pick_list>|)
+    assert attr(doc, "#a", "data-leading") == nil
+    assert attr(doc, "#a", "phx-click") == nil
+
+    hook = colocated_js("Setzkasten.Components.Navigation")
+    assert hook =~ ~s|const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]|
+    assert hook =~ ~s|this.el.querySelectorAll(".setzkasten-pick-item:not(:disabled)")|
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-pick-item \{[^}]*min-height: 2.25rem;/
+
+    assert css =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-pick-item \{\s*min-height: 2.75rem;/
+
+    # The hairline starts at the label, past the leading slot.
+    assert css =~
+             "inset-inline: calc(var(--setzkasten-pick-pad) + var(--setzkasten-pick-lead)) 0;"
+
+    assert css =~
+             ~r/\.setzkasten-pick-list:not\(:has\(\[data-leading\]\)\) \.setzkasten-pick-leading \{\s*display: none;/
+
+    assert css =~ ~r/\.setzkasten-pick-trailing \{[^}]*font-variant-numeric: tabular-nums;/
+  end
+
+  test "a dropdown item shows a subtitle and is dimmed, not red, while disabled" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.dropdown id="month" label="Monat">
+        <:trigger>…</:trigger>
+        <:item id="fill" icon="target" disabled subtitle="Zu verteilen ist leer">Füllen</:item>
+        <:item id="reset" icon="rotate-ccw" danger>Zurücksetzen</:item>
+        <:item id="off" danger disabled>Löschen</:item>
+      </.dropdown>
+      """)
+
+    assert text(doc, "#fill > span.grid > span:first-child") == "Füllen"
+    assert text(doc, "#fill > span.grid > span.text-xs") == "Zu verteilen ist leer"
+    assert "text-base-content/70" in classes(doc, "#fill span.text-xs")
+    assert count(doc, "#reset > span.grid") == 0
+    assert "text-error-ink" in classes(doc, "#reset")
+    refute "text-error-ink" in classes(doc, "#off")
+
+    menu = classes(doc, "#month > ul")
+    assert Enum.all?(["w-max", "min-w-56", "max-w-[min(20rem,calc(100vw-2rem))]"], &(&1 in menu))
+    refute "w-56" in menu
+
+    hook = colocated_js("Setzkasten.Components.Navigation")
+    assert hook =~ "const GUTTER = 16"
+    assert hook =~ ~s|this.el.addEventListener("toggle", () => this.fit())|
+    assert hook =~ "const left = this.el.getBoundingClientRect().left + menu.offsetLeft"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.menu \.menu-disabled \{\s*color: color-mix\(in oklab, var\(--color-base-content\) 50%, transparent\);/
+  end
+
+  test "an open ghost trigger keeps a fill in both themes" do
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.btn-ghost:is\(\[aria-expanded="true"\], details\[open\] > summary\),\s*\.setzkasten-popover-root:has\(> \.setzkasten-popover:popover-open\) > \.btn-ghost\[popovertarget\] \{\s*--btn-bg: color-mix\(in oklab, currentColor 12%, transparent\);/
+  end
 end

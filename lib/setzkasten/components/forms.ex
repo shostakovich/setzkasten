@@ -1102,6 +1102,92 @@ defmodule Setzkasten.Components.Forms do
   end
 
   @doc """
+  The errors of a dense control with no room for lines under it (an amount in a table cell), in
+  a bubble at the control: shown at once and kept in view, not a tooltip on hover. It sits under
+  the control (above it when the window has no room below), in the top layer, so a scrolling
+  table does not clip it, and hides while the control is scrolled out of the window.
+  `align={:end}` lines up its end edge with the control's, e.g. for a right-aligned amount.
+
+  Lines and ids are `field_error/1`'s (`<id>-error-0`, …); link them from the control with
+  `aria-describedby={field_describedby(id, errors, nil)}` and set `aria-invalid` there. Without
+  errors it renders nothing, so it can stay in place.
+
+      <input id="assign-food" class="input input-sm" value={@typed} inputmode="decimal"
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={field_describedby("assign-food", @errors, nil)} />
+      <.error_bubble id="assign-food" errors={@errors} align={:end} />
+  """
+  attr :id, :string, required: true, doc: "the control's id"
+  attr :errors, :list, default: [], doc: "messages or `{msg, opts}` tuples"
+  attr :align, :atom, default: :start, values: [:start, :end]
+  attr :class, :any, default: nil
+
+  def error_bubble(assigns) do
+    assigns = assign(assigns, :messages, Enum.map(assigns.errors, &translate_error/1))
+
+    ~H"""
+    <div
+      :if={@messages != []}
+      id={"#{@id}-errors"}
+      popover="manual"
+      role="alert"
+      class={[
+        "setzkasten-error-bubble shadow-lg",
+        @align == :end && "setzkasten-error-bubble-end",
+        @class
+      ]}
+      data-for={@id}
+      phx-hook=".ErrorBubble"
+    >
+      <p :for={{msg, i} <- Enum.with_index(@messages)} id={"#{@id}-error-#{i}"} class="flex gap-1.5">
+        <.icon name="circle-alert" class="mt-0.5 size-4 shrink-0" />{upcase_first(msg)}
+      </p>
+    </div>
+    <script :type={ColocatedHook} name=".ErrorBubble">
+      const EDGE = 8
+      const GAP = 4
+      export default {
+        mounted() {
+          this.onMove = () => {
+            cancelAnimationFrame(this.frame)
+            this.frame = requestAnimationFrame(() => this.place())
+          }
+          window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
+          window.addEventListener("resize", this.onMove)
+          this.place()
+        },
+        updated() { this.place() },
+        destroyed() {
+          cancelAnimationFrame(this.frame)
+          window.removeEventListener("scroll", this.onMove, { capture: true })
+          window.removeEventListener("resize", this.onMove)
+        },
+        place() {
+          const control = document.getElementById(this.el.dataset.for)
+          const r = control && control.getBoundingClientRect()
+          const vh = window.innerHeight
+          const open = this.el.matches(":popover-open")
+          if (!r || !r.width || r.bottom < 0 || r.top > vh) {
+            if (open) this.el.hidePopover()
+            return
+          }
+          if (!open) this.el.showPopover()
+          const width = this.el.offsetWidth
+          const height = this.el.offsetHeight
+          const vw = document.documentElement.clientWidth
+          const rtl = getComputedStyle(this.el).direction === "rtl"
+          const end = this.el.classList.contains("setzkasten-error-bubble-end") !== rtl
+          const left = Math.min(end ? r.right - width : r.left, vw - width - EDGE)
+          const top = r.bottom + GAP + height <= vh - EDGE ? r.bottom + GAP : r.top - GAP - height
+          this.el.style.left = `${Math.max(EDGE, left)}px`
+          this.el.style.top = `${Math.max(EDGE, top)}px`
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
   The help line of a field, as `input` renders it, with the id `<id>-help`. See `field_error/1`.
   `tone={:warning}` adds a `triangle-alert` icon and sets icon and text in `warning-ink`, as
   error lines are in `error-ink` (4.5:1 on the page and the popover surface, light and dark).

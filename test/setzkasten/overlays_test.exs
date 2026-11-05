@@ -473,7 +473,7 @@ defmodule Setzkasten.OverlaysTest do
              ~r/\} else \{\s*this.stopTracking\(\)\s*if \(!this.el.hasAttribute\("data-suspended"\)\) this.returnFocus\(\)\s*\}/
 
     assert hook =~ ~s|CSS.supports("anchor-scope: all")|
-    assert hook =~ ~s|(NATIVE && !this.el.hasAttribute("data-anchor"))|
+    assert hook =~ ~s|const native = NATIVE && !this.el.hasAttribute("data-anchor")|
     # A click on the anchor of an open popover closes it and does not reopen it.
     assert hook =~ ~s|if (anchor && anchor.contains(e.target)) this.swallow = e.timeStamp|
     assert hook =~ ~s|document.addEventListener("click", this.onClick, true)|
@@ -548,5 +548,53 @@ defmodule Setzkasten.OverlaysTest do
   test "the page keeps its scrollbar's room, so an open modal shifts nothing" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/@layer utilities\.setzkasten \{\s*:root \{\s*scrollbar-gutter: stable;/
+  end
+
+  test "a popover that fits neither side takes the larger one and scrolls inside" do
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    # The content's full height, also while a max-height clips it.
+    assert hook =~
+             "const height = this.el.scrollHeight + this.el.offsetHeight - this.el.clientHeight"
+
+    assert hook =~
+             "if (native && (height <= below || height <= above) && starts.some(inside)) return reset()"
+
+    assert hook =~ "height > below && (height <= above || above > below)"
+    assert hook =~ "height <= above || (height > below && above >= below)"
+    assert hook =~ ~s|this.js().setAttribute(this.el, "data-placed", "")|
+    assert hook =~ "style.maxHeight = `${room}px`"
+    assert hook =~ "Math.max(EDGE, Math.min(starts[0], vw - width - EDGE))"
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    # The hook's placement replaces anchor positioning, which would keep the panel below.
+    assert css =~
+             ~r/\.setzkasten-popover:not\(\[data-anchor\], \[data-placed\]\) \{\s*position-anchor/
+  end
+
+  test "a list popover narrows its padding and quiets its title in line with the rows" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.popover id="cover" title="50,00 € decken aus" anchor="cell" layout={:list}>
+        <.pick_list id="sources">
+          <:group>
+            <.pick_item>Urlaub</.pick_item>
+          </:group>
+        </.pick_list>
+      </.popover>
+      """)
+
+    assert "setzkasten-popover-list" in classes(doc, "#cover")
+    assert Enum.all?(~w(px-3 text-base-content/70), &(&1 in classes(doc, "#cover-title")))
+    refute "mb-3" in classes(doc, "#cover-title")
+    assert attr(doc, "#cover", "aria-labelledby") == "cover-title"
+
+    doc = parse(~H|<.popover id="p" title="Farbe" anchor="cell">x</.popover>|)
+    refute "setzkasten-popover-list" in classes(doc, "#p")
+    assert "mb-3" in classes(doc, "#p-title")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-popover-list \{\s*padding: 0.5rem;/
   end
 end

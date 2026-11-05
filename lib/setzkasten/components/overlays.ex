@@ -421,10 +421,15 @@ defmodule Setzkasten.Components.Overlays do
   `autofocus` to start there.
 
   Placement: below the trigger, its start edge at the trigger's (`align={:end}`: end edges),
-  `position={:top}` above; it flips when there is no room. CSS anchor positioning places it; a
-  colocated hook does where the browser has none, and always for `anchor` (the id of an element
-  elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger` may be left
-  out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
+  `position={:top}` above; it flips when there is no room. When neither side holds it, it takes
+  the side with more room, as tall as that room, and scrolls inside; along the trigger it shifts
+  to stay 8px inside the window. CSS anchor positioning places it while one side holds it; a
+  colocated hook does otherwise, where the browser has none, and always for `anchor` (the id of
+  an element elsewhere, e.g. a table cell that opened it with `show_popover/1`; then `:trigger`
+  may be left out). Below `sm` it is a bottom sheet over a scrim, as `modal/1` is on phones.
+
+  `layout={:list}` is the panel for a `pick_list/1`: a narrow padding around its cards and the
+  `title` as a quiet section title in line with the rows.
 
   Open it from the server with `show={true}` (closing with `show={false}` skips `on_cancel`) or
   with `show_popover/1`. As for `modal/1`, `show` acts when it changes. `on_cancel` runs after every other close, e.g. to clear the server's
@@ -440,8 +445,9 @@ defmodule Setzkasten.Components.Overlays do
         </form>
       </.popover>
 
-      <.popover id="cover" anchor={@cover_cell} show={@cover != nil} on_cancel={JS.push("cover_closed")}>
-        …
+      <.popover id="cover" title="50,00 € decken aus" anchor={@cover_cell} show={@cover != nil}
+                on_cancel={JS.push("cover_closed")} layout={:list}>
+        <.pick_list id="cover-sources">…</.pick_list>
       </.popover>
   """
   attr :id, :string, required: true
@@ -459,6 +465,7 @@ defmodule Setzkasten.Components.Overlays do
 
   attr :show, :boolean, default: nil
   attr :on_cancel, JS, default: nil
+  attr :layout, :atom, default: :form, values: [:form, :list]
   attr :class, :any, default: nil, doc: "on the panel, e.g. a width (`w-80`)"
   attr :rest, :global
   slot :trigger
@@ -494,6 +501,7 @@ defmodule Setzkasten.Components.Overlays do
           "setzkasten-popover shadow-lg",
           @align == :end && "setzkasten-popover-end",
           @position == :top && "setzkasten-popover-top",
+          @layout == :list && "setzkasten-popover-list",
           @class
         ]}
         phx-hook=".Popover"
@@ -501,13 +509,22 @@ defmodule Setzkasten.Components.Overlays do
         data-show={show_attr(@show)}
         data-cancel={@on_cancel}
       >
-        <h2 :if={@title} id={"#{@id}-title"} class="mb-3 font-semibold wrap-anywhere">{@title}</h2>
+        <h2
+          :if={@title}
+          id={"#{@id}-title"}
+          class={[
+            "font-semibold wrap-anywhere",
+            if(@layout == :list, do: "px-3 pt-1 pb-1.5 text-base-content/70", else: "mb-3")
+          ]}
+        >
+          {@title}
+        </h2>
         {render_slot(@inner_block)}
       </div>
     </div>
     <script :type={ColocatedHook} name=".Popover">
-      // Anchor positioning with anchor-scope places a popover at its own trigger; without it, and
-      // for an anchor elsewhere, the hook does.
+      // Anchor positioning with anchor-scope places a popover at its own trigger while one side
+      // holds it; otherwise, and for an anchor elsewhere, the hook does.
       const NATIVE = CSS.supports("anchor-scope: all") && CSS.supports("position-area: block-end")
       const phone = window.matchMedia("(width < 40rem)")
       const EDGE = 8
@@ -620,26 +637,32 @@ defmodule Setzkasten.Components.Overlays do
         place() {
           const style = this.el.style
           const anchor = this.anchor()
-          if (!anchor || phone.matches || (NATIVE && !this.el.hasAttribute("data-anchor"))) {
-            style.removeProperty("left")
-            style.removeProperty("top")
-            return
+          const reset = () => {
+            for (const property of ["left", "top", "max-height"]) style.removeProperty(property)
+            if (this.el.hasAttribute("data-placed")) this.js().removeAttribute(this.el, "data-placed")
           }
+          if (!anchor || phone.matches) return reset()
           const a = anchor.getBoundingClientRect()
           const width = this.el.offsetWidth
-          const height = this.el.offsetHeight
+          const height = this.el.scrollHeight + this.el.offsetHeight - this.el.clientHeight
           const vw = document.documentElement.clientWidth
-          const vh = window.innerHeight
+          const below = window.innerHeight - EDGE - a.bottom - GAP
+          const above = a.top - GAP - EDGE
           const rtl = getComputedStyle(this.el).direction === "rtl"
           const end = this.el.classList.contains("setzkasten-popover-end") !== rtl
-          const left = Math.min(Math.max(EDGE, end ? a.right - width : a.left), vw - width - EDGE)
-          const above = a.top - GAP - height
-          const below = a.bottom + GAP
-          const top = this.el.classList.contains("setzkasten-popover-top")
-            ? (above >= EDGE ? above : below)
-            : (below + height <= vh - EDGE || above < EDGE ? below : above)
-          style.left = `${Math.max(EDGE, left)}px`
-          style.top = `${Math.max(EDGE, top)}px`
+          const starts = end ? [a.right - width, a.left] : [a.left, a.right - width]
+          const inside = (left) => left >= EDGE && left + width <= vw - EDGE
+          const native = NATIVE && !this.el.hasAttribute("data-anchor")
+          if (native && (height <= below || height <= above) && starts.some(inside)) return reset()
+          // Neither side holds it: the side with more room, scrolling inside.
+          const up = this.el.classList.contains("setzkasten-popover-top")
+            ? height <= above || (height > below && above >= below)
+            : height > below && (height <= above || above > below)
+          const room = Math.max(0, up ? above : below)
+          if (native && !this.el.hasAttribute("data-placed")) this.js().setAttribute(this.el, "data-placed", "")
+          style.maxHeight = `${room}px`
+          style.left = `${Math.max(EDGE, Math.min(starts[0], vw - width - EDGE))}px`
+          style.top = `${up ? a.top - GAP - Math.min(height, room) : a.bottom + GAP}px`
         }
       }
     </script>

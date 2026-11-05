@@ -439,6 +439,10 @@
   .menu .menu-title {
     color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
   }
+  /* daisyUI's 20 % hides a disabled item; dimmed, it still says what it would do. */
+  .menu .menu-disabled {
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  }
 
   /* Bottom navigation labels: daisyUI's dock-label is 11px; 12px is the floor. */
   .dock .dock-label {
@@ -909,6 +913,15 @@
   .setzkasten-sidebar .tooltip > .tooltip-content,
   .setzkasten-sidebar .tooltip[data-tip]::before {
     color: var(--color-sidebar);
+  }
+}
+
+/* A ghost button whose menu or popover is open keeps a fill; daisyUI's base-200 is the dark popover
+   surface and many a dark header. */
+@layer utilities.setzkasten {
+  .btn-ghost:is([aria-expanded="true"], details[open] > summary),
+  .setzkasten-popover-root:has(> .setzkasten-popover:popover-open) > .btn-ghost[popovertarget] {
+    --btn-bg: color-mix(in oklab, currentColor 12%, transparent);
   }
 }
 
@@ -1594,19 +1607,19 @@
     --setzkasten-dock-offset: 0px;
   }
   @supports (anchor-scope: all) and (position-area: block-end) {
-    .setzkasten-popover:not([data-anchor]) {
+    .setzkasten-popover:not([data-anchor], [data-placed]) {
       position-anchor: --setzkasten-popover;
       position-area: block-end span-inline-end;
       position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
       margin-block: 0.25rem;
     }
-    .setzkasten-popover-end:not([data-anchor]) {
+    .setzkasten-popover-end:not([data-anchor], [data-placed]) {
       position-area: block-end span-inline-start;
     }
-    .setzkasten-popover-top:not([data-anchor]) {
+    .setzkasten-popover-top:not([data-anchor], [data-placed]) {
       position-area: block-start span-inline-end;
     }
-    .setzkasten-popover-top.setzkasten-popover-end:not([data-anchor]) {
+    .setzkasten-popover-top.setzkasten-popover-end:not([data-anchor], [data-placed]) {
       position-area: block-start span-inline-start;
     }
   }
@@ -1628,6 +1641,123 @@
     .setzkasten-popover[popover]:popover-open::backdrop {
       background-color: oklch(0% 0 0 / 0.4);
     }
+  }
+}
+
+/* <.popover layout={:list}> around a <.pick_list>: cards close to the panel's edge. */
+@layer utilities.setzkasten {
+  .setzkasten-popover-list {
+    padding: 0.5rem;
+  }
+  @media (width < 40rem) {
+    .setzkasten-popover-list[popover] {
+      padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* <.pick_list>: rows in rounded cards, hairlines from the label to the card's end. */
+@layer utilities.setzkasten {
+  .setzkasten-pick-list {
+    --setzkasten-pick-pad: 0.75rem;
+    --setzkasten-pick-gap: 0.625rem;
+    --setzkasten-pick-lead: 0px;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .setzkasten-pick-list:has([data-leading]) {
+    --setzkasten-pick-lead: calc(1.25rem + var(--setzkasten-pick-gap));
+  }
+  .setzkasten-pick-group {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: clip;
+    border-radius: var(--radius-field);
+    background-color: var(--setzkasten-popover-control);
+  }
+  .setzkasten-pick-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--setzkasten-pick-gap);
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0.375rem var(--setzkasten-pick-pad);
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color var(--setzkasten-duration-press) linear;
+  }
+  li + li > .setzkasten-pick-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: calc(var(--setzkasten-pick-pad) + var(--setzkasten-pick-lead)) 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  }
+  @media (hover: hover) {
+    .setzkasten-pick-item:hover:not(:disabled) {
+      background-color: color-mix(in oklab, var(--setzkasten-popover-control), var(--color-base-content) 6%);
+    }
+  }
+  .setzkasten-pick-item:active:not(:disabled) {
+    background-color: color-mix(in oklab, var(--setzkasten-popover-control), var(--color-base-content) 12%);
+  }
+  .setzkasten-pick-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    border-radius: var(--radius-field);
+  }
+  .setzkasten-pick-item:disabled {
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+    cursor: not-allowed;
+  }
+  .setzkasten-pick-leading {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    width: 1.25rem;
+  }
+  .setzkasten-pick-list:not(:has([data-leading])) .setzkasten-pick-leading {
+    display: none;
+  }
+  .setzkasten-pick-label {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .setzkasten-pick-trailing {
+    flex: none;
+    padding-inline-start: 0.5rem;
+    white-space: nowrap;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (pointer: coarse) {
+    .setzkasten-pick-item {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* <.error_bubble>: a manual popover the hook places at its control. */
+@layer utilities.setzkasten {
+  .setzkasten-error-bubble {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    max-width: min(18rem, calc(100vw - 1rem));
+    padding: 0.375rem 0.625rem;
+    color: var(--color-error-ink);
+    background-color: var(--color-popover);
+    border: 1px solid color-mix(in oklab, var(--color-error-ink) 50%, transparent);
+    border-radius: var(--radius-field);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-wrap: pretty;
   }
 }
 

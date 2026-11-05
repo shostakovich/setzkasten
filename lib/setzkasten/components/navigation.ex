@@ -1,10 +1,10 @@
 defmodule Setzkasten.Components.Navigation do
-  @moduledoc "Segmented choices, tab navigation and dropdown menus."
+  @moduledoc "Segmented choices, tab navigation, dropdown menus and pick lists."
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
-  import Setzkasten.Click, only: [entry_click: 2]
+  import Setzkasten.Click, only: [click_js: 2, entry_click: 2]
 
   import Setzkasten.Components.Forms,
     only: [field_error: 1, field_help: 1, field_describedby: 3, translate_error: 1]
@@ -401,14 +401,17 @@ defmodule Setzkasten.Components.Navigation do
   `JS.push("undo", target: @myself)`),
   `icon` (Lucide) or `plush` (24px, falls back to `icon` when the plush module has no image for
   it, e.g. areas in an area menu), `active` (selected: `aria-current="page"` on a link,
-  `"true"` on a button, e.g. the current sort order), `danger`, `divider` (a line above the
-  item, e.g. before a link to the whole list), `id`, `disabled`, `class` (e.g. `sm:hidden`
+  `"true"` on a button, e.g. the current sort order), `danger` (red while it is enabled),
+  `divider` (a line above the item, e.g. before a link to the whole list), `id`, `disabled`
+  (dimmed, kept in its place), `subtitle` (a quieter second line, e.g. why it is disabled),
+  `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
   `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
   (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
   button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
   above the trigger, for a trigger at the bottom of the screen. The menu sets its own text
-  colour and weight, so it reads the same inside the dark sidebar or a bold brand.
+  colour and weight, so it reads the same inside the dark sidebar or a bold brand. It is as
+  wide as its longest item, from 14rem up to 20rem, and keeps 16px from the window's edges.
   Once an item shows a plush, all labels share one text column: icons and items without one
   keep a 24px place, and every item keeps the height of its text.
 
@@ -446,6 +449,7 @@ defmodule Setzkasten.Components.Navigation do
     attr :divider, :boolean
     attr :id, :string
     attr :disabled, :boolean
+    attr :subtitle, :string
     attr :class, :any
     attr :confirm, :string
     attr :confirm_text, :string
@@ -488,7 +492,8 @@ defmodule Setzkasten.Components.Navigation do
       </summary>
       <ul class={[
         "menu dropdown-content bg-popover text-base-content text-sm font-normal rounded-box",
-        "border border-base-content/10 shadow-lg z-20 w-56",
+        "border border-base-content/10 shadow-lg z-20 w-max min-w-56",
+        "max-w-[min(20rem,calc(100vw-2rem))]",
         if(@position == :top, do: "mb-1", else: "mt-1")
       ]}>
         <li :for={header <- @header} class="menu-title min-w-0 truncate">{render_slot(header)}</li>
@@ -507,19 +512,25 @@ defmodule Setzkasten.Components.Navigation do
             href={item[:href]}
             method={item[:method]}
             id={item[:id]}
-            class={[item[:active] && "menu-active", item[:danger] && "text-error-ink"]}
+            class={[
+              item[:active] && "menu-active",
+              item[:danger] && !item[:disabled] && "text-error-ink"
+            ]}
             aria-current={item[:active] && "page"}
             phx-click={close_menu("##{@id}")}
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
-            <.item_media item={item} media={media} plush_box={@plush_box} />{render_slot(item)}
+            <.item_media item={item} media={media} plush_box={@plush_box} /><.item_label item={item} />
           </.link>
           <button
             :if={!(item[:navigate] || item[:patch] || item[:href])}
             type="button"
             id={item[:id]}
-            class={[item[:active] && "menu-active", item[:danger] && "text-error-ink"]}
+            class={[
+              item[:active] && "menu-active",
+              item[:danger] && !item[:disabled] && "text-error-ink"
+            ]}
             aria-current={item[:active] && "true"}
             disabled={item[:disabled]}
             aria-haspopup={item[:confirm] && "dialog"}
@@ -527,20 +538,136 @@ defmodule Setzkasten.Components.Navigation do
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
           >
-            <.item_media item={item} media={media} plush_box={@plush_box} />{render_slot(item)}
+            <.item_media item={item} media={media} plush_box={@plush_box} /><.item_label item={item} />
           </button>
         </li>
       </ul>
     </details>
     <script :type={ColocatedHook} name=".Dropdown">
+      const GUTTER = 16
       export default {
         mounted() {
           this.el.addEventListener("keydown", (e) => {
             if (e.key === "Escape" && this.el.open) e.preventDefault()
           })
+          this.el.addEventListener("toggle", () => this.fit())
+        },
+        // Layout offsets, not the bounding box: the enter animation scales and moves the menu.
+        fit() {
+          const menu = this.el.querySelector(":scope > .dropdown-content")
+          if (!menu) return
+          menu.style.removeProperty("transform")
+          if (!this.el.open) return
+          const left = this.el.getBoundingClientRect().left + menu.offsetLeft
+          const right = left + menu.offsetWidth
+          const vw = document.documentElement.clientWidth
+          const shift = right > vw - GUTTER ? vw - GUTTER - right : left < GUTTER ? GUTTER - left : 0
+          if (shift) menu.style.transform = `translateX(${shift}px)`
         }
       }
     </script>
+    """
+  end
+
+  @doc """
+  A short list of choices that each act at once, in a popover or a sheet: rows grouped into
+  rounded cards on the surface tint (`:group`, one card each), every row a button with a
+  fixed-width leading slot, its label and a trailing value in tabular figures, divided by
+  hairlines that start at the label. Rows are 36px with a mouse and 44px on touch screens. The
+  arrow keys, Home and End move between the rows of all cards.
+
+  Inside `<.popover layout={:list}>` the popover's `title` is the section title above the
+  cards, in line with the rows' content.
+
+  `pick_item/1` attrs: `on_click` (an event name with `phx-target`, or a `%JS{}`), `icon`
+  (Lucide) or the `:leading` slot (an emoji; may be empty, the slot keeps its width), the
+  `:trailing` slot, `disabled`, and global attrs on the button (`id`, `phx-value-*`,
+  `autofocus`). Once any row has an icon or a `:leading` slot, every row keeps the slot.
+
+      <.popover id="cover" title="50,00 € decken aus" anchor={@anchor} show layout={:list}
+                on_cancel={JS.push("cover_closed")}>
+        <.pick_list id="cover-sources">
+          <:group>
+            <.pick_item id="cover-from-free" icon="inbox" on_click={JS.push("cover", value: %{from: "free"})}>
+              Zu verteilen<:trailing><.amount value={@free} tone /></:trailing>
+            </.pick_item>
+          </:group>
+          <:group>
+            <.pick_item :for={c <- @sources} id={"cover-from-\#{c.id}"}
+                        on_click={JS.push("cover", value: %{from: c.id})}>
+              <:leading>{c.emoji}</:leading>{c.name}
+              <:trailing><.amount value={c.available} /></:trailing>
+            </.pick_item>
+          </:group>
+        </.pick_list>
+      </.popover>
+  """
+  attr :id, :string, required: true
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :group, required: true, doc: "a card of `pick_item/1` rows"
+
+  def pick_list(assigns) do
+    ~H"""
+    <div id={@id} class={["setzkasten-pick-list", @class]} phx-hook=".PickList" {@rest}>
+      <ul :for={group <- @group} class="setzkasten-pick-group" role="list">
+        {render_slot(group)}
+      </ul>
+    </div>
+    <script :type={ColocatedHook} name=".PickList">
+      const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]
+      export default {
+        mounted() {
+          this.el.addEventListener("keydown", (e) => {
+            if (!KEYS.includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return
+            const items = [...this.el.querySelectorAll(".setzkasten-pick-item:not(:disabled)")]
+            if (!items.length) return
+            const at = items.indexOf(document.activeElement)
+            const last = items.length - 1
+            const next = {
+              ArrowDown: at < 0 ? 0 : Math.min(at + 1, last),
+              ArrowUp: at < 0 ? last : Math.max(at - 1, 0),
+              Home: 0,
+              End: last
+            }[e.key]
+            e.preventDefault()
+            items[next].focus()
+          })
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc "A row of `pick_list/1`."
+  attr :on_click, :any, default: nil, doc: "event name or `%JS{}`"
+  attr :"phx-target", :any, default: nil, doc: "for an event name in `on_click`, e.g. `@myself`"
+  attr :icon, :string, default: nil, doc: "Lucide name in the leading slot"
+  attr :disabled, :boolean, default: false
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+  slot :leading, doc: "e.g. an emoji, in place of `icon`"
+  slot :trailing, doc: "the value at the end, e.g. an `amount`"
+
+  def pick_item(assigns) do
+    ~H"""
+    <li>
+      <button
+        type="button"
+        class={["setzkasten-pick-item", @class]}
+        data-leading={(@icon || @leading != []) && ""}
+        disabled={@disabled}
+        phx-click={@on_click && click_js(@on_click, assigns[:"phx-target"])}
+        {@rest}
+      >
+        <span class="setzkasten-pick-leading" aria-hidden="true">
+          <.icon :if={@icon} name={@icon} />{render_slot(@leading)}
+        </span>
+        <span class="setzkasten-pick-label">{render_slot(@inner_block)}</span>
+        <span :if={@trailing != []} class="setzkasten-pick-trailing">{render_slot(@trailing)}</span>
+      </button>
+    </li>
     """
   end
 
@@ -555,6 +682,19 @@ defmodule Setzkasten.Components.Navigation do
     <span :if={@media == nil and @plush_box} class="w-6 h-4 shrink-0" aria-hidden="true"></span>
     """
   end
+
+  attr :item, :map, required: true
+
+  defp item_label(%{item: %{subtitle: subtitle}} = assigns) when is_binary(subtitle) do
+    ~H"""
+    <span class="grid min-w-0">
+      <span>{render_slot(@item)}</span>
+      <span class="text-xs text-base-content/70">{@item.subtitle}</span>
+    </span>
+    """
+  end
+
+  defp item_label(assigns), do: ~H"{render_slot(@item)}"
 
   # Closes a `<details>` menu and puts focus back on its summary (the closed menu's items are
   # hidden, so focus would otherwise drop to <body>). LiveView runs an element's phx-keydown

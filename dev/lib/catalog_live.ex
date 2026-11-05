@@ -131,7 +131,10 @@ defmodule Setzkasten.Dev.CatalogLive do
     {:noreply,
      socket
      |> assign(cover: nil)
-     |> put_flash(:info, "Gedeckt (Demo) aus „#{from}“.")}
+     |> put_toast("Aus „#{from}“ gedeckt (Demo).",
+       action: "Rückgängig",
+       on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "uncovered"})
+     )}
   end
 
   def handle_event("import", %{"import" => %{"file" => file}} = params, socket) do
@@ -164,6 +167,9 @@ defmodule Setzkasten.Dev.CatalogLive do
        on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "undone"})
      )}
   end
+
+  def handle_event("toast", %{"kind" => "uncovered"}, socket),
+    do: {:noreply, put_toast(socket, "Decken rückgängig gemacht (Demo).")}
 
   def handle_event("toast", %{"kind" => "undone"}, socket),
     do: {:noreply, put_toast(socket, "Bananen wieder auf der Liste")}

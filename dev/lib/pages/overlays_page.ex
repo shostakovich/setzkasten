@@ -6,7 +6,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
   alias Phoenix.LiveView.JS
 
   def title, do: "Dialoge"
-  def summary, do: "modal, confirm_dialog, popover, disclosure, tooltip"
+  def summary, do: "modal, confirm_dialog, popover, pick_list, disclosure, tooltip"
 
   def render(assigns) do
     ~H"""
@@ -267,8 +267,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         Freier Inhalt an seinem Auslöser, meist ein kleines Formular; kein Menü. Liegt in der
         obersten Ebene (Popover-API) und entkommt so scrollenden Tabellen. Schließt bei Klick
         daneben, mit Escape und <code>hide_popover/1</code>; Escape gibt den Fokus zurück. Platziert
-        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Unter <code>sm</code>
-        ein Blatt von unten.
+        per CSS-Anchor-Positioning, sonst per Hook; kippt, wenn kein Platz ist. Hat keine Seite
+        genug Platz, nimmt es die größere und scrollt innen. Unter <code>sm</code> ein Blatt von
+        unten.
       </:intro>
       <.demo title="Formular, align={:end}, position={:top}" class="flex flex-wrap gap-3">
         <.popover id="pop-rename" title="Kategorie umbenennen">
@@ -329,28 +330,41 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.popover
           :if={@cover}
           id="pop-cover"
-          title="Überzug decken"
+          title={"#{cover_need(@cover)} decken aus"}
           anchor={"cover-#{@cover}"}
           align={:end}
           show
+          layout={:list}
           on_cancel={JS.push("cover_closed")}
         >
-          <form id="pop-cover-form" class="grid gap-3" phx-submit="cover">
-            <.input
-              name="from"
-              id="pop-cover-from"
-              type="select"
-              label="Decken aus"
-              options={["Zu verteilen", "Urlaub", "Geschenke"]}
-              autofocus
-            />
-            <.button type="submit" size={:sm} variant={:primary} class="justify-self-end">
-              Decken
-            </.button>
-          </form>
+          <.pick_list id="pop-cover-sources">
+            <:group>
+              <.pick_item
+                id="pop-cover-free"
+                icon="inbox"
+                on_click={JS.push("cover", value: %{from: "Zu verteilen"})}
+                autofocus
+              >
+                Zu verteilen<:trailing><.amount value={60_000} tone /></:trailing>
+              </.pick_item>
+            </:group>
+            <:group>
+              <.pick_item
+                :for={{emoji, name, amount} <- cover_sources()}
+                id={"pop-cover-#{String.downcase(name)}"}
+                on_click={JS.push("cover", value: %{from: name})}
+              >
+                <:leading>{emoji}</:leading>{name}
+                <:trailing><.amount value={amount} /></:trailing>
+              </.pick_item>
+            </:group>
+          </.pick_list>
         </.popover>
         <:note>
           Der Betrag öffnet das Popover über den Server; es entkommt dem Rahmen der Tabelle.
+          <code>layout={:list}</code>
+          mit <code>&lt;.pick_list&gt;</code>: Karten, 36px-Zeilen
+          (44px auf Touch), Pfeiltasten; ein Eintrag deckt und zeigt einen Toast mit Rückgängig.
         </:note>
       </.demo>
     </.showcase>
@@ -501,9 +515,23 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       </form>
     </.popover>
 
-    <%!-- opened by the server at a cell elsewhere --%>
-    <.popover :if={@cover} id="cover" title="Überzug decken" anchor={"cover-#{@cover}"}
-              align={:end} show on_cancel={JS.push("cover_closed")}>…</.popover>
+    <%!-- opened by the server at a cell elsewhere, a pick list inside --%>
+    <.popover :if={@cover} id="cover" title="42,10 € decken aus" anchor={"cover-#{@cover}"}
+              align={:end} show layout={:list} on_cancel={JS.push("cover_closed")}>
+      <.pick_list id="cover-sources">
+        <:group>
+          <.pick_item icon="inbox" on_click={JS.push("cover", value: %{from: "free"})}>
+            Zu verteilen<:trailing><.amount value={@free} tone /></:trailing>
+          </.pick_item>
+        </:group>
+        <:group>
+          <.pick_item :for={c <- @sources} on_click={JS.push("cover", value: %{from: c.id})}>
+            <:leading>{c.emoji}</:leading>{c.name}
+            <:trailing><.amount value={c.available} /></:trailing>
+          </.pick_item>
+        </:group>
+      </.pick_list>
+    </.popover>
     """
   end
 
@@ -524,6 +552,28 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
     """
+  end
+
+  defp cover_need(cell) do
+    {_, _, amount} = List.keyfind(cover_cells(), cell, 0)
+    Setzkasten.Format.money(-amount)
+  end
+
+  defp cover_sources do
+    [
+      {"🛟", "Notgroschen", 41_539},
+      {"🛒", "Lebensmittel", 37_325},
+      {"📈", "Sparplan", 15_000},
+      {"🏖️", "Urlaub", 12_030},
+      {"🧴", "Haushalt", 11_653},
+      {"👕", "Kleidung", 9_010},
+      {"🎄", "Weihnachten", 7_500},
+      {"⛽", "Tanken", 7_080},
+      {"🍕", "Restaurant", 5_150},
+      {nil, "Handy", 4_015},
+      {"🎧", "Abos", 2_303},
+      {"💡", "Strom", 600}
+    ]
   end
 
   defp cover_cells do

@@ -247,6 +247,42 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
           </:item>
         </.dropdown>
       </.demo>
+      <.demo
+        title="Monatsmenü: Breite nach Inhalt, deaktiviert mit Grund, gefährlich"
+        class="flex h-56 items-start justify-end"
+      >
+        <.dropdown
+          id="month-menu"
+          label="Monat"
+          align={:end}
+          variant={:ghost}
+          chevron={false}
+          trigger_class="btn-sm btn-square"
+        >
+          <:trigger><.icon name="ellipsis-vertical" /></:trigger>
+          <:item id="month-fill" icon="target" on_click={JS.push("noop")}>
+            Unterfinanzierte füllen (177,31 €)
+          </:item>
+          <:item id="month-fill-empty" icon="target" disabled subtitle="Zu verteilen ist leer">
+            Unterfinanzierte füllen
+          </:item>
+          <:item
+            id="month-reset"
+            icon="rotate-ccw"
+            danger
+            divider
+            confirm="Alle Zuweisungen im November zurücksetzen?"
+            confirm_label="Zurücksetzen"
+            on_click={JS.push("noop")}
+          >
+            Zuweisungen zurücksetzen …
+          </:item>
+        </.dropdown>
+        <:note>
+          Am rechten Rand: das Menü hält 16px Abstand zum Fensterrand. Offen hat der Ghost-Auslöser
+          eine Füllung, auch im Dunkeln.
+        </:note>
+      </.demo>
       <.demo title="Buttons mit aktivem Eintrag (Sortierung)" class="flex h-56 items-start">
         <.dropdown id="sort" label="Sortierung" variant={:ghost} chevron>
           <:trigger>Sortiert nach {if @sort == "amount", do: "Betrag", else: "Datum"}</:trigger>
@@ -312,6 +348,14 @@ defmodule Setzkasten.Dev.Pages.NavigationPage do
       <:trigger><.plush name="piggy" size={:sm} />Finanzen</:trigger>
       <:item navigate={~p"/budget"} plush="piggy" icon="wallet" active>Finanzen</:item>
       <:item navigate={~p"/kasse"} plush="receipt" icon="receipt">Kasse</:item>
+    </.dropdown>
+    <.dropdown id="month" label="Monat" align={:end} variant={:ghost} chevron={false}
+               trigger_class="btn-sm btn-square">
+      <:trigger><.icon name="ellipsis-vertical" /></:trigger>
+      <:item icon="target" disabled={@free == 0} subtitle={@free == 0 && "Zu verteilen ist leer"}
+             on_click={JS.push("fill")}>Unterfinanzierte füllen</:item>
+      <:item icon="rotate-ccw" danger divider confirm="Alle Zuweisungen zurücksetzen?"
+             confirm_label="Zurücksetzen" on_click={JS.push("reset")}>Zuweisungen zurücksetzen …</:item>
     </.dropdown>
     """
   end
