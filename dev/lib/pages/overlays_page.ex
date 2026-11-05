@@ -45,6 +45,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button phx-click={show_modal("new-security")} aria-haspopup="dialog">
           Oben verankert, mit autofocus
         </.button>
+        <.button phx-click={show_modal("category-trip")} aria-haspopup="dialog">
+          Toast im Dialog
+        </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
@@ -167,6 +170,17 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
             <.button type="submit" variant={:primary}>Hinzufügen</.button>
           </.action_bar>
         </form>
+      </.modal>
+      <.modal id="category-trip" title="🏖️ Urlaub">
+        <p class="py-4 text-sm">
+          Ziel <.amount value={60_000} /> bis Juli, diesen Monat fehlen <.amount value={6_000} />.
+        </p>
+        <.button id="category-trip-assign" phx-click={JS.push("toast", value: %{kind: "assigned"})}>
+          60,00 € zuweisen
+        </.button>
+        <p class="pt-3 text-sm text-base-content/70">
+          Der Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
+        </p>
       </.modal>
       <.long_choice id="long-choice" placement={:center} />
       <.long_choice id="long-choice-panel" placement={:end} />

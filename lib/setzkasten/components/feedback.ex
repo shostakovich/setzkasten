@@ -332,7 +332,9 @@ defmodule Setzkasten.Components.Feedback do
 
   @doc """
   All flashes of a page in one toast stack at the bottom, in a polite live region: info, error,
-  the toast of `put_toast/3`, and the connection-lost messages.
+  the toast of `put_toast/3`, and the connection-lost messages. While a `<.modal>` or
+  `<.confirm_dialog>` is open, the stack moves into the topmost one, so its toasts stay usable
+  (the page outside a modal dialog is inert).
 
       <.flash_group flash={@flash} />
   """
@@ -349,6 +351,7 @@ defmodule Setzkasten.Components.Feedback do
       id={@id}
       aria-live="polite"
       class={toast_class()}
+      phx-hook=".FlashGroup"
     >
       <.flash_alert id="flash-info" kind={:info} msg={@flash["info"]} close_label={@close_label} />
       <.flash_alert id="flash-error" kind={:error} msg={@flash["error"]} close_label={@close_label} />
@@ -378,6 +381,40 @@ defmodule Setzkasten.Components.Feedback do
         <span class="loading loading-spinner loading-xs align-middle motion-reduce:hidden"></span>
       </.flash_alert>
     </div>
+    <script :type={ColocatedHook} name=".FlashGroup">
+      export default {
+        mounted() {
+          this.home = this.el.parentNode
+          this.dialogs = [...document.querySelectorAll("dialog:modal")]
+          this.onOpen = (e) => {
+            this.dialogs = [...this.dialogs.filter((d) => d !== e.detail), e.detail]
+            this.place()
+          }
+          this.onClose = (e) => {
+            this.dialogs = this.dialogs.filter((d) => d !== e.detail)
+            this.place()
+          }
+          document.addEventListener("setzkasten:modal-open", this.onOpen)
+          document.addEventListener("setzkasten:modal-close", this.onClose)
+          // A patch of the page moves the stack back to its place there.
+          this.homing = new MutationObserver(() => this.place())
+          this.homing.observe(this.home, { childList: true })
+          this.place()
+        },
+        destroyed() {
+          document.removeEventListener("setzkasten:modal-open", this.onOpen)
+          document.removeEventListener("setzkasten:modal-close", this.onClose)
+          this.homing.disconnect()
+        },
+        place() {
+          const dialog = this.dialogs.filter((d) => d.isConnected && d.open).at(-1)
+          const host = dialog
+            ? dialog.querySelector(":scope > .setzkasten-modal-toasts") || dialog
+            : this.home
+          if (this.el.parentNode !== host && host.isConnected) host.appendChild(this.el)
+        }
+      }
+    </script>
     """
   end
 

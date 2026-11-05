@@ -174,6 +174,7 @@ defmodule Setzkasten.Components.Overlays do
       <form method="dialog" class="modal-backdrop">
         <button tabindex="-1">{@close_label}</button>
       </form>
+      <div id={"#{@id}-toasts"} class="setzkasten-modal-toasts" phx-update="ignore"></div>
     </dialog>
     <script :type={ColocatedHook} name=".Modal">
       const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled], [type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"
@@ -191,6 +192,7 @@ defmodule Setzkasten.Components.Overlays do
           this.el.addEventListener("close", () => {
             this.resume()
             this.returnFocus()
+            this.announce("close")
             if (this.silent) { this.silent = false; return }
             const cancel = this.el.getAttribute("data-cancel")
             if (cancel) this.js().exec(cancel)
@@ -198,7 +200,14 @@ defmodule Setzkasten.Components.Overlays do
           this.sync()
         },
         updated() { this.sync() },
-        destroyed() { if (this.unwatch) this.unwatch() },
+        destroyed() {
+          if (this.unwatch) this.unwatch()
+          this.announce("close")
+        },
+        // For the toast stack, which moves into the topmost open modal.
+        announce(change) {
+          document.dispatchEvent(new CustomEvent(`setzkasten:modal-${change}`, { detail: this.el }))
+        },
         sync() {
           const show = this.el.getAttribute("data-show")
           if (show === this.shown) return
@@ -225,6 +234,7 @@ defmodule Setzkasten.Components.Overlays do
           const sheet = this.el.classList.contains("modal-bottom") && matchMedia("(width < 40rem)").matches
           if (sheet && !this.el.querySelector(".modal-box [autofocus]")) this.el.setAttribute("autofocus", "")
           this.el.showModal()
+          this.announce("open")
           this.el.removeAttribute("autofocus")
           const asked = [...this.el.querySelectorAll(".modal-box [autofocus]")].find(usable)
           const box = this.el.querySelector(".modal-box")
@@ -391,6 +401,7 @@ defmodule Setzkasten.Components.Overlays do
       <form method="dialog" class="modal-backdrop">
         <button tabindex="-1">{@close_label}</button>
       </form>
+      <div id={"#{@id}-toasts"} class="setzkasten-modal-toasts" phx-update="ignore"></div>
     </dialog>
     """
   end

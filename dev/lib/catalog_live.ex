@@ -168,6 +168,17 @@ defmodule Setzkasten.Dev.CatalogLive do
      )}
   end
 
+  def handle_event("toast", %{"kind" => "assigned"}, socket) do
+    {:noreply,
+     put_toast(socket, "60,00 € „Urlaub“ zugewiesen (Demo).",
+       action: "Rückgängig",
+       on_action: Phoenix.LiveView.JS.push("toast", value: %{kind: "unassigned"})
+     )}
+  end
+
+  def handle_event("toast", %{"kind" => "unassigned"}, socket),
+    do: {:noreply, put_toast(socket, "Zuweisen rückgängig gemacht (Demo).")}
+
   def handle_event("toast", %{"kind" => "uncovered"}, socket),
     do: {:noreply, put_toast(socket, "Decken rückgängig gemacht (Demo).")}
 

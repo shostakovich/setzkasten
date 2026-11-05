@@ -1133,6 +1133,13 @@
   --setzkasten-selection-top: calc(var(--setzkasten-bars-top) + 1rem + var(--setzkasten-selection-height, 3.5rem));
 }
 
+/* The toast stack moves into an open modal; there it takes no place in the dialog's grid. */
+@layer utilities.setzkasten {
+  .setzkasten-modal-toasts {
+    display: contents;
+  }
+}
+
 /* Toasts sit 16px above whatever holds the bottom: the dock, the keyboard, a composer, a pinned
    action bar, a selection bar or the safe area. */
 @layer utilities.setzkasten {
