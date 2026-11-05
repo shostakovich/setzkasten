@@ -663,6 +663,23 @@ defmodule Setzkasten.OverlaysTest do
     assert css =~ ~r/\.setzkasten-popover-list \{\s*padding: 0.5rem;/
   end
 
+  test "opened with a pointer, a popover holds focus itself instead of ringing an autofocus button" do
+    assigns = %{}
+    doc = parse(~H|<.popover id="p" anchor="cell">x</.popover>|)
+    assert attr(doc, "#p", "tabindex") == "-1"
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ ~s|document.addEventListener("pointerdown", () => { pointed = true }, true)|
+    assert hook =~ ~s|document.addEventListener("keydown", () => { pointed = false }, true)|
+    assert hook =~ ~s|if (active.matches(TYPED) \|\| !active.matches(":focus-visible")) return|
+
+    assert hook =~
+             ~r/this.el.showPopover\(\{ source: this.anchor\(\) \|\| undefined \}\)\s*this.quietFocus\(\)/
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-popover:focus-visible \{\s*outline: none;/
+  end
+
   test "on phones a list popover is a half-height sheet over a page that holds still" do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 

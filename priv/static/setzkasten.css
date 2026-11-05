@@ -1635,6 +1635,9 @@
     line-height: 1.25rem;
     --setzkasten-dock-offset: 0px;
   }
+  .setzkasten-popover:focus-visible {
+    outline: none;
+  }
   @supports (anchor-scope: all) and (position-area: block-end) {
     .setzkasten-popover:not([data-anchor], [data-placed]) {
       position-anchor: --setzkasten-popover;

@@ -714,6 +714,10 @@ defmodule Setzkasten.NavigationTest do
     hook = colocated_js("Setzkasten.Components.Navigation")
     assert hook =~ ~s|const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]|
     assert hook =~ ~s|this.el.querySelectorAll(".setzkasten-pick-item:not(:disabled)")|
+    # The arrows also work while the popover around the list holds focus.
+    assert hook =~ ~s|this.scope = this.el.closest("[popover]") \|\| this.el|
+    assert hook =~ "if (e.target !== this.scope && !this.el.contains(e.target)) return"
+    assert hook =~ ~s|this.scope.removeEventListener("keydown", this.onKey)|
 
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
     assert css =~ ~r/\.setzkasten-pick-item \{[^}]*min-height: 2.25rem;/

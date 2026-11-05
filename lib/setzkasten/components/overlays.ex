@@ -521,7 +521,9 @@ defmodule Setzkasten.Components.Overlays do
   open popover closes it too, without opening it again. It closes on a click outside, on
   Escape, with `hide_popover/1` or `show={false}`; Escape and `hide_popover/1` return focus to
   where it was (the trigger). Its open state survives LiveView patches. Give the first field
-  `autofocus` to start there.
+  `autofocus` to start there. A button with `autofocus` (a pick list's first row) is focused
+  when the keyboard opened the popover; opened with a pointer, the panel takes focus instead,
+  so no focus ring marks a row, and the arrow keys or Tab go on from there.
 
   Placement: below the trigger, its start edge at the trigger's (`align={:end}`: end edges),
   `position={:top}` above; it flips when there is no room. When neither side holds it, it takes
@@ -601,6 +603,7 @@ defmodule Setzkasten.Components.Overlays do
         id={@id}
         popover="auto"
         role="dialog"
+        tabindex="-1"
         aria-labelledby={@title && "#{@id}-title"}
         class={[
           "setzkasten-popover shadow-lg",
@@ -634,6 +637,10 @@ defmodule Setzkasten.Components.Overlays do
       const phone = window.matchMedia("(width < 40rem)")
       const EDGE = 8
       const GAP = 4
+      const TYPED = "input, textarea, select, [contenteditable]"
+      let pointed = false
+      document.addEventListener("pointerdown", () => { pointed = true }, true)
+      document.addEventListener("keydown", () => { pointed = false }, true)
       export default {
         mounted() {
           this.onMove = () => {
@@ -670,6 +677,7 @@ defmodule Setzkasten.Components.Overlays do
           this.el.addEventListener("toggle", (e) => {
             if (e.newState === "open") {
               this.place()
+              this.quietFocus()
               window.addEventListener("scroll", this.onMove, { capture: true, passive: true })
               window.addEventListener("resize", this.onMove)
               document.addEventListener("pointerdown", this.onPointer, true)
@@ -711,6 +719,14 @@ defmodule Setzkasten.Components.Overlays do
         show() {
           if (this.isOpen() || !this.el.isConnected || this.el.hasAttribute("data-suspended")) return
           this.el.showPopover({ source: this.anchor() || undefined })
+          this.quietFocus()
+        },
+        // Opened with a pointer, an autofocus button shows no focus ring: the panel holds focus.
+        quietFocus() {
+          const active = document.activeElement
+          if (!pointed || active === this.el || !this.el.contains(active)) return
+          if (active.matches(TYPED) || !active.matches(":focus-visible")) return
+          this.el.focus()
         },
         // Hidden while a modal holds it (the confirmed action closes it): it stays closed.
         hide() {

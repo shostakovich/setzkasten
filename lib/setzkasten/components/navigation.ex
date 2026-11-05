@@ -627,7 +627,10 @@ defmodule Setzkasten.Components.Navigation do
       const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]
       export default {
         mounted() {
-          this.el.addEventListener("keydown", (e) => {
+          // Also from the popover around it, which holds focus when a pointer opened it.
+          this.scope = this.el.closest("[popover]") || this.el
+          this.onKey = (e) => {
+            if (e.target !== this.scope && !this.el.contains(e.target)) return
             if (!KEYS.includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return
             const items = [...this.el.querySelectorAll(".setzkasten-pick-item:not(:disabled)")]
             if (!items.length) return
@@ -641,8 +644,10 @@ defmodule Setzkasten.Components.Navigation do
             }[e.key]
             e.preventDefault()
             items[next].focus()
-          })
-        }
+          }
+          this.scope.addEventListener("keydown", this.onKey)
+        },
+        destroyed() { this.scope.removeEventListener("keydown", this.onKey) }
       }
     </script>
     """
