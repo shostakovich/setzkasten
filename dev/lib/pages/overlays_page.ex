@@ -367,6 +367,16 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           (44px auf Touch), Pfeiltasten; ein Eintrag deckt und zeigt einen Toast mit Rückgängig.
         </:note>
       </.demo>
+      <.demo title="Liste ohne Einträge (:empty)">
+        <.popover id="pop-empty" title="12,00 € decken aus" layout={:list}>
+          <:trigger>Decken</:trigger>
+          <.pick_list id="pop-empty-sources">
+            <:group :if={false}></:group>
+            <:empty>Kein Geld in „Zu verteilen“ oder anderen Kategorien.</:empty>
+          </.pick_list>
+        </.popover>
+        <:note>Ohne Gruppe steht der Text bündig mit den Labels der Zeilen.</:note>
+      </.demo>
     </.showcase>
 
     <.showcase
@@ -530,6 +540,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
             <:trailing><.amount value={c.available} /></:trailing>
           </.pick_item>
         </:group>
+        <:empty>Kein Geld in „Zu verteilen“ oder anderen Kategorien.</:empty>
       </.pick_list>
     </.popover>
     """

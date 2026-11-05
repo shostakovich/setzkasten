@@ -575,7 +575,8 @@ defmodule Setzkasten.Components.Navigation do
   rounded cards on the surface tint (`:group`, one card each), every row a button with a
   fixed-width leading slot, its label and a trailing value in tabular figures, divided by
   hairlines that start at the label. Rows are 36px with a mouse and 44px on touch screens. The
-  arrow keys, Home and End move between the rows of all cards.
+  arrow keys, Home and End move between the rows of all cards. Without a group (each one's
+  `:if` false) it shows the `:empty` slot, a line in line with the rows' labels.
 
   Inside `<.popover layout={:list}>` the popover's `title` is the section title above the
   cards, in line with the rows' content.
@@ -602,11 +603,17 @@ defmodule Setzkasten.Components.Navigation do
           </:group>
         </.pick_list>
       </.popover>
+
+      <.pick_list id="cover-sources">
+        <:group :if={@sources != []}>…</:group>
+        <:empty>Kein Geld in „Zu verteilen“ oder anderen Kategorien.</:empty>
+      </.pick_list>
   """
   attr :id, :string, required: true
   attr :class, :any, default: nil
   attr :rest, :global
-  slot :group, required: true, doc: "a card of `pick_item/1` rows"
+  slot :group, doc: "a card of `pick_item/1` rows"
+  slot :empty, doc: "shown when there is no group"
 
   def pick_list(assigns) do
     ~H"""
@@ -614,6 +621,7 @@ defmodule Setzkasten.Components.Navigation do
       <ul :for={group <- @group} class="setzkasten-pick-group" role="list">
         {render_slot(group)}
       </ul>
+      <p :if={@group == [] and @empty != []} class="setzkasten-pick-empty">{render_slot(@empty)}</p>
     </div>
     <script :type={ColocatedHook} name=".PickList">
       const KEYS = ["ArrowDown", "ArrowUp", "Home", "End"]

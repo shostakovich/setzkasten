@@ -750,6 +750,30 @@ defmodule Setzkasten.NavigationTest do
     assert attr(doc, "#trip", "phx-value-from") == "trip"
   end
 
+  test "a pick list without groups shows its empty line in line with the labels" do
+    doc = parse(sources_list(%{sources: []}))
+    assert count(doc, "#sources ul") == 0
+    assert text(doc, "#sources > p.setzkasten-pick-empty") == "Kein Geld in anderen Kategorien."
+
+    doc = parse(sources_list(%{sources: ["Urlaub"]}))
+    assert count(doc, "#sources ul") == 1
+    assert count(doc, ".setzkasten-pick-empty") == 0
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.setzkasten-pick-empty \{\s*padding: 0.375rem var\(--setzkasten-pick-pad\);/
+  end
+
+  defp sources_list(assigns) do
+    ~H"""
+    <.pick_list id="sources">
+      <:group :if={@sources != []}>
+        <.pick_item :for={name <- @sources}>{name}</.pick_item>
+      </:group>
+      <:empty>Kein Geld in anderen Kategorien.</:empty>
+    </.pick_list>
+    """
+  end
+
   test "a dropdown item shows a subtitle and is dimmed, not red, while disabled" do
     assigns = %{}
 
