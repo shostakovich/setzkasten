@@ -8,7 +8,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
 
   def summary,
     do:
-      "input, field_row, combobox, file_drop, field_error, field_help, error_bubble, action_bar, Formular mit Fehlern"
+      "input, field_row, on_escape, combobox, file_drop, field_error, field_help, error_bubble, action_bar, Formular mit Fehlern"
 
   @initial %{
     "title" => "",
@@ -479,6 +479,55 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       </.demo>
     </.showcase>
 
+    <.showcase
+      id="on-escape"
+      name="<.input on_escape>"
+      title="Escape bricht eine Bearbeitung ab"
+      code={code(7)}
+    >
+      <:intro>
+        Escape im Feld führt <code>on_escape</code>
+        aus (Ereignis oder <code>%JS{"{}"}</code>) und geht nicht weiter: Der Dialog um das Feld
+        bleibt offen, nur das Umbenennen endet. Ein zweites Escape schließt den Dialog.
+      </:intro>
+      <.demo title="Empfänger umbenennen im Dialog">
+        <.button id="edit-name-open" phx-click={show_modal("edit-name-modal")}>
+          Empfänger bearbeiten
+        </.button>
+        <.modal id="edit-name-modal" title="Empfänger">
+          <div :if={!@editing_name} class="flex min-h-10 items-center justify-between gap-2">
+            <p id="edit-name-text" class="truncate text-lg font-semibold">{@edit_name}</p>
+            <.button
+              id="edit-name-start"
+              variant={:ghost}
+              size={:sm}
+              icon="pencil"
+              phx-click="edit_name"
+            >
+              Umbenennen
+            </.button>
+          </div>
+          <.form :if={@editing_name} for={%{}} id="edit-name-form" phx-submit="save_name">
+            <.field_row>
+              <.input
+                id="edit-name-field"
+                name="name"
+                value={@edit_name}
+                label="Name des Empfängers"
+                bare
+                autocomplete="off"
+                on_escape="cancel_edit_name"
+                phx-mounted={Phoenix.LiveView.JS.focus()}
+              />
+              <.button id="edit-name-cancel" phx-click="cancel_edit_name">Abbrechen</.button>
+              <.button id="edit-name-save" type="submit" variant={:primary}>Sichern</.button>
+            </.field_row>
+          </.form>
+        </.modal>
+        <:note>Ohne <code>on_escape</code> schlösse Escape im Feld den ganzen Dialog.</:note>
+      </.demo>
+    </.showcase>
+
     <.showcase id="file-drop" name="<.file_drop>" title="Datei ablegen" code={code(5)}>
       <:intro>
         Eine Ablagefläche um <code>live_file_input</code>: Datei hineinziehen oder antippen. Das
@@ -649,6 +698,19 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       <.button variant={:ghost} size={:sm} icon="plus" icon_only label="Regel hinzufügen"
                phx-click="add_rule" />
     </.field_row>
+    """
+  end
+
+  defp code(7) do
+    ~S"""
+    <.form :if={@renaming} for={%{}} id="rename-form" phx-submit="rename" phx-target={@myself}>
+      <.field_row>
+        <.input id="rename-name" name="name" value={@name} label="Name" bare
+                on_escape="cancel_rename" phx-target={@myself} phx-mounted={JS.focus()} />
+        <.button phx-click="cancel_rename" phx-target={@myself}>Abbrechen</.button>
+        <.button type="submit" variant={:primary}>Sichern</.button>
+      </.field_row>
+    </.form>
     """
   end
 

@@ -9,6 +9,7 @@ defmodule Setzkasten.Components.Forms do
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
+  alias Setzkasten.Click
   import Setzkasten.Components.Icons
 
   @doc """
@@ -52,6 +53,14 @@ defmodule Setzkasten.Components.Forms do
 
       <.input field={@form[:isin]} label="ISIN" identifier size="13" placeholder="XX0000000000" />
 
+  `on_escape` (text-like types and textarea) is the command for Escape in the field: an event
+  name (pushed to `phx-target` when given) or a `%JS{}`. The key goes no further, so an
+  enclosing `<.modal>` or popover stays open, e.g. to cancel a name edited in place. It needs
+  an `id` (or `field`), and its hook is Setzkasten's, so a `phx-hook` beside it raises.
+
+      <.input id="payee-name" name="name" value={@name} label="Name" bare
+              on_escape="cancel_rename" phx-target={@myself} phx-mounted={JS.focus()} />
+
   `inline` (text-like types) puts the field and the inner block, the form's button, in one
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
   the join. The button takes `class="join-item"`.
@@ -88,6 +97,10 @@ defmodule Setzkasten.Components.Forms do
   attr :bare, :boolean,
     default: false,
     doc: "no field padding; checkbox and toggle beside a heading, the others in a `field_row/1`"
+
+  attr :on_escape, :any,
+    default: nil,
+    doc: "text-like types and textarea: event name (with `phx-target`) or `%JS{}` for Escape"
 
   attr :prefix, :string, default: nil
   attr :suffix, :string, default: nil
@@ -256,7 +269,7 @@ defmodule Setzkasten.Components.Forms do
   end
 
   def input(%{type: "textarea"} = assigns) do
-    assigns = prepare(assigns)
+    assigns = assigns |> prepare() |> assign(:rest, escape_rest(assigns))
 
     ~H"""
     <fieldset class={["fieldset min-w-0", @bare && "setzkasten-bare-field"]}>
@@ -281,7 +294,12 @@ defmodule Setzkasten.Components.Forms do
     boxed = assigns.prefix || assigns.suffix || assigns.icon
 
     fit = assigns.identifier && !boxed && !assigns.inline && fit_width(assigns.rest)
-    rest = assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
+
+    rest =
+      assigns
+      |> assign(:rest, escape_rest(assigns))
+      |> numeric_rest()
+      |> identifier_rest(assigns.identifier)
 
     assigns =
       assign(assigns,
@@ -308,7 +326,41 @@ defmodule Setzkasten.Components.Forms do
         {@help}
       </.field_help>
     </fieldset>
+    <script :type={ColocatedHook} name=".Escape">
+      export default {
+        mounted() {
+          this.onKeydown = (e) => {
+            // Safari sends the Escape that ends a composition after it, as keyCode 229.
+            if (e.key !== "Escape" || e.isComposing || e.keyCode === 229) return
+            e.preventDefault()
+            e.stopPropagation()
+            this.js().exec(this.el.getAttribute("data-escape"))
+          }
+          this.el.addEventListener("keydown", this.onKeydown)
+        },
+        destroyed() {
+          this.el.removeEventListener("keydown", this.onKeydown)
+        }
+      }
+    </script>
     """
+  end
+
+  defp escape_rest(%{on_escape: on_escape, rest: rest}) when on_escape in [nil, false], do: rest
+
+  defp escape_rest(%{id: nil}) do
+    raise ArgumentError, "<.input on_escape> needs an id or a field: its hook runs on the field"
+  end
+
+  defp escape_rest(%{rest: rest}) when is_map_key(rest, :"phx-hook") do
+    raise ArgumentError, "<.input on_escape> takes no phx-hook: Escape needs its own"
+  end
+
+  defp escape_rest(%{on_escape: on_escape, rest: rest}) do
+    Map.merge(rest, %{
+      "phx-hook": "Setzkasten.Components.Forms.Escape",
+      "data-escape": Click.click_js(on_escape, rest[:"phx-target"])
+    })
   end
 
   defp field_attrs(assigns) do
