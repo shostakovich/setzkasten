@@ -382,6 +382,51 @@ defmodule Setzkasten.OverlaysTest do
     assert plain =~ "remove_attr"
   end
 
+  test "show_alert tells in the confirm dialog: no confirm button, no action, a single OK" do
+    alias Setzkasten.Components.Overlays
+
+    ops =
+      Jason.decode!(
+        Jason.encode!(Overlays.show_alert(%JS{}, "c", "Nichts gefunden.", text: "Weil."))
+      )
+
+    assert ["set_attr", %{"attr" => ["data-confirm-action", "[]"], "to" => "#c-confirm"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-confirm"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-cancel-label"}] in ops
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-ok-label"}] in ops
+
+    assert ["dispatch", %{"event" => "setzkasten:show-modal", "to" => "#c", "detail" => detail}] =
+             List.last(ops)
+
+    assert detail["text"] == %{"#c-title" => "Nichts gefunden.", "#c-text" => "Weil."}
+
+    assert Jason.encode!(Overlays.show_alert("c", "Nichts.")) =~ ~s("#c-text":"")
+    assert Overlays.show_alert("c", "Nichts.") == Overlays.show_alert(%JS{}, "c", "Nichts.", [])
+
+    assert Overlays.show_alert("c", "Nichts.", text: "x") ==
+             Overlays.show_alert(%JS{}, "c", "Nichts.", text: "x")
+
+    piped = JS.push("before") |> Overlays.show_alert("c", "Nichts.")
+    assert [["push", %{"event" => "before"}] | _] = Jason.decode!(Jason.encode!(piped))
+
+    # The next question shows both buttons again.
+    ops = Jason.decode!(Jason.encode!(Overlays.show_confirm("c", "Löschen?", JS.push("x"))))
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-confirm"}] in ops
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-cancel-label"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-ok-label"}] in ops
+
+    assigns = %{}
+    doc = parse(~H|<.confirm_dialog />|)
+    assert text(doc, "#confirm-delete-cancel-label") == "Abbrechen"
+    assert text(doc, "#confirm-delete-ok-label") == "OK"
+    assert attr(doc, "#confirm-delete-ok-label", "hidden") != nil
+    assert attr(doc, "#confirm-delete-cancel", "autofocus") != nil
+    assert "empty:hidden" in classes(doc, "#confirm-delete-text")
+
+    doc = parse(~H|<.confirm_dialog ok_label="Verstanden" />|)
+    assert text(doc, "#confirm-delete-ok-label") == "Verstanden"
+  end
+
   test "disclosure keeps its open state across patches" do
     assigns = %{}
     doc = parse(~H|<.disclosure id="d" summary="Mehr" open>Inhalt</.disclosure>|)

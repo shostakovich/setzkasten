@@ -4,7 +4,7 @@ defmodule Setzkasten.Click do
   # `use Setzkasten` nor importing a component module brings these into an app.
 
   alias Phoenix.LiveView.JS
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Components.Overlays, only: [show_confirm: 5, show_alert: 4]
 
   # A click given as `%JS{}` or event name; an event name pushes to `target` (e.g. `@myself`)
   # when set, also when it runs from the confirmation dialog. A `%JS{}` carries its own target.
@@ -17,17 +17,22 @@ defmodule Setzkasten.Click do
     do: JS.push(event, [target: target] ++ opts)
 
   # A dropdown item or list row action: its `on_click`, asked first in the shared confirmation
-  # dialog `confirm_id` when it has `confirm`.
+  # dialog `confirm_id` when it has `confirm`, or an alert there in its place.
   def entry_click(entry, confirm_id) do
     js = click_js(entry[:on_click], entry[:"phx-target"])
 
-    if entry[:confirm] do
-      show_confirm(%JS{}, confirm_id, entry[:confirm], js,
-        text: entry[:confirm_text],
-        label: entry[:confirm_label]
-      )
-    else
-      js
+    cond do
+      entry[:alert] ->
+        show_alert(%JS{}, confirm_id, entry[:alert], text: entry[:alert_text])
+
+      entry[:confirm] ->
+        show_confirm(%JS{}, confirm_id, entry[:confirm], js,
+          text: entry[:confirm_text],
+          label: entry[:confirm_label]
+        )
+
+      true ->
+        js
     end
   end
 end

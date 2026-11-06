@@ -23,6 +23,11 @@ defmodule Setzkasten.Test.Confirm do
         refute has_element?(view, "#post-1")
       end
 
+  A trigger with `alert` (`show_alert/4`) asks nothing: `alerted/3` returns what the dialog
+  tells, and `asked/3` fails for it.
+
+      assert alerted(view, "#rename-existing").title == "Keine Buchungen zum Umbenennen gefunden."
+
   The dialog id defaults to `"confirm-delete"`; pass `dialog: id` for another. The dialog must
   render inside the LiveView (the app layout, not the root layout), where the view's
   `has_element?/2` sees it.
@@ -64,10 +69,10 @@ defmodule Setzkasten.Test.Confirm do
   """
   def asked(view, selector, opts \\ []) do
     dialog = Keyword.get(opts, :dialog, "confirm-delete")
-    ops = view |> element(selector) |> render() |> ops("phx-click", selector)
+    ops = dialog_ops(view, selector)
 
-    refute Enum.any?(ops, &match?(["push", _], &1)),
-           "#{selector} sends its event itself instead of leaving it to the confirm dialog"
+    if alert?(ops, dialog),
+      do: flunk("#{selector} tells in an alert instead of asking: read it with alerted/3")
 
     action =
       Enum.find_value(ops, fn
@@ -79,14 +84,7 @@ defmodule Setzkasten.Test.Confirm do
           nil
       end) || flunk("#{selector} does not park a command on the confirm dialog ##{dialog}")
 
-    texts =
-      Enum.find_value(ops, fn
-        ["dispatch", %{"event" => "setzkasten:show-modal", "to" => "#" <> ^dialog} = op] ->
-          op["detail"]["text"]
-
-        _ ->
-          nil
-      end) || flunk("#{selector} does not open the confirm dialog ##{dialog}")
+    texts = texts(ops, dialog, selector)
 
     %{
       question: texts["##{dialog}-title"],
@@ -95,6 +93,51 @@ defmodule Setzkasten.Test.Confirm do
       action: action
     }
   end
+
+  @doc """
+  What the alert of the trigger `selector` tells (`show_alert/4`, `<.button alert>`):
+  `%{title:, text:}`, `text` nil without one. Fails when the trigger sends an event itself or
+  asks instead. Options: `dialog:`.
+  """
+  def alerted(view, selector, opts \\ []) do
+    dialog = Keyword.get(opts, :dialog, "confirm-delete")
+    ops = dialog_ops(view, selector)
+
+    unless alert?(ops, dialog),
+      do: flunk("#{selector} does not open an alert in the confirm dialog ##{dialog}")
+
+    texts = texts(ops, dialog, selector)
+    %{title: texts["##{dialog}-title"], text: texts["##{dialog}-text"] |> blank_to_nil()}
+  end
+
+  defp dialog_ops(view, selector) do
+    ops = view |> element(selector) |> render() |> ops("phx-click", selector)
+
+    refute Enum.any?(ops, &match?(["push", _], &1)),
+           "#{selector} sends its event itself instead of leaving it to the confirm dialog"
+
+    ops
+  end
+
+  defp alert?(ops, dialog) do
+    Enum.any?(ops, fn
+      ["set_attr", %{"attr" => ["hidden", ""], "to" => "#" <> to}] -> to == dialog <> "-confirm"
+      _ -> false
+    end)
+  end
+
+  defp texts(ops, dialog, selector) do
+    Enum.find_value(ops, fn
+      ["dispatch", %{"event" => "setzkasten:show-modal", "to" => "#" <> ^dialog} = op] ->
+        op["detail"]["text"]
+
+      _ ->
+        nil
+    end) || flunk("#{selector} does not open the confirm dialog ##{dialog}")
+  end
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(text), do: text
 
   @doc """
   Clicks `selector`, which closes the modal `id` natively: asserts that the click does only

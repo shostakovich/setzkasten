@@ -169,6 +169,39 @@ defmodule Setzkasten.ActionsTest do
     assert attr(doc, "button", "phx-target") == nil
   end
 
+  test "alert opens a message with a single OK in place of the click" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.button id="r" alert="Nichts gefunden." alert_text="Weil." phx-click="rename">x</.button>
+      """)
+
+    assert pushes(attr(doc, "#r", "phx-click")) == []
+    assert attr(doc, "#r", "aria-haspopup") == "dialog"
+    ops = Jason.decode!(attr(doc, "#r", "phx-click"))
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#confirm-delete-confirm"}] in ops
+
+    assert [["dispatch", %{"detail" => %{"text" => texts}}]] =
+             Enum.filter(ops, &match?(["dispatch", _], &1))
+
+    assert texts == %{
+             "#confirm-delete-title" => "Nichts gefunden.",
+             "#confirm-delete-text" => "Weil."
+           }
+
+    doc = parse(~H|<.button id="r" alert="Nichts." confirm_id="ask">x</.button>|)
+    assert attr(doc, "#r", "phx-click") =~ "#ask-confirm"
+
+    for {markup, message} <- [
+          {~H|<.button alert="a" confirm="b" phx-click="x">x</.button>|, ~r/alert or confirm/},
+          {~H|<.button alert="a" navigate="/x">x</.button>|, ~r/plain button/},
+          {~H|<.button alert="a" type="submit">x</.button>|, ~r/plain button/}
+        ] do
+      assert_raise ArgumentError, message, fn -> rendered_to_string(markup) end
+    end
+  end
+
   test "confirm leaves a %JS{} click and its phx-target alone" do
     assigns = %{}
 

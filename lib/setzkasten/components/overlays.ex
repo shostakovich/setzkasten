@@ -6,8 +6,9 @@ defmodule Setzkasten.Components.Overlays do
   The modal, popover and tooltip hooks are colocated; apps import them from
   `phoenix-colocated/setzkasten` (see the README).
 
-  `show_modal/1`, `hide_modal/1`, `show_confirm/5`, `show_popover/1` and `hide_popover/1` turn
-  an id into a `#id` selector, so ids are plain CSS identifiers, without `.` or `:`.
+  `show_modal/1`, `hide_modal/1`, `show_confirm/5`, `show_alert/4`, `show_popover/1` and
+  `hide_popover/1` turn an id into a `#id` selector, so ids are plain CSS identifiers, without
+  `.` or `:`.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
@@ -61,6 +62,9 @@ defmodule Setzkasten.Components.Overlays do
 
     js
     |> JS.set_attribute({"data-confirm-action", encode(action)}, to: "##{id}-confirm")
+    |> JS.remove_attribute("hidden", to: "##{id}-confirm")
+    |> JS.remove_attribute("hidden", to: "##{id}-cancel-label")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-ok-label")
     |> toggle_confirm_icon(id, label)
     |> JS.dispatch("setzkasten:show-modal",
       to: "##{id}",
@@ -71,6 +75,38 @@ defmodule Setzkasten.Components.Overlays do
           "##{id}-confirm-label" => label
         }
       }
+    )
+  end
+
+  @doc """
+  Tells something in the shared `<.confirm_dialog id={id}>` that asks nothing: `title` and the
+  optional `text:` sentence with a single OK (the dialog's `ok_label`), no action. The next
+  `show_confirm/5` asks normally again. `<.button alert="…">` and dropdown items call this for
+  you, e.g. for an action that would do nothing, which the page knows when it renders.
+
+      <.button phx-click={show_alert("confirm-delete", "Keine Buchungen gefunden.", text: "…")}>
+        Umbenennen
+      </.button>
+
+  It takes the call styles of `show_confirm/5`: `show_alert(id, title, opts)` and
+  `show_alert(js, id, title, opts)`.
+  """
+  def show_alert(id, title) when is_binary(id), do: show_alert(%JS{}, id, title, [])
+
+  def show_alert(id, title, opts) when is_binary(id) and is_list(opts),
+    do: show_alert(%JS{}, id, title, opts)
+
+  def show_alert(%JS{} = js, id, title) when is_binary(id), do: show_alert(js, id, title, [])
+
+  def show_alert(%JS{} = js, id, title, opts) when is_binary(id) and is_list(opts) do
+    js
+    |> JS.set_attribute({"data-confirm-action", "[]"}, to: "##{id}-confirm")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-confirm")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-cancel-label")
+    |> JS.remove_attribute("hidden", to: "##{id}-ok-label")
+    |> JS.dispatch("setzkasten:show-modal",
+      to: "##{id}",
+      detail: %{text: %{"##{id}-title" => title, "##{id}-text" => opts[:text] || ""}}
     )
   end
 
@@ -472,6 +508,9 @@ defmodule Setzkasten.Components.Overlays do
   closest `[data-focus-fallback]` element (`<.list>` and `<.table>` bodies carry it), else to
   that element, else to `<main>`. `<.modal>` behaves the same.
 
+  `show_alert/4` (`<.button alert>`) uses it to tell rather than ask: its confirm button hides
+  and Cancel reads `ok_label`.
+
       <.confirm_dialog id="confirm-delete" />
   """
   attr :id, :string, default: "confirm-delete"
@@ -479,6 +518,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :text, :string, default: "Das lässt sich nicht rückgängig machen."
   attr :confirm_label, :string, default: "Löschen"
   attr :cancel_label, :string, default: "Abbrechen"
+  attr :ok_label, :string, default: "OK", doc: "the single button of an alert"
   attr :close_label, :string, default: "Schließen"
 
   def confirm_dialog(assigns) do
@@ -502,15 +542,22 @@ defmodule Setzkasten.Components.Overlays do
         </h2>
         <p
           id={"#{@id}-text"}
-          class="py-2 text-sm wrap-anywhere"
+          class="py-2 text-sm wrap-anywhere empty:hidden"
           data-default={@text}
           phx-update="ignore"
         >
           {@text}
         </p>
         <div class="modal-action max-sm:flex-col-reverse max-sm:*:w-full">
-          <button type="button" class="btn" phx-click={hide_modal(@id)} autofocus>
-            {@cancel_label}
+          <button
+            type="button"
+            id={"#{@id}-cancel"}
+            class="btn"
+            phx-click={hide_modal(@id)}
+            autofocus
+          >
+            <span id={"#{@id}-cancel-label"}>{@cancel_label}</span>
+            <span id={"#{@id}-ok-label"} hidden>{@ok_label}</span>
           </button>
           <button
             type="button"

@@ -791,7 +791,9 @@ defmodule Setzkasten.Components.Data do
   `label`, `icon`, a target (`navigate`/`patch`/`href`, or `on_click` as event name or
   `%JS{}`; `phx-target={@myself}` sends an event name to a live component, a `%JS{}` carries
   its own target), and optionally `confirm` (+ `confirm_text`, `confirm_label`) for the shared
-  confirmation dialog, `danger` (red in the menu), `disabled` and `id` (the icon button; the
+  confirmation dialog, or `alert` (+ `alert_text`) to tell there instead of running `on_click`
+  (see `<.button alert>`; it raises with `confirm` and on a link), `danger` (red in the menu),
+  `disabled` and `id` (the icon button; the
   menu entry gets `<id>-menu-item`, the `⋮` button of a row with `id` gets `<row id>-menu-toggle`).
   `title` also names the actions for screen readers (`"Bearbeiten: Herbst"`, menu
   `"Aktionen: Herbst"`).
@@ -898,6 +900,8 @@ defmodule Setzkasten.Components.Data do
     attr :confirm, :string
     attr :confirm_text, :string
     attr :confirm_label, :string
+    attr :alert, :string, doc: "a message in place of `on_click`, with a single OK"
+    attr :alert_text, :string
     attr :danger, :boolean
     attr :disabled, :boolean, doc: "e.g. Move up on the first row; keeps its place"
     attr :id, :string, doc: "id of the icon button; the menu entry gets `<id>-menu-item`"
@@ -917,6 +921,7 @@ defmodule Setzkasten.Components.Data do
   end
 
   def list_row(assigns) do
+    Enum.each(assigns.action, &plain_alert!/1)
     link? = Enum.any?([assigns.navigate, assigns.patch, assigns.href])
 
     assigns =
@@ -1225,7 +1230,7 @@ defmodule Setzkasten.Components.Data do
               id={action[:id] && "#{action[:id]}-menu-item"}
               class={action[:danger] && "text-error-ink"}
               disabled={action[:disabled]}
-              aria-haspopup={action[:confirm] && "dialog"}
+              aria-haspopup={(action[:confirm] || action[:alert]) && "dialog"}
               phx-click={
                 close_menu({:closest, "details"}) |> JS.concat(entry_click(action, @confirm_id))
               }
@@ -1267,7 +1272,7 @@ defmodule Setzkasten.Components.Data do
       id={@action[:id]}
       class="btn btn-ghost btn-sm btn-square"
       aria-label={@label}
-      aria-haspopup={@action[:confirm] && "dialog"}
+      aria-haspopup={(@action[:confirm] || @action[:alert]) && "dialog"}
       disabled={@action[:disabled]}
       phx-click={entry_click(@action, @confirm_id)}
     >
@@ -1345,6 +1350,21 @@ defmodule Setzkasten.Components.Data do
   defp close_menu(to), do: JS.remove_attribute("open", to: to) |> JS.focus_first(to: to)
 
   defp action_link?(action), do: Enum.any?([action[:navigate], action[:patch], action[:href]])
+
+  defp plain_alert!(%{alert: alert, confirm: confirm})
+       when is_binary(alert) and is_binary(confirm),
+       do: raise(ArgumentError, "<.list_row> :action takes alert or confirm, not both")
+
+  defp plain_alert!(%{alert: alert} = action) when is_binary(alert) do
+    if action_link?(action),
+      do:
+        raise(
+          ArgumentError,
+          "<.list_row> :action with alert must be a button: a link acts without it"
+        )
+  end
+
+  defp plain_alert!(_action), do: nil
 
   defp action_label(action, nil), do: action.label
   defp action_label(action, title), do: "#{action.label}: #{title}"

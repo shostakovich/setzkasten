@@ -260,7 +260,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         <code>md</code>
         als Icon-Buttons, darunter im ⋮-Menü. Zeilen mit Ziel bekommen einen Pfeil.
       </:intro>
-      <.demo title="Posts (CMS), Aktionen mit Bestätigung">
+      <.demo title="Posts (CMS), Aktionen mit Bestätigung und Hinweis (alert)">
         <.list>
           <.list_row
             :for={post <- @posts}
@@ -275,6 +275,13 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
               <.badge :if={post.status == :draft}>Entwurf</.badge>
             </:trailing>
             <:action label="Bearbeiten" icon="pencil" navigate="/tables" />
+            <:action
+              label="Link teilen"
+              icon="link"
+              on_click="noop"
+              alert={post.status != :published && "Der Post hat noch keinen Link."}
+              alert_text="Sobald er veröffentlicht ist, lässt sich sein Link teilen."
+            />
             <:action
               label="Löschen"
               icon="trash-2"

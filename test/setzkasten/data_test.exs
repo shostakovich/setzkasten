@@ -1900,6 +1900,48 @@ defmodule Setzkasten.DataTest do
              nil
   end
 
+  test "a row action with alert tells in the shared dialog, from its icon button and its menu entry" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Entwurf">
+        <:action
+          id="share"
+          label="Teilen"
+          icon="link"
+          on_click="share"
+          alert="Kein Link."
+          alert_text="Weil."
+        />
+      </.list_row>
+      """)
+
+    for button <- ["#share", "#share-menu-item"] do
+      assert attr(doc, button, "aria-haspopup") == "dialog"
+      ops = Jason.decode!(attr(doc, button, "phx-click"))
+      assert pushes(attr(doc, button, "phx-click")) == []
+      assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#confirm-delete-confirm"}] in ops
+    end
+
+    plain =
+      parse(
+        ~H|<.list_row title="E"><:action id="p" label="Teilen" on_click="share" /></.list_row>|
+      )
+
+    assert attr(plain, "#p", "aria-haspopup") == nil
+    assert attr(plain, "#p-menu-item", "aria-haspopup") == nil
+
+    for {markup, message} <- [
+          {~H|<.list_row title="E"><:action label="T" alert="a" confirm="b" /></.list_row>|,
+           ~r/alert or confirm/},
+          {~H|<.list_row title="E"><:action label="T" alert="a" navigate="/x" /></.list_row>|,
+           ~r/must be a button/}
+        ] do
+      assert_raise ArgumentError, message, fn -> rendered_to_string(markup) end
+    end
+  end
+
   test "a framed list sits in a bordered box instead of between hairlines" do
     assigns = %{}
     framed = classes(parse(~H|<.list framed class="max-h-80">x</.list>|), "ul")

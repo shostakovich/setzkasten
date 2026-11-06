@@ -219,7 +219,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       <:intro>
         Jede unumkehrbare Löschung fragt in einem gemeinsamen Dialog; Archivieren fragt nicht. Die
         Löschaktion liegt auf dem Bestätigen-Button des Dialogs; Abbrechen, Escape und Hintergrund
-        schließen nur. Der Fokus startet auf „Abbrechen“.
+        schließen nur. Der Fokus startet auf „Abbrechen“. Derselbe Dialog sagt mit
+        <code>show_alert/4</code>
+        auch nur etwas, mit einem „OK“.
       </:intro>
       <.demo title="Auslöser" class="flex flex-wrap gap-3">
         <.button
@@ -283,6 +285,32 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           „Ersetzen“ steht außerhalb des Formulars (<code>form</code>-Attribut) und fragt erst;
           die Bestätigung sendet das Formular mit <code>mode=replace</code>. Enter im Feld sendet
           über den ersten Submit-Button, „Ergänzen“.
+        </:note>
+      </.demo>
+      <.demo title="Hinweis statt Frage (alert)" class="flex flex-wrap gap-3">
+        <.button
+          id="rename-existing-demo"
+          alert="Keine Buchungen zum Umbenennen gefunden."
+          alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu."
+          phx-click="delete"
+        >
+          Bestehende Buchungen umbenennen
+        </.button>
+        <.dropdown id="alert-menu" label="Regeln" align={:end}>
+          <:trigger>Regeln</:trigger>
+          <:item
+            id="alert-menu-apply"
+            icon="refresh-cw"
+            alert="Keine Buchungen zum Umbenennen gefunden."
+            on_click="delete"
+          >
+            Jetzt anwenden
+          </:item>
+        </.dropdown>
+        <:note>
+          Weiß die Seite schon beim Rendern, dass die Aktion nichts täte, sagt <code>alert</code>
+          es im selben Dialog: nur „OK“, keine Aktion; der <code>phx-click</code>
+          läuft nicht. Die nächste Frage zeigt wieder beide Buttons.
         </:note>
       </.demo>
       <.demo title="In einer LiveComponent, phx-target">
@@ -698,6 +726,12 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <%!-- a submit button: the confirmation sends its form, with name and value --%>
     <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger_outline}
              confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
+
+    <%!-- nothing to do, known at render: a single OK instead of the action --%>
+    <.button alert="Keine Buchungen zum Umbenennen gefunden."
+             alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu.">
+      Bestehende Buchungen umbenennen
+    </.button>
 
     <%!-- inside a live component --%>
     <.button confirm="Eintrag löschen?" phx-click="delete" phx-target={@myself}>Löschen</.button>

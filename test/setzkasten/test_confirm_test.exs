@@ -136,6 +136,28 @@ defmodule Setzkasten.Test.ConfirmTest do
     refute render(view) =~ "ersetzt (Demo)"
   end
 
+  test "alerted returns what an alert tells; asked fails for it, and alerted for a question" do
+    {:ok, view, _} = live(build_conn(), "/overlays")
+
+    assert alerted(view, "#rename-existing-demo") == %{
+             title: "Keine Buchungen zum Umbenennen gefunden.",
+             text: "Diese Regeln treffen auf keinen Empfänger einer Buchung zu."
+           }
+
+    assert alerted(view, "#alert-menu-apply") == %{
+             title: "Keine Buchungen zum Umbenennen gefunden.",
+             text: nil
+           }
+
+    assert_raise ExUnit.AssertionError, ~r/alerted\/3/, fn ->
+      asked(view, "#rename-existing-demo")
+    end
+
+    assert_raise ExUnit.AssertionError, ~r/does not open an alert/, fn ->
+      alerted(view, "#delete-demo")
+    end
+  end
+
   test "close_modal closes natively and sends the modal's on_cancel" do
     {:ok, view, _} = live(build_conn(), "/overlays")
     assert close_modal(view, "#booking-cancel", "booking") =~ "Dialog geschlossen (Demo)."

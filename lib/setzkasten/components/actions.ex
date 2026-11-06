@@ -4,7 +4,7 @@ defmodule Setzkasten.Components.Actions do
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Components.Overlays, only: [show_confirm: 5, show_alert: 4]
   import Setzkasten.Click, only: [click_js: 3]
 
   @variants %{
@@ -46,6 +46,12 @@ defmodule Setzkasten.Components.Actions do
   render, a slow connect) a click submits without asking. Its `id` becomes a `#id` selector: a
   plain CSS identifier, without `.` or `:`.
 
+  `alert` tells instead of acting: the click opens `show_alert/4` with `alert` and
+  `alert_text` in the shared dialog, a single OK and no action; a `phx-click` beside it does
+  not run. For an action the page already knows would do nothing ("Keine Buchungen
+  gefunden."), so one spread of attrs can switch the button between asking and telling. It
+  raises with `confirm`, on a link and on a submit button.
+
   `saved` (needs an `id`) confirms a save in place: after `push_saved(socket, id)` the button shows
   a check and `saved_label` for 1.5 s, then its label again, at the same width, announced in a
   polite live region. A `phx-disable-with` text becomes the pending label in the same stack.
@@ -65,6 +71,10 @@ defmodule Setzkasten.Components.Actions do
                phx-disable-with="Speichert …">Speichern</.button>
       <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger}
                confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
+      <.button alert="Keine Buchungen zum Umbenennen gefunden."
+               alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu.">
+        Bestehende Buchungen umbenennen
+      </.button>
   """
   attr :variant, :atom, default: :neutral, values: Map.keys(@variants)
   attr :size, :atom, default: :md, values: Map.keys(@sizes)
@@ -79,7 +89,9 @@ defmodule Setzkasten.Components.Actions do
     default: nil,
     doc: "confirm button label for actions other than a plain delete"
 
-  attr :confirm_id, :string, default: "confirm-delete"
+  attr :confirm_id, :string, default: "confirm-delete", doc: "the shared dialog's id"
+  attr :alert, :string, default: nil, doc: "a message in place of the click, with a single OK"
+  attr :alert_text, :string, default: nil, doc: "sentence below the alert"
   attr :saved, :boolean, default: false, doc: "confirms `push_saved/2` in place; needs `id`"
   attr :saved_label, :string, default: "Gespeichert"
   attr :type, :string, default: "button"
@@ -109,6 +121,18 @@ defmodule Setzkasten.Components.Actions do
   def button(%{saved: true, rest: rest})
       when is_map_key(rest, :href) or is_map_key(rest, :navigate) or is_map_key(rest, :patch) do
     raise ArgumentError, "<.button saved> must be a button, not a link"
+  end
+
+  def button(%{alert: alert, confirm: confirm}) when is_binary(alert) and is_binary(confirm) do
+    raise ArgumentError, "<.button> takes alert or confirm, not both"
+  end
+
+  def button(%{alert: alert, type: type, rest: rest})
+      when is_binary(alert) and
+             (type == "submit" or is_map_key(rest, :href) or is_map_key(rest, :navigate) or
+                is_map_key(rest, :patch) or is_map_key(rest, :method)) do
+    raise ArgumentError,
+          "<.button alert> must be a plain button: a link or submit button would act without its click"
   end
 
   def button(%{confirm: confirm, type: "submit", rest: rest})
@@ -153,6 +177,7 @@ defmodule Setzkasten.Components.Actions do
         assigns.class
       ])
       |> move_click_to_confirm()
+      |> replace_click_with_alert()
       |> mirror_phx_value()
 
     cond do
@@ -358,6 +383,13 @@ defmodule Setzkasten.Components.Actions do
         else: rest
 
     assign(assigns, :rest, rest)
+  end
+
+  defp replace_click_with_alert(%{alert: nil} = assigns), do: assigns
+
+  defp replace_click_with_alert(assigns) do
+    js = show_alert(%JS{}, assigns.confirm_id, assigns.alert, text: assigns.alert_text)
+    assign(assigns, :rest, Map.merge(assigns.rest, %{"phx-click": js, "aria-haspopup": "dialog"}))
   end
 
   # LiveView's client sends a button's value property as "value", over any phx-value-value.
