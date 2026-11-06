@@ -777,6 +777,53 @@
   }
 }
 
+/* <.list size={:compact}>: one-line picker rows, 32px (44px on touch screens). A divider every
+   32px is noise; the hover and selected fills tell the rows apart. */
+@layer utilities.setzkasten {
+  .setzkasten-list-compact > .list-row {
+    min-height: 2rem;
+    padding: 0 0.5rem;
+    column-gap: 0.5rem;
+    &::after {
+      content: none;
+    }
+  }
+  .setzkasten-list-compact > .list-row > .list-col-grow > :is(a, button, p) {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The cut-off name shows whole under the pointer: its tooltip sits above the row's link
+     overlay here and takes no pointer in other lists, where the title wraps. */
+  .setzkasten-row-name {
+    pointer-events: none;
+  }
+  .setzkasten-list-compact > .list-row > .list-col-grow .setzkasten-row-name {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+  @media (pointer: coarse) {
+    .setzkasten-list-compact > .list-row {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* <.list_row selected>: the table's current row, square so the bar runs straight. */
+@layer utilities.setzkasten {
+  .list-row.setzkasten-row-selected {
+    border-radius: 0;
+    background-color: var(--color-row-selected);
+    box-shadow: inset 3px 0 0 var(--color-selected);
+    &:dir(rtl) {
+      box-shadow: inset -3px 0 0 var(--color-selected);
+    }
+  }
+}
+
 /* The page bar of detail pages (app_shell's :bar) on phones: a badge shows as its dot only,
    the label stays for screen readers, so the title keeps the room. A neutral badge has no
    dot that says anything on its own, so it is left to screen readers entirely. */

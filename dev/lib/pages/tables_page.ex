@@ -392,6 +392,33 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
           >/screens/shopping</.link>.
         </:note>
       </.demo>
+      <.demo
+        title="Auswahlliste (size={:compact}, framed) mit Checkboxen und gezeigter Zeile"
+        class="max-w-72"
+      >
+        <.list id="payee-picker" size={:compact} framed class="max-h-48">
+          <.list_row
+            :for={{id, name, hidden} <- @payees}
+            id={"payee-#{id}"}
+            title={name}
+            selected={id == @payee_shown}
+            on_click={JS.push("payee_show", value: %{id: id})}
+            checked={id in @payee_checked}
+            on_check={JS.push("payee_check", value: %{id: id})}
+            trailing_on_phone={:title}
+          >
+            <:trailing :if={hidden}>
+              <.icon name="archive" label="Ausgeblendet" class="size-4 text-base-content/70" />
+            </:trailing>
+          </.list_row>
+        </.list>
+        <:note>
+          Gezeigt: {payee_name(@payees, @payee_shown)} · ausgewählt: {length(@payee_checked)}. Die
+          Checkbox wählt aus, ein Klick auf den Namen zeigt den Empfänger. 32px-Zeilen, mit dem
+          Finger 44px. Mit <code>check_from={":sm"}</code>
+          stünde die Checkbox erst ab <code>sm</code>, etwa auf dem Handy nur beim Auswählen.
+        </:note>
+      </.demo>
       <.demo title="Abhaken in einer Liste ohne Stream (:for mit :key)">
         <.list id="basket" size={:dense}>
           <.list_row
@@ -412,6 +439,13 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       </.demo>
     </.showcase>
     """
+  end
+
+  defp payee_name(payees, id) do
+    case List.keyfind(payees, id, 0) do
+      {_, name, _} -> name
+      nil -> "–"
+    end
   end
 
   defp entry_link(%{amount: amount}) when amount < 0, do: "/tables"
@@ -518,6 +552,13 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         <:meta :if={item.note}>{item.note}</:meta>
       </.list_row>
     </.list>
+    <%!-- a picker beside a form: one-line rows, the shown row selected, checkboxes for a selection --%>
+    <.list id="payees" size={:compact} framed class="min-h-0 flex-1">
+      <.list_row :for={p <- @payees} id={"payee-#{p.id}"} title={p.name} selected={p.id == @shown}
+                 on_click={JS.push("show", value: %{id: p.id})} checked={p.id in @selection}
+                 on_check={JS.push("toggle", value: %{id: p.id})} check_from={:sm} />
+    </.list>
+
     <.list id="recent" size={:dense}>
       <.list_row :for={item <- @recent} id={"recent-#{item.id}"} title={item.name} muted
                  on_click={JS.push("uncheck", value: %{id: item.id})} />

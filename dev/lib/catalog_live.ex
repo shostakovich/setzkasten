@@ -21,6 +21,13 @@ defmodule Setzkasten.Dev.CatalogLive do
   ]
 
   @basket [{1, "Äpfel"}, {2, "Hafermilch"}, {3, "Kaffee"}, {4, "Spülmittel"}]
+  @payees [
+    {"krume", "Bäckerei Krume", false},
+    {"frisch", "Supermarkt Frisch", false},
+    {"stadtwerke", "Stadtwerke", false},
+    {"nord", "Tankstelle Nord mit sehr langem Namen aus dem Kontoauszug", false},
+    {"paypal", "PayPal Europe", true}
+  ]
 
   def pages, do: @pages
 
@@ -39,6 +46,9 @@ defmodule Setzkasten.Dev.CatalogLive do
        picked: [],
        sort: "date",
        basket: @basket,
+       payees: @payees,
+       payee_shown: "krume",
+       payee_checked: ["krume", "stadtwerke"],
        envelopes: Setzkasten.Dev.Data.envelope_groups(),
        combo: to_form(%{"category" => "groceries"}, as: :booking),
        form: Pages.FormsPage.build_form(%{})
@@ -97,6 +107,14 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   def handle_event("basket_check", %{"id" => id}, socket),
     do: {:noreply, update(socket, :basket, &List.keydelete(&1, id, 0))}
+
+  def handle_event("payee_show", %{"id" => id}, socket),
+    do: {:noreply, assign(socket, payee_shown: id)}
+
+  def handle_event("payee_check", %{"id" => id}, socket) do
+    {:noreply,
+     update(socket, :payee_checked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
 
   def handle_event("basket_reset", _params, socket),
     do: {:noreply, assign(socket, basket: @basket)}

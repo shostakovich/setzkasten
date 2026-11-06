@@ -668,7 +668,22 @@ defmodule Setzkasten.Components.Data do
   `-foot`, so in a stream LiveView keeps it and adds rows above it.
 
   `size={:dense}` makes every row 53px tall, as a one-line `:md` row, also with one meta line
-  or a 40px leading tile, e.g. for a shopping list.
+  or a 40px leading tile, e.g. for a shopping list. `size={:compact}` makes one-line picker
+  rows for a list in a dialog pane: 32px (44px on touch screens), tight padding, no dividers,
+  the title in regular weight on one line, cut off with an ellipsis; under the pointer the
+  `title` shows whole as a tooltip. A trailing value stays on that line with
+  `trailing_on_phone={:title}`.
+
+  `framed` sets the list in a bordered box instead of between hairlines, e.g. a picker list
+  beside a form; it scrolls once its height is limited (`max-h-80`, or `min-h-0 flex-1` in a
+  flex column). Its rows take no `:action`s: below `md` (and with `menu={:always}`) they fold
+  into a `⋮` menu, which the scroll box would cut off.
+
+      <.list id="payees" size={:compact} framed class="min-h-0 flex-1">
+        <.list_row :for={p <- @payees} id={"payee-\#{p.id}"} title={p.name} selected={p.id == @shown}
+                   on_click={JS.push("show", value: %{id: p.id})}
+                   checked={p.id in @selection} on_check={JS.push("toggle", value: %{id: p.id})} />
+      </.list>
 
       <.list>
         <.list_row :for={b <- @bookings} title={b.title}>…<:action label="Löschen" … /></.list_row>
@@ -676,8 +691,9 @@ defmodule Setzkasten.Components.Data do
       </.list>
   """
   attr :id, :string, default: nil
-  attr :size, :atom, default: :md, values: [:md, :dense]
+  attr :size, :atom, default: :md, values: [:md, :dense, :compact]
   attr :flush, :boolean, default: false
+  attr :framed, :boolean, default: false, doc: "in a bordered box that scrolls when limited"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
@@ -694,7 +710,16 @@ defmodule Setzkasten.Components.Data do
     ~H"""
     <ul
       id={@id}
-      class={["list", @size == :dense && "setzkasten-list-dense", !@flush && flat(), @class]}
+      class={[
+        "list",
+        list_size_class(@size),
+        cond do
+          @framed -> "overflow-y-auto rounded-box border border-base-content/10 py-1"
+          @flush -> nil
+          true -> flat()
+        end,
+        @class
+      ]}
       data-focus-fallback
       {@rest}
     >
@@ -727,6 +752,10 @@ defmodule Setzkasten.Components.Data do
     """
   end
 
+  defp list_size_class(:md), do: nil
+  defp list_size_class(:dense), do: "setzkasten-list-dense"
+  defp list_size_class(:compact), do: "setzkasten-list-compact"
+
   defp foot_id(id, 0), do: "#{id}-foot"
   defp foot_id(id, i), do: "#{id}-foot-#{i}"
 
@@ -752,7 +781,9 @@ defmodule Setzkasten.Components.Data do
   own target: `JS.push("open", target: @myself)`) the
   title is a `<button type="button">` that covers the row the same way, e.g. to open a dialog.
   Keyboard focus rings the whole row. Without `on_click`, `phx-click` and `phx-target` stay on
-  the `<li>`.
+  the `<li>`. An event name in `on_click` or `on_check` sends no `phx-value-*` given to the row
+  (they land on the `<li>`, and LiveView reads them from the clicked title or checkbox only), so
+  an event that needs the row's id takes `JS.push("show", value: %{id: id})`.
 
   Actions are icon buttons from `md` and fold into a `⋮` menu below (Escape and choosing an
   entry return focus to the `⋮` button). `menu={:always}` uses the `⋮` menu at every width,
@@ -782,6 +813,15 @@ defmodule Setzkasten.Components.Data do
   (e.g. move up and down), the others only in the `⋮` menu. `actions_class` sets the width of
   the icon buttons' column (e.g. `md:w-20 justify-end`), so trailing columns line up across
   lists whose rows have a different number of actions.
+
+  `selected` marks the row shown beside the list (a picker's current row): the row-selected
+  fill with a 3px bar at its start, as a table's current row, and `aria-current="true"` on the
+  title. `on_check` (an event name with `phx-target`, or a `%JS{}`) puts a checkbox before
+  `:leading`, `checked` its state, for a selection of several rows; it is its own target beside
+  the title's, with a hit area of 32px (44px on touch screens). Its name is `check_label`,
+  by default „<title>“ auswählen. `check_from` (`:sm`, `:md`) shows it only from that width,
+  e.g. on phones only while picking. `autofocus` goes on the title's link or button, e.g. for
+  the row a picker dialog opens on.
 
   `muted` quiets a done or secondary row: the title takes the meta's 70 % at normal weight,
   trailing values follow it, the leading content fades. Hover and tap stay as they are.
@@ -825,6 +865,16 @@ defmodule Setzkasten.Components.Data do
   attr :actions_class, :any, default: nil, doc: "the icon buttons' column, e.g. a fixed width"
   attr :confirm_id, :string, default: "confirm-delete"
   attr :muted, :boolean, default: false, doc: "a done or secondary row"
+
+  attr :selected, :boolean,
+    default: false,
+    doc: "the current row: fill, start bar, `aria-current`"
+
+  attr :checked, :boolean, default: false, doc: "the checkbox's state, with `on_check`"
+  attr :on_check, :any, default: nil, doc: "event name or `%JS{}`; adds a leading checkbox"
+  attr :check_label, :string, default: nil, doc: "the checkbox's name; „<title>“ auswählen"
+  attr :check_from, :atom, default: nil, values: [nil, :sm, :md]
+  attr :autofocus, :boolean, default: false, doc: "on the title's link or button"
   attr :exit, :atom, default: :none, values: [:none, :strike], doc: "`:strike` needs `id`"
   attr :class, :any, default: nil
   attr :rest, :global
@@ -854,20 +904,32 @@ defmodule Setzkasten.Components.Data do
     attr :inline, :boolean, doc: "with `menu={:always}`: also an icon button from `md`"
   end
 
+  def list_row(%{on_check: false} = assigns), do: assigns |> assign(:on_check, nil) |> list_row()
+
   def list_row(%{exit: :strike, id: nil}) do
     raise ArgumentError,
           "<.list_row exit={:strike}> needs an id: LiveView hooks run on elements with one"
+  end
+
+  def list_row(%{on_check: check, check_label: nil, title: nil}) when not is_nil(check) do
+    raise ArgumentError,
+          "<.list_row on_check> needs a title or a check_label to name its checkbox"
   end
 
   def list_row(assigns) do
     link? = Enum.any?([assigns.navigate, assigns.patch, assigns.href])
 
     assigns =
-      assign(assigns,
+      assigns
+      |> assign_check()
+      |> assign(
         link?: link?,
         title_click: title_click(assigns, link?),
         title_class:
-          if(assigns.muted, do: "font-normal text-base-content/70", else: "font-medium"),
+          if(assigns.muted,
+            do: "font-normal text-base-content/70",
+            else: "font-medium [.setzkasten-list-compact>li_&]:font-normal"
+          ),
         menu_label:
           if(assigns.title,
             do: "#{assigns.actions_label}: #{assigns.title}",
@@ -883,7 +945,7 @@ defmodule Setzkasten.Components.Data do
             else: assigns.action
           ),
         grow_column:
-          if(assigns.leading != [], do: "max-md:col-start-2", else: "max-md:col-start-1")
+          grow_column(assigns.leading != [] or assigns.on_check != nil, assigns.leading, assigns)
       )
 
     ~H"""
@@ -974,8 +1036,11 @@ defmodule Setzkasten.Components.Data do
       id={@id}
       class={[
         "list-row items-center",
-        (@link? || @title_click) &&
+        (@link? || @title_click) && !@selected &&
           "md:hover:bg-base-200 has-[.list-col-grow>:is(a,button):active]:bg-base-200",
+        @selected && "setzkasten-row-selected",
+        @lead_from == :sm && "max-sm:[--list-grid-cols:1fr]",
+        @lead_from == :md && "max-md:[--list-grid-cols:1fr]",
         @wrap? && "max-md:gap-y-1",
         @class
       ]}
@@ -985,14 +1050,38 @@ defmodule Setzkasten.Components.Data do
       {@rest}
     >
       <div
-        :if={@leading != []}
+        :if={@leading != [] or @check?}
         class={[
           "flex items-center",
+          @check? && "gap-3",
           @wrap? && "max-md:row-[1/span_2] max-md:self-start",
-          @muted && "opacity-70"
+          @muted && !@check? && "opacity-70",
+          from_classes(@lead_from)
         ]}
       >
-        {render_slot(@leading)}
+        <label
+          :if={@check?}
+          class={[
+            "relative z-10 flex after:absolute after:left-1/2 after:top-1/2 after:size-8",
+            "after:-translate-x-1/2 after:-translate-y-1/2 pointer-coarse:after:size-11",
+            from_classes(@check_from)
+          ]}
+        >
+          <input
+            type="checkbox"
+            id={@id && "#{@id}-check"}
+            class="checkbox checkbox-sm"
+            checked={@checked}
+            aria-label={@check_label}
+            phx-click={@check_js}
+          />
+        </label>
+        <div :if={@check? and @leading != []} class={["flex items-center", @muted && "opacity-70"]}>
+          {render_slot(@leading)}
+        </div>
+        <%= if !@check? do %>
+          {render_slot(@leading)}
+        <% end %>
       </div>
       <div class="list-col-grow min-w-0">
         <%!-- Floats at the end of the title line; the meta line (truncate makes it a block
@@ -1012,19 +1101,33 @@ defmodule Setzkasten.Components.Data do
           patch={@patch}
           href={@href}
           class={[@title_class, "wrap-anywhere", stretched()]}
+          aria-current={@selected && "true"}
+          autofocus={@autofocus}
         >
-          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
+          <.row_title strike={@exit == :strike}>
+            <.row_name title={@title} />{render_slot(@inner_block)}
+          </.row_title>
         </.link>
         <button
           :if={!@link? && @title_click}
           type="button"
           class={["block cursor-pointer text-start wrap-anywhere", @title_class, stretched()]}
+          aria-current={@selected && "true"}
+          autofocus={@autofocus}
           phx-click={@title_click}
         >
-          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
+          <.row_title strike={@exit == :strike}>
+            <.row_name title={@title} />{render_slot(@inner_block)}
+          </.row_title>
         </button>
-        <p :if={!@link? && !@title_click} class={[@title_class, "wrap-anywhere"]}>
-          <.row_title strike={@exit == :strike}>{@title}{render_slot(@inner_block)}</.row_title>
+        <p
+          :if={!@link? && !@title_click}
+          class={[@title_class, "wrap-anywhere"]}
+          aria-current={@selected && "true"}
+        >
+          <.row_title strike={@exit == :strike}>
+            <.row_name title={@title} />{render_slot(@inner_block)}
+          </.row_title>
         </p>
         <p :for={line <- @meta_lines} class="text-sm text-base-content/70 truncate">
           {render_slot(line)}
@@ -1181,6 +1284,13 @@ defmodule Setzkasten.Components.Data do
 
   defp row_title(assigns), do: ~H|{render_slot(@inner_block)}|
 
+  attr :title, :string, required: true
+
+  defp row_name(%{title: nil} = assigns), do: ~H""
+
+  defp row_name(assigns),
+    do: ~H|<span class="setzkasten-row-name" title={@title}>{@title}</span>|
+
   defp title_click(assigns, link?) do
     click = if assigns.on_click && !link?, do: click_js(assigns.on_click, assigns[:"phx-target"])
 
@@ -1190,6 +1300,29 @@ defmodule Setzkasten.Components.Data do
   end
 
   defp row_exit, do: JS.dispatch("setzkasten:exit", blocking: true)
+
+  defp assign_check(%{on_check: nil} = assigns),
+    do: assign(assigns, check?: false, check_js: nil, lead_from: nil)
+
+  defp assign_check(assigns) do
+    assign(assigns,
+      check?: true,
+      check_js: click_js(assigns.on_check, assigns[:"phx-target"]),
+      check_label: assigns.check_label || "„#{assigns.title}“ auswählen",
+      lead_from: if(assigns.leading == [], do: assigns.check_from)
+    )
+  end
+
+  defp from_classes(nil), do: nil
+  defp from_classes(:sm), do: "max-sm:hidden"
+  defp from_classes(:md), do: "max-md:hidden"
+
+  # The column a wrapped trailing line starts in: the title's, after a leading cell if one shows.
+  defp grow_column(false, _leading, _assigns), do: "max-md:col-start-1"
+  defp grow_column(true, [_ | _], _assigns), do: "max-md:col-start-2"
+  defp grow_column(true, [], %{check_from: :sm}), do: "max-sm:col-start-1 sm:max-md:col-start-2"
+  defp grow_column(true, [], %{check_from: :md}), do: "max-md:col-start-1"
+  defp grow_column(true, [], _assigns), do: "max-md:col-start-2"
 
   # With the trailing content at the end of the meta line, the last line renders beside it.
   defp meta_lines(%{trailing: [_ | _], trailing_on_phone: :meta, meta: meta}),
