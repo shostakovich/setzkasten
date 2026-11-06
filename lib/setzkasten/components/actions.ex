@@ -4,7 +4,7 @@ defmodule Setzkasten.Components.Actions do
   alias Phoenix.LiveView.ColocatedHook
   alias Phoenix.LiveView.JS
   import Setzkasten.Components.Icons
-  import Setzkasten.Components.Overlays, only: [show_confirm: 5]
+  import Setzkasten.Components.Overlays, only: [show_confirm: 5, show_alert: 4]
   import Setzkasten.Click, only: [click_js: 3]
 
   @variants %{
@@ -46,6 +46,12 @@ defmodule Setzkasten.Components.Actions do
   render, a slow connect) a click submits without asking. Its `id` becomes a `#id` selector: a
   plain CSS identifier, without `.` or `:`.
 
+  `alert` tells instead of acting: the click opens `show_alert/4` with `alert` and
+  `alert_text` in the shared dialog, a single OK and no action; a `phx-click` beside it does
+  not run. For an action the page already knows would do nothing ("Keine Buchungen
+  gefunden."), so one spread of attrs can switch the button between asking and telling. It
+  raises with `confirm`, on a link and on a submit button.
+
   `saved` (needs an `id`) confirms a save in place: after `push_saved(socket, id)` the button shows
   a check and `saved_label` for 1.5 s, then its label again, at the same width, announced in a
   polite live region. A `phx-disable-with` text becomes the pending label in the same stack.
@@ -65,6 +71,10 @@ defmodule Setzkasten.Components.Actions do
                phx-disable-with="Speichert …">Speichern</.button>
       <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger}
                confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
+      <.button alert="Keine Buchungen zum Umbenennen gefunden."
+               alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu.">
+        Bestehende Buchungen umbenennen
+      </.button>
   """
   attr :variant, :atom, default: :neutral, values: Map.keys(@variants)
   attr :size, :atom, default: :md, values: Map.keys(@sizes)
@@ -79,7 +89,9 @@ defmodule Setzkasten.Components.Actions do
     default: nil,
     doc: "confirm button label for actions other than a plain delete"
 
-  attr :confirm_id, :string, default: "confirm-delete"
+  attr :confirm_id, :string, default: "confirm-delete", doc: "the shared dialog's id"
+  attr :alert, :string, default: nil, doc: "a message in place of the click, with a single OK"
+  attr :alert_text, :string, default: nil, doc: "sentence below the alert"
   attr :saved, :boolean, default: false, doc: "confirms `push_saved/2` in place; needs `id`"
   attr :saved_label, :string, default: "Gespeichert"
   attr :type, :string, default: "button"
@@ -109,6 +121,18 @@ defmodule Setzkasten.Components.Actions do
   def button(%{saved: true, rest: rest})
       when is_map_key(rest, :href) or is_map_key(rest, :navigate) or is_map_key(rest, :patch) do
     raise ArgumentError, "<.button saved> must be a button, not a link"
+  end
+
+  def button(%{alert: alert, confirm: confirm}) when is_binary(alert) and is_binary(confirm) do
+    raise ArgumentError, "<.button> takes alert or confirm, not both"
+  end
+
+  def button(%{alert: alert, type: type, rest: rest})
+      when is_binary(alert) and
+             (type == "submit" or is_map_key(rest, :href) or is_map_key(rest, :navigate) or
+                is_map_key(rest, :patch) or is_map_key(rest, :method)) do
+    raise ArgumentError,
+          "<.button alert> must be a plain button: a link or submit button would act without its click"
   end
 
   def button(%{confirm: confirm, type: "submit", rest: rest})
@@ -153,6 +177,7 @@ defmodule Setzkasten.Components.Actions do
         assigns.class
       ])
       |> move_click_to_confirm()
+      |> replace_click_with_alert()
       |> mirror_phx_value()
 
     cond do
@@ -360,6 +385,13 @@ defmodule Setzkasten.Components.Actions do
     assign(assigns, :rest, rest)
   end
 
+  defp replace_click_with_alert(%{alert: nil} = assigns), do: assigns
+
+  defp replace_click_with_alert(assigns) do
+    js = show_alert(%JS{}, assigns.confirm_id, assigns.alert, text: assigns.alert_text)
+    assign(assigns, :rest, Map.merge(assigns.rest, %{"phx-click": js, "aria-haspopup": "dialog"}))
+  end
+
   # LiveView's client sends a button's value property as "value", over any phx-value-value.
   defp client_value("submit", _rest), do: []
   defp client_value(_type, %{value: value}), do: [{:"phx-value-value", value}]
@@ -387,7 +419,7 @@ defmodule Setzkasten.Components.Actions do
   @doc """
   The bar for a multi-selection (e.g. checked rows of a table): fixed at the bottom of the
   content, with a button that clears the selection, the count and the actions for the selected
-  items (buttons, dropdowns, popovers) in the inner block.
+  items (buttons, dropdowns, popovers) in the inner block. `:leading` goes before the count.
 
   Render it always and pass the count: at 0 it hides (focus inside moves to the closest
   `[data-focus-fallback]`, else `<main id="main">`), and a polite live region announces each
@@ -407,24 +439,83 @@ defmodule Setzkasten.Components.Actions do
           <:item on_click="delete_selected" icon="trash-2" danger confirm="Auswahl löschen?">Löschen</:item>
         </.dropdown>
       </.selection_bar>
+
+  `inline` renders it in flow where it is placed, full width, as the toolbar of a picking
+  mode in a modal's `:actions` or a sheet: `:leading` at the start, the inner block at the
+  end and the count in the middle, with equal room on either side, as in an iOS toolbar. It
+  shows at 0 too, takes no spacer and leaves the floating action button alone; the live
+  region still announces the count, and dropdowns inside still open upwards. `on_clear` is
+  optional there: without it there is no ✕.
+
+      <.selection_bar :if={@picking} id="pick" inline count={length(@selected)}>
+        <:leading>
+          <.button size={:sm} variant={:ghost} disabled={length(@selected) < 2}
+                   phx-click="combine">Zusammenfassen</.button>
+        </:leading>
+        <.dropdown id="pick-listed" label="Aufführen" variant={:ghost} align={:end}
+                   chevron={false} trigger_class="btn-sm btn-square">
+          <:trigger><.icon name="eye" /></:trigger>
+          <:item on_click="show_selected" icon="eye">Aufführen</:item>
+        </.dropdown>
+      </.selection_bar>
   """
   attr :id, :string, required: true
   attr :count, :integer, required: true
   attr :label, :string, default: "%{count} ausgewählt", doc: "`%{count}` is the number"
-  attr :on_clear, :any, required: true, doc: "an event name or `%JS{}`"
+  attr :inline, :boolean, default: false, doc: "in flow where it is placed, shown at 0"
+
+  attr :on_clear, :any,
+    default: nil,
+    doc: "an event name or `%JS{}`; required unless `inline`"
+
   attr :"phx-target", :any, default: nil, doc: "for an event name in `on_clear`"
   attr :clear_label, :string, default: "Auswahl aufheben"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, doc: "the actions for the selected items"
+  slot :leading, doc: "before the count, e.g. an action at the start of an inline bar"
+
+  def selection_bar(%{inline: false, on_clear: nil}) do
+    raise ArgumentError, "<.selection_bar> needs on_clear, unless it is inline"
+  end
 
   def selection_bar(assigns) do
     assigns =
       assign(assigns,
         text: String.replace(assigns.label, "%{count}", to_string(assigns.count)),
-        clear: click_js(assigns.on_clear, assigns[:"phx-target"], [])
+        clear: assigns.on_clear && click_js(assigns.on_clear, assigns[:"phx-target"], [])
       )
 
+    if assigns.inline, do: inline_selection_bar(assigns), else: fixed_selection_bar(assigns)
+  end
+
+  defp inline_selection_bar(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-count"}
+      class={[
+        "setzkasten-selection-inline flex w-full items-center justify-between gap-2 text-sm",
+        @class
+      ]}
+      {@rest}
+    >
+      <p id={"#{@id}-status"} class="sr-only" role="status">{@text}</p>
+      <div class="flex items-center gap-1">
+        <.clear_button :if={@clear} clear={@clear} label={@clear_label} />{render_slot(@leading)}
+      </div>
+      <span id={"#{@id}-count"} class="whitespace-nowrap tabular-nums" aria-hidden="true">
+        {@text}
+      </span>
+      <div class="flex items-center gap-1">
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  defp fixed_selection_bar(assigns) do
     ~H"""
     <div id={@id} phx-hook=".SelectionBar" {@rest}>
       <p id={"#{@id}-status"} class="sr-only" role="status">{if @count > 0, do: @text}</p>
@@ -449,14 +540,7 @@ defmodule Setzkasten.Components.Actions do
             @class
           ]}
         >
-          <.button
-            variant={:ghost}
-            size={:sm}
-            icon="x"
-            icon_only
-            label={@clear_label}
-            phx-click={@clear}
-          />
+          <.clear_button clear={@clear} label={@clear_label} />{render_slot(@leading)}
           <span
             id={"#{@id}-count"}
             class="px-1 font-semibold whitespace-nowrap tabular-nums"
@@ -493,6 +577,15 @@ defmodule Setzkasten.Components.Actions do
         }
       }
     </script>
+    """
+  end
+
+  attr :clear, JS, required: true
+  attr :label, :string, required: true
+
+  defp clear_button(assigns) do
+    ~H"""
+    <.button variant={:ghost} size={:sm} icon="x" icon_only label={@label} phx-click={@clear} />
     """
   end
 

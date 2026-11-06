@@ -48,6 +48,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button phx-click={show_modal("category-trip")} aria-haspopup="dialog">
           Titel zum Umbenennen, Toast im Dialog
         </.button>
+        <.button id="payees-open" phx-click={show_modal("payees")} aria-haspopup="dialog">
+          Aktionen im Titel, Auswahlleiste im Fuß
+        </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
@@ -196,6 +199,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
         </p>
       </.modal>
+      <.payees_modal payee={@payee} picking={@payees_picking} picked={@payees_picked} />
       <.long_choice id="long-choice" placement={:center} />
       <.long_choice id="long-choice-panel" placement={:end} />
       <.modal id="category-panel" title="Kategorie Lebensmittel" placement={:end}>
@@ -215,7 +219,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       <:intro>
         Jede unumkehrbare Löschung fragt in einem gemeinsamen Dialog; Archivieren fragt nicht. Die
         Löschaktion liegt auf dem Bestätigen-Button des Dialogs; Abbrechen, Escape und Hintergrund
-        schließen nur. Der Fokus startet auf „Abbrechen“.
+        schließen nur. Der Fokus startet auf „Abbrechen“. Derselbe Dialog sagt mit
+        <code>show_alert/4</code>
+        auch nur etwas, mit einem „OK“.
       </:intro>
       <.demo title="Auslöser" class="flex flex-wrap gap-3">
         <.button
@@ -279,6 +285,32 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           „Ersetzen“ steht außerhalb des Formulars (<code>form</code>-Attribut) und fragt erst;
           die Bestätigung sendet das Formular mit <code>mode=replace</code>. Enter im Feld sendet
           über den ersten Submit-Button, „Ergänzen“.
+        </:note>
+      </.demo>
+      <.demo title="Hinweis statt Frage (alert)" class="flex flex-wrap gap-3">
+        <.button
+          id="rename-existing-demo"
+          alert="Keine Buchungen zum Umbenennen gefunden."
+          alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu."
+          phx-click="delete"
+        >
+          Bestehende Buchungen umbenennen
+        </.button>
+        <.dropdown id="alert-menu" label="Regeln" align={:end}>
+          <:trigger>Regeln</:trigger>
+          <:item
+            id="alert-menu-apply"
+            icon="refresh-cw"
+            alert="Keine Buchungen zum Umbenennen gefunden."
+            on_click="delete"
+          >
+            Jetzt anwenden
+          </:item>
+        </.dropdown>
+        <:note>
+          Weiß die Seite schon beim Rendern, dass die Aktion nichts täte, sagt <code>alert</code>
+          es im selben Dialog: nur „OK“, keine Aktion; der <code>phx-click</code>
+          läuft nicht. Die nächste Frage zeigt wieder beide Buttons.
         </:note>
       </.demo>
       <.demo title="In einer LiveComponent, phx-target">
@@ -435,8 +467,8 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       code={code(2)}
     >
       <:intro>
-        Selten gebrauchte Optionen und Details; Zusammenfassung mindestens 44px auf Touch. Der
-        offene Zustand übersteht LiveView-Updates.
+        Selten gebrauchte Optionen und Details; Zusammenfassung mindestens 44px auf Touch. Was
+        man selbst auf- und zuklappt, übersteht LiveView-Updates; ändert der Server <code>open</code>, folgt er.
       </:intro>
       <.demo title="Zu, offen, mit Anzahl, als Button" class="space-y-4">
         <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">
@@ -455,6 +487,24 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.disclosure id="more-options" variant={:button} icon="settings" summary="Weitere Optionen">
           <.input name="o[notify]" id="o-notify" type="toggle" label="Beteiligte benachrichtigen" />
         </.disclosure>
+      </.demo>
+      <.demo title="Vom Server geöffnet" class="space-y-4">
+        <.button id="scheduled-toggle" size={:sm} phx-click="toggle_scheduled">
+          {if @scheduled_open, do: "Vom Server schließen", else: "Geplante Buchungen zeigen"}
+        </.button>
+        <.disclosure
+          id="scheduled-list"
+          variant={:row}
+          summary="Geplant"
+          count={2}
+          open={@scheduled_open}
+        >
+          Miete am 1. Dezember · Strom am 15. Dezember
+        </.disclosure>
+        <:note>
+          Der Button ändert <code>open</code> auf dem Server, der Bereich folgt. Klappst du ihn
+          selbst zu, bleibt er zu, bis <code>open</code> wieder <code>true</code> wird.
+        </:note>
       </.demo>
     </.showcase>
 
@@ -481,6 +531,107 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </.tooltip>
       </.demo>
     </.showcase>
+    """
+  end
+
+  @payees [
+    {"aral", "Tankstelle Aral"},
+    {"edeka", "EDEKA Center"},
+    {"edeka-sagt-danke", "EDEKA SAGT DANKE"},
+    {"hausverwaltung", "Hausverwaltung Ost"},
+    {"stadtwerke", "Stadtwerke Leipzig"}
+  ]
+
+  attr :payee, :string, required: true
+  attr :picking, :boolean, required: true
+  attr :picked, :list, required: true
+
+  defp payees_modal(assigns) do
+    assigns =
+      assign(assigns, payees: @payees, name: @payees |> Map.new() |> Map.get(assigns.payee))
+
+    ~H"""
+    <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+      <:leading :if={@payee}>
+        <.button
+          id="payees-back"
+          variant={:ghost}
+          size={:sm}
+          icon="chevron-left"
+          class="sm:hidden"
+          phx-click="payees_back"
+        >
+          Empfänger
+        </.button>
+      </:leading>
+      <:trailing>
+        <.button
+          id="payees-pick"
+          variant={:ghost}
+          size={:sm}
+          class={@payee && "max-sm:hidden"}
+          phx-click="payees_pick"
+        >
+          {if @picking, do: "Fertig", else: "Auswählen"}
+        </.button>
+      </:trailing>
+      <div class="grid gap-4 py-2 sm:grid-cols-[13rem_1fr]">
+        <.list
+          id="payees-list"
+          size={:compact}
+          framed
+          class={["max-h-64", @payee && "max-sm:hidden"]}
+        >
+          <.list_row
+            :for={{id, name} <- @payees}
+            id={"payees-#{id}"}
+            title={name}
+            selected={id == @payee}
+            autofocus={id == "aral"}
+            on_click={
+              JS.push(if(@picking, do: "payees_toggle", else: "payees_show"), value: %{id: id})
+            }
+            checked={id in @picked}
+            on_check={@picking && JS.push("payees_toggle", value: %{id: id})}
+          />
+        </.list>
+        <div :if={@payee} id="payees-detail" class="space-y-1">
+          <h3 class="font-semibold">{@name}</h3>
+          <p class="text-sm text-base-content/70">12 Buchungen, zuletzt am 3. November.</p>
+        </div>
+        <p :if={!@payee} class="text-sm text-base-content/70 max-sm:hidden">
+          Ein Klick auf einen Namen zeigt den Empfänger.
+        </p>
+      </div>
+      <:actions>
+        <.selection_bar :if={@picking} id="payees-bar" inline count={length(@picked)}>
+          <:leading>
+            <.button
+              id="payees-combine"
+              variant={:ghost}
+              size={:sm}
+              disabled={length(@picked) < 2}
+              phx-click="payees_pick"
+            >
+              Zusammenfassen
+            </.button>
+          </:leading>
+          <.dropdown
+            id="payees-listed"
+            label="Aufführen"
+            variant={:ghost}
+            align={:end}
+            chevron={false}
+            trigger_class={["btn-sm btn-square", @picked == [] && "btn-disabled"]}
+          >
+            <:trigger><.icon name="eye" /></:trigger>
+            <:item on_click="payees_pick" icon="eye">Aufführen und ergänzen</:item>
+            <:item on_click="payees_pick" icon="eye-off">Ausblenden</:item>
+          </.dropdown>
+        </.selection_bar>
+        <.button :if={!@picking} phx-click={hide_modal("payees")}>Schließen</.button>
+      </:actions>
+    </.modal>
     """
   end
 
@@ -549,6 +700,30 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       …
     </.modal>
 
+    <%!-- actions before and after the title; the title stays the dialog's name, hidden on phones --%>
+    <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+      <:leading :if={@payee}>
+        <.button variant={:ghost} size={:sm} icon="chevron-left" class="sm:hidden"
+                 phx-click="back">Empfänger</.button>
+      </:leading>
+      <:trailing>
+        <.button variant={:ghost} size={:sm} class={@payee && "max-sm:hidden"} phx-click="pick">
+          {if @picking, do: "Fertig", else: "Auswählen"}
+        </.button>
+      </:trailing>
+      <.list id="payees-list" size={:compact} framed class={["max-h-64", @payee && "max-sm:hidden"]}>
+        <.list_row :for={p <- @payees} id={"payee-#{p.id}"} title={p.name} selected={p.id == @payee}
+                   autofocus={p.id == @initial}
+                   on_click={JS.push(if(@picking, do: "toggle", else: "show"), value: %{id: p.id})}
+                   checked={p.id in @selected}
+                   on_check={@picking && JS.push("toggle", value: %{id: p.id})} />
+      </.list>
+      …
+      <:actions>
+        <.selection_bar :if={@picking} id="pick" inline count={length(@selected)}>…</.selection_bar>
+      </:actions>
+    </.modal>
+
     <%!-- a form that grows as you type: held at the top from sm; focus on the autofocus field --%>
     <.modal id="new-security" title="Wertpapier hinzufügen" placement={:top}>
       <.segmented mode={:radio} field={@form[:by]} label="Hinzufügen per" … />
@@ -569,6 +744,12 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     <%!-- a submit button: the confirmation sends its form, with name and value --%>
     <.button type="submit" id="import-replace" name="mode" value="replace" variant={:danger_outline}
              confirm="Alle Buchungen ersetzen?" confirm_label="Ersetzen">Ersetzen</.button>
+
+    <%!-- nothing to do, known at render: a single OK instead of the action --%>
+    <.button alert="Keine Buchungen zum Umbenennen gefunden."
+             alert_text="Diese Regeln treffen auf keinen Empfänger einer Buchung zu.">
+      Bestehende Buchungen umbenennen
+    </.button>
 
     <%!-- inside a live component --%>
     <.button confirm="Eintrag löschen?" phx-click="delete" phx-target={@myself}>Löschen</.button>
@@ -622,6 +803,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     ~S"""
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
+
+    <%!-- opened and closed from the server when open changes --%>
+    <.disclosure id="scheduled" variant={:row} summary="Geplant" open={@show_scheduled}>…</.disclosure>
     """
   end
 

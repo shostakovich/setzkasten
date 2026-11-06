@@ -6,8 +6,9 @@ defmodule Setzkasten.Components.Overlays do
   The modal, popover and tooltip hooks are colocated; apps import them from
   `phoenix-colocated/setzkasten` (see the README).
 
-  `show_modal/1`, `hide_modal/1`, `show_confirm/5`, `show_popover/1` and `hide_popover/1` turn
-  an id into a `#id` selector, so ids are plain CSS identifiers, without `.` or `:`.
+  `show_modal/1`, `hide_modal/1`, `show_confirm/5`, `show_alert/4`, `show_popover/1` and
+  `hide_popover/1` turn an id into a `#id` selector, so ids are plain CSS identifiers, without
+  `.` or `:`.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
@@ -61,6 +62,9 @@ defmodule Setzkasten.Components.Overlays do
 
     js
     |> JS.set_attribute({"data-confirm-action", encode(action)}, to: "##{id}-confirm")
+    |> JS.remove_attribute("hidden", to: "##{id}-confirm")
+    |> JS.remove_attribute("hidden", to: "##{id}-cancel-label")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-ok-label")
     |> toggle_confirm_icon(id, label)
     |> JS.dispatch("setzkasten:show-modal",
       to: "##{id}",
@@ -71,6 +75,38 @@ defmodule Setzkasten.Components.Overlays do
           "##{id}-confirm-label" => label
         }
       }
+    )
+  end
+
+  @doc """
+  Tells something in the shared `<.confirm_dialog id={id}>` that asks nothing: `title` and the
+  optional `text:` sentence with a single OK (the dialog's `ok_label`), no action. The next
+  `show_confirm/5` asks normally again. `<.button alert="…">` and dropdown items call this for
+  you, e.g. for an action that would do nothing, which the page knows when it renders.
+
+      <.button phx-click={show_alert("confirm-delete", "Keine Buchungen gefunden.", text: "…")}>
+        Umbenennen
+      </.button>
+
+  It takes the call styles of `show_confirm/5`: `show_alert(id, title, opts)` and
+  `show_alert(js, id, title, opts)`.
+  """
+  def show_alert(id, title) when is_binary(id), do: show_alert(%JS{}, id, title, [])
+
+  def show_alert(id, title, opts) when is_binary(id) and is_list(opts),
+    do: show_alert(%JS{}, id, title, opts)
+
+  def show_alert(%JS{} = js, id, title) when is_binary(id), do: show_alert(js, id, title, [])
+
+  def show_alert(%JS{} = js, id, title, opts) when is_binary(id) and is_list(opts) do
+    js
+    |> JS.set_attribute({"data-confirm-action", "[]"}, to: "##{id}-confirm")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-confirm")
+    |> JS.set_attribute({"hidden", ""}, to: "##{id}-cancel-label")
+    |> JS.remove_attribute("hidden", to: "##{id}-ok-label")
+    |> JS.dispatch("setzkasten:show-modal",
+      to: "##{id}",
+      detail: %{text: %{"##{id}-title" => title, "##{id}-text" => opts[:text] || ""}}
     )
   end
 
@@ -105,6 +141,24 @@ defmodule Setzkasten.Components.Overlays do
   dialog, too, focuses itself unless a field asks for `autofocus`: the name is renamed on a
   click or Tab, not edited from the start.
 
+  `:leading` and `:trailing` hold actions in the title row, before and after the title (a
+  "‹ Zurück" button, a "Bearbeiten"), the trailing one at the end, before a side panel's ✕.
+  The title then keeps to one line and truncates between them, and the row keeps the height
+  of a small button, so it holds still while one of the slots stays. Their actions are items
+  of the row, 8px apart, so one an app hides per width (its own `sm:hidden`) leaves no gap.
+  `title_class` goes on the `title`, e.g. `max-sm:sr-only` to keep it as the dialog's name
+  where a back button and the content name the screen; a `:heading` takes none.
+
+      <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+        <:leading :if={@payee}>
+          <.button variant={:ghost} size={:sm} icon="chevron-left" phx-click="back">Empfänger</.button>
+        </:leading>
+        <:trailing :if={!@payee}>
+          <.button variant={:ghost} size={:sm} phx-click="pick">{if @picking, do: "Fertig", else: "Auswählen"}</.button>
+        </:trailing>
+        …
+      </.modal>
+
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
   stays closed until `show` turns `true` again.
@@ -125,14 +179,20 @@ defmodule Setzkasten.Components.Overlays do
   attr :close_label, :string, default: "Schließen"
   attr :close_button, :boolean, default: true
   attr :class, :any, default: nil
+  attr :title_class, :any, default: nil, doc: "with `title`, e.g. `max-sm:sr-only`"
   attr :rest, :global
   slot :inner_block
   slot :actions
   slot :heading, doc: "the title as markup in place of `title`, e.g. a `title_input/1`"
+  slot :leading, doc: "actions in the title row before the title, e.g. a back button"
+  slot :trailing, doc: "actions at the end of the title row"
 
   def modal(assigns) do
     assigns =
-      assign(assigns, :close?, assigns.close_button and assigns.placement in [:start, :end])
+      assign(assigns,
+        close?: assigns.close_button and assigns.placement in [:start, :end],
+        slots?: assigns.leading != [] or assigns.trailing != []
+      )
 
     ~H"""
     <dialog
@@ -152,21 +212,33 @@ defmodule Setzkasten.Components.Overlays do
         @class
       ]}>
         <div
-          :if={@title || @heading != [] || @close?}
+          :if={@title || @heading != [] || @close? || @slots?}
           class={[
-            "setzkasten-modal-head flex items-start justify-between gap-2",
+            "setzkasten-modal-head flex justify-between gap-2",
+            if(@slots?,
+              do: "min-h-14 items-center pointer-coarse:min-h-17",
+              else: "items-start"
+            ),
             "sticky -top-6 z-30 -mx-6 -mt-6 bg-inherit px-6 pt-6"
           ]}
         >
+          <div :if={@leading != []} class="contents *:shrink-0">{render_slot(@leading)}</div>
           <h2
             :if={@title && @heading == []}
             id={"#{@id}-title"}
-            class="min-w-0 text-lg font-semibold wrap-anywhere"
+            class={[
+              "min-w-0 text-lg font-semibold",
+              if(@slots?, do: "flex-1 truncate", else: "wrap-anywhere"),
+              @title_class
+            ]}
           >
             {@title}
           </h2>
           <div :if={@heading != []} class="min-w-0 flex-1">{render_slot(@heading)}</div>
-          <form :if={@close?} method="dialog" class="ms-auto">
+          <div :if={@trailing != []} class="contents *:shrink-0 [&>:first-child]:ms-auto">
+            {render_slot(@trailing)}
+          </div>
+          <form :if={@close?} method="dialog" class={@trailing == [] && "ms-auto"}>
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
             </button>
@@ -436,6 +508,9 @@ defmodule Setzkasten.Components.Overlays do
   closest `[data-focus-fallback]` element (`<.list>` and `<.table>` bodies carry it), else to
   that element, else to `<main>`. `<.modal>` behaves the same.
 
+  `show_alert/4` (`<.button alert>`) uses it to tell rather than ask: its confirm button hides
+  and Cancel reads `ok_label`.
+
       <.confirm_dialog id="confirm-delete" />
   """
   attr :id, :string, default: "confirm-delete"
@@ -443,6 +518,7 @@ defmodule Setzkasten.Components.Overlays do
   attr :text, :string, default: "Das lässt sich nicht rückgängig machen."
   attr :confirm_label, :string, default: "Löschen"
   attr :cancel_label, :string, default: "Abbrechen"
+  attr :ok_label, :string, default: "OK", doc: "the single button of an alert"
   attr :close_label, :string, default: "Schließen"
 
   def confirm_dialog(assigns) do
@@ -466,15 +542,22 @@ defmodule Setzkasten.Components.Overlays do
         </h2>
         <p
           id={"#{@id}-text"}
-          class="py-2 text-sm wrap-anywhere"
+          class="py-2 text-sm wrap-anywhere empty:hidden"
           data-default={@text}
           phx-update="ignore"
         >
           {@text}
         </p>
         <div class="modal-action max-sm:flex-col-reverse max-sm:*:w-full">
-          <button type="button" class="btn" phx-click={hide_modal(@id)} autofocus>
-            {@cancel_label}
+          <button
+            type="button"
+            id={"#{@id}-cancel"}
+            class="btn"
+            phx-click={hide_modal(@id)}
+            autofocus
+          >
+            <span id={"#{@id}-cancel-label"}>{@cancel_label}</span>
+            <span id={"#{@id}-ok-label"} hidden>{@ok_label}</span>
           </button>
           <button
             type="button"
@@ -863,12 +946,19 @@ defmodule Setzkasten.Components.Overlays do
   `collapse collapse-arrow`; `variant={:row}` is a quiet 14px row with only a hairline above,
   inside a card or under a chart (`chart_card`'s "Werte als Tabelle" is one); `variant={:button}`
   renders the summary as a button (with `icon`) for compact "more options" triggers. The summary is at least 44px on touch screens.
-  The open state survives LiveView patches. `count` follows the summary as a quiet number, as
+  `count` follows the summary as a quiet number, as
   in `section_heading` (not "Kurse (3)"); in the button it is a small neutral badge, set apart
   from the label it would otherwise read as part of.
 
       <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
       <.disclosure id="retired" summary="Ausgemustert" count={2}>…</.disclosure>
+
+  The user's own toggle survives LiveView patches. `open` acts when it changes, as `show` does
+  for `modal/1`: the server opens or closes it by changing `open`, and closed by the user, it
+  stays closed until `open` turns `true` again. That takes Setzkasten's hook, so a `phx-hook`
+  raises.
+
+      <.disclosure id="scheduled" variant={:row} summary="Geplant" open={@show_scheduled}>…</.disclosure>
 
   The `:title` slot takes the summary as markup instead of `summary` (e.g. with a toned
   amount; an attribute and a slot cannot share the name):
@@ -893,6 +983,10 @@ defmodule Setzkasten.Components.Overlays do
     raise ArgumentError, "<.disclosure> needs a summary or a :title slot"
   end
 
+  def disclosure(%{rest: rest}) when is_map_key(rest, :"phx-hook") do
+    raise ArgumentError, "<.disclosure> takes no phx-hook: following `open` needs its own"
+  end
+
   def disclosure(%{variant: :button} = assigns) do
     ~H"""
     <details
@@ -900,6 +994,8 @@ defmodule Setzkasten.Components.Overlays do
       class={@class}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
+      phx-hook=".Disclosure"
+      data-open={to_string(@open)}
       {@rest}
     >
       <summary class="btn">
@@ -925,6 +1021,8 @@ defmodule Setzkasten.Components.Overlays do
       ]}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
+      phx-hook=".Disclosure"
+      data-open={to_string(@open)}
       {@rest}
     >
       <summary class={["collapse-title font-semibold", @variant == :row && "text-sm"]}>
@@ -934,6 +1032,17 @@ defmodule Setzkasten.Components.Overlays do
         {render_slot(@inner_block)}
       </div>
     </details>
+    <script :type={ColocatedHook} name=".Disclosure">
+      export default {
+        mounted() { this.opened = this.el.getAttribute("data-open") },
+        updated() {
+          const open = this.el.getAttribute("data-open")
+          if (open === this.opened) return
+          this.opened = open
+          this.el.open = open === "true"
+        }
+      }
+    </script>
     """
   end
 

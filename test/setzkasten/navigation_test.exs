@@ -461,7 +461,7 @@ defmodule Setzkasten.NavigationTest do
     assert "menu-title" in classes(doc, "li:first-child")
   end
 
-  test "dropdown items with id, disabled and a confirmation" do
+  test "dropdown items with id, disabled, a confirmation and an alert" do
     assigns = %{}
 
     doc =
@@ -470,13 +470,17 @@ defmodule Setzkasten.NavigationTest do
         <:trigger>…</:trigger>
         <:item id="undo" on_click="undo" disabled class="sm:hidden">Rückgängig</:item>
         <:item id="drop" on_click="delete" danger confirm="Löschen?">Löschen</:item>
+        <:item id="rename" on_click="rename" alert="Nichts zum Umbenennen.">Umbenennen</:item>
       </.dropdown>
       """)
 
     assert attr(doc, "#undo", "disabled") != nil
+    assert attr(doc, "#undo", "aria-haspopup") == nil
     assert Enum.all?(~w(menu-disabled sm:hidden), &(&1 in classes(doc, "li:has(#undo)")))
     assert attr(doc, "#drop", "aria-haspopup") == "dialog"
     assert attr(doc, "#drop", "phx-click") =~ "confirm-delete"
+    assert attr(doc, "#rename", "aria-haspopup") == "dialog"
+    assert pushes(attr(doc, "#rename", "phx-click")) == []
   end
 
   test "dropdown items push an event name to their phx-target" do

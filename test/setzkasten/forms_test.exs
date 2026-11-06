@@ -1038,4 +1038,144 @@ defmodule Setzkasten.FormsTest do
     assert css =~ ~r/\.setzkasten-error-bubble p > span \{\s*white-space: pre-line;/
     assert count(doc, "#{bubble} #cell-error-0 > svg + span") == 1
   end
+
+  test "a bare select or text field is the control with its label for screen readers only" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input
+        type="select"
+        bare
+        name="op"
+        id="op"
+        label="Bedingung"
+        class="select-sm"
+        options={[{"enthält", "contains"}, {"ist", "is"}]}
+        value="is"
+      />
+      <.input
+        bare
+        name="text"
+        id="text"
+        label="Text im Empfänger"
+        class="input-sm"
+        errors={["darf nicht leer sein"]}
+      />
+      """)
+
+    assert classes(doc, "fieldset:has(#op)") == ~w(fieldset min-w-0 setzkasten-bare-field)
+    assert classes(doc, "label[for=op]") == ["sr-only"]
+    assert classes(doc, "#op") == ~w(select select-sm)
+    assert attr(doc, "#op option[selected]", "value") == "is"
+
+    assert classes(doc, "label[for=text]") == ["sr-only"]
+    assert "input-sm" in classes(doc, "#text")
+    assert attr(doc, "#text", "aria-invalid") == "true"
+    assert attr(doc, "#text", "aria-describedby") == "text-error-0"
+    assert count(doc, "fieldset:has(#text) > #text + #text-error-0") == 1
+
+    plain = parse(~H|<.input type="select" name="s" id="s" label="S" options={[]} />|)
+    assert classes(plain, "#s") == ~w(select w-full)
+    refute "setzkasten-bare-field" in classes(plain, "fieldset")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.fieldset\.setzkasten-bare-field \{\s*padding-block: 0;/
+    assert css =~ ~r/\.setzkasten-bare-field > \.select \{\s*width: 100%;/
+  end
+
+  test "a field row lets text fields grow, keeps selects and buttons at their size, aligns at the top" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.field_row id="rule-1" class="mt-2">
+        <.input type="select" bare name="op" id="op" label="Bedingung" options={[{"ist", "is"}]} />
+        <.input bare name="text" id="text" label="Text" />
+        <.button variant={:ghost} size={:sm} icon="plus" icon_only label="Regel hinzufügen" />
+      </.field_row>
+      """)
+
+    assert classes(doc, "#rule-1") == ~w(setzkasten-field-row mt-2)
+    assert count(doc, "#rule-1 > fieldset.setzkasten-bare-field") == 2
+    assert count(doc, "#rule-1 > .btn.btn-ghost.btn-square") == 1
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-field-row \{\s*display: flex;\s*align-items: flex-start;\s*gap: 0\.5rem;/
+
+    assert css =~ ~r/\.setzkasten-field-row > \* \{\s*flex: none;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field \{\s*flex: 1 1 0;\s*min-width: 0;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field:has\(> \.select\) \{\s*flex: 0 1 auto;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field > \.select \{\s*width: auto;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field > p \{\s*contain: inline-size;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.btn-ghost\.btn-square:not\(:first-child\) \{\s*margin-inline-start: -0\.25rem;/
+  end
+
+  test "on_escape runs its command on Escape in the field and keeps the key from an enclosing dialog" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 4}}
+
+    doc =
+      parse(~H"""
+      <.input id="name" name="name" label="Name" bare on_escape="cancel_rename" phx-target={@myself} />
+      """)
+
+    assert attr(doc, "#name", "phx-hook") == "Setzkasten.Components.Forms.Escape"
+
+    assert pushes(attr(doc, "#name", "data-escape")) == [
+             %{"event" => "cancel_rename", "target" => 4}
+           ]
+
+    assigns = Map.put(assigns, :js, JS.push("cancel_note"))
+
+    note =
+      parse(~H|<.input type="textarea" id="note" name="note" label="Notiz" on_escape={@js} />|)
+
+    assert attr(note, "#note", "phx-hook") == "Setzkasten.Components.Forms.Escape"
+    assert pushes(attr(note, "#note", "data-escape")) == [%{"event" => "cancel_note"}]
+
+    plain = parse(~H|<.input id="plain" name="plain" label="Plain" />|)
+    assert attr(plain, "#plain", "phx-hook") == nil
+    assert attr(plain, "#plain", "data-escape") == nil
+
+    off = parse(~H|<.input id="off" name="off" label="Off" on_escape={false} />|)
+    assert attr(off, "#off", "phx-hook") == nil
+    assert attr(off, "#off", "data-escape") == nil
+
+    assert_raise ArgumentError, ~r/on_escape> needs an id or a field/, fn ->
+      rendered_to_string(~H|<.input name="x" label="X" on_escape="cancel" />|)
+    end
+
+    assert_raise ArgumentError, ~r/on_escape> takes no phx-hook/, fn ->
+      rendered_to_string(
+        ~H|<.input id="x" name="x" label="X" on_escape="cancel" phx-hook="Mine" />|
+      )
+    end
+
+    assert attr(parse(~H|<.input id="y" name="y" label="Y" phx-hook="Mine" />|), "#y", "phx-hook") ==
+             "Mine"
+
+    hook = colocated_js("Setzkasten.Components.Forms")
+
+    assert hook =~
+             ~s|if (e.key !== "Escape" \|\| e.isComposing \|\| e.keyCode === 229) return|
+
+    assert hook =~ ~r|e.preventDefault\(\)\s*e.stopPropagation\(\)|
+    assert hook =~ ~s|this.js().exec(this.el.getAttribute("data-escape"))|
+    assert hook =~ ~s|this.el.addEventListener("keydown", this.onKeydown)|
+
+    assert hook =~
+             ~r|destroyed\(\) \{\s*this.el.removeEventListener\("keydown", this.onKeydown\)|
+  end
 end

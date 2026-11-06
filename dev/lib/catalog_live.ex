@@ -21,6 +21,13 @@ defmodule Setzkasten.Dev.CatalogLive do
   ]
 
   @basket [{1, "Äpfel"}, {2, "Hafermilch"}, {3, "Kaffee"}, {4, "Spülmittel"}]
+  @payees [
+    {"krume", "Bäckerei Krume", false},
+    {"frisch", "Supermarkt Frisch", false},
+    {"stadtwerke", "Stadtwerke", false},
+    {"nord", "Tankstelle Nord mit sehr langem Namen aus dem Kontoauszug", false},
+    {"paypal", "PayPal Europe", true}
+  ]
 
   def pages, do: @pages
 
@@ -37,8 +44,17 @@ defmodule Setzkasten.Dev.CatalogLive do
        trip: "🏖️ Urlaub",
        trip_typed: "🏖️ Urlaub",
        picked: [],
+       payee: nil,
+       payees_picking: false,
+       payees_picked: [],
+       scheduled_open: false,
        sort: "date",
        basket: @basket,
+       payees: @payees,
+       payee_shown: "krume",
+       payee_checked: ["krume", "stadtwerke"],
+       edit_name: "Bäckerei Krume",
+       editing_name: false,
        envelopes: Setzkasten.Dev.Data.envelope_groups(),
        combo: to_form(%{"category" => "groceries"}, as: :booking),
        form: Pages.FormsPage.build_form(%{})
@@ -98,6 +114,26 @@ defmodule Setzkasten.Dev.CatalogLive do
   def handle_event("basket_check", %{"id" => id}, socket),
     do: {:noreply, update(socket, :basket, &List.keydelete(&1, id, 0))}
 
+  def handle_event("payee_show", %{"id" => id}, socket),
+    do: {:noreply, assign(socket, payee_shown: id)}
+
+  def handle_event("payee_check", %{"id" => id}, socket) do
+    {:noreply,
+     update(socket, :payee_checked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
+
+  def handle_event("edit_name", _params, socket),
+    do: {:noreply, assign(socket, editing_name: true)}
+
+  def handle_event("cancel_edit_name", _params, socket),
+    do: {:noreply, assign(socket, editing_name: false)}
+
+  def handle_event("save_name", %{"name" => name}, socket) do
+    name = String.trim(name)
+    name = if name == "", do: socket.assigns.edit_name, else: name
+    {:noreply, assign(socket, edit_name: name, editing_name: false)}
+  end
+
   def handle_event("basket_reset", _params, socket),
     do: {:noreply, assign(socket, basket: @basket)}
 
@@ -115,6 +151,24 @@ defmodule Setzkasten.Dev.CatalogLive do
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App „#{name}“ (Demo).")}
 
   def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
+
+  def handle_event("payees_pick", _params, socket),
+    do:
+      {:noreply,
+       assign(socket, payees_picking: !socket.assigns.payees_picking, payees_picked: [])}
+
+  def handle_event("payees_toggle", %{"id" => id}, socket) do
+    {:noreply,
+     update(socket, :payees_picked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
+
+  def handle_event("toggle_scheduled", _params, socket),
+    do: {:noreply, update(socket, :scheduled_open, &(!&1))}
+
+  def handle_event("payees_show", %{"id" => id}, socket),
+    do: {:noreply, assign(socket, payee: id)}
+
+  def handle_event("payees_back", _params, socket), do: {:noreply, assign(socket, payee: nil)}
 
   def handle_event("booking_closed", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Dialog geschlossen (Demo).")}

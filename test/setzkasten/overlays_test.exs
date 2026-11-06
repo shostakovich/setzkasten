@@ -91,6 +91,43 @@ defmodule Setzkasten.OverlaysTest do
              ~r/\.setzkasten-title-input > \.input:is\(:hover, :focus\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 9%, transparent\);/
   end
 
+  test "a modal's title row holds actions before and after the title, which truncates between" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="p" title="Empfänger verwalten" title_class="max-sm:sr-only" placement={:end}>
+        <:leading><.button id="back" size={:sm}>Empfänger</.button></:leading>
+        <:trailing><.button id="pick" size={:sm}>Auswählen</.button></:trailing>
+        Body
+      </.modal>
+      """)
+
+    head = ".setzkasten-modal-head"
+    assert count(doc, "#{head} > div:has(#back) + h2#p-title + div:has(#pick) + form") == 1
+    assert ~w(items-center min-h-14 pointer-coarse:min-h-17) -- classes(doc, head) == []
+    assert ~w(min-w-0 flex-1 truncate max-sm:sr-only) -- classes(doc, "#p-title") == []
+    refute "wrap-anywhere" in classes(doc, "#p-title")
+    assert ~w(contents *:shrink-0) -- classes(doc, "#{head} > div:has(#back)") == []
+    trailing = classes(doc, "#{head} > div:has(#pick)")
+    assert ~w(contents *:shrink-0 [&>:first-child]:ms-auto) -- trailing == []
+    assert classes(doc, "#{head} > form") == []
+    assert attr(doc, "dialog", "aria-labelledby") == "p-title"
+
+    doc =
+      parse(~H"""
+      <.modal id="q"><:trailing><.button id="edit" size={:sm}>Bearbeiten</.button></:trailing>x</.modal>
+      """)
+
+    assert count(doc, ".setzkasten-modal-head #edit") == 1
+    assert attr(doc, "dialog", "aria-labelledby") == nil
+
+    doc = parse(~H|<.modal id="r" title="Buchung">x</.modal>|)
+    assert "items-start" in classes(doc, ".setzkasten-modal-head")
+    refute "min-h-14" in classes(doc, ".setzkasten-modal-head")
+    assert classes(doc, "#r-title") == ~w(min-w-0 text-lg font-semibold wrap-anywhere)
+  end
+
   test "a scrolling dialog focuses its first field, not the box" do
     hook = colocated_js("Setzkasten.Components.Overlays")
     assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
@@ -199,6 +236,7 @@ defmodule Setzkasten.OverlaysTest do
 
     doc = parse(~H|<.modal id="p" placement={:end}>Body</.modal>|)
     assert "setzkasten-modal-head" in classes(doc, ".modal-box > div:first-child")
+    assert classes(doc, ".setzkasten-modal-head > form") == ["ms-auto"]
     refute "modal-bottom" in classes(doc, "dialog")
     assert count(doc, ".modal-action") == 0
 
@@ -344,18 +382,89 @@ defmodule Setzkasten.OverlaysTest do
     assert plain =~ "remove_attr"
   end
 
-  test "disclosure keeps its open state across patches" do
+  test "show_alert tells in the confirm dialog: no confirm button, no action, a single OK" do
+    alias Setzkasten.Components.Overlays
+
+    ops =
+      Jason.decode!(
+        Jason.encode!(Overlays.show_alert(%JS{}, "c", "Nichts gefunden.", text: "Weil."))
+      )
+
+    assert ["set_attr", %{"attr" => ["data-confirm-action", "[]"], "to" => "#c-confirm"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-confirm"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-cancel-label"}] in ops
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-ok-label"}] in ops
+
+    assert ["dispatch", %{"event" => "setzkasten:show-modal", "to" => "#c", "detail" => detail}] =
+             List.last(ops)
+
+    assert detail["text"] == %{"#c-title" => "Nichts gefunden.", "#c-text" => "Weil."}
+
+    assert Jason.encode!(Overlays.show_alert("c", "Nichts.")) =~ ~s("#c-text":"")
+    assert Overlays.show_alert("c", "Nichts.") == Overlays.show_alert(%JS{}, "c", "Nichts.", [])
+
+    assert Overlays.show_alert("c", "Nichts.", text: "x") ==
+             Overlays.show_alert(%JS{}, "c", "Nichts.", text: "x")
+
+    piped = JS.push("before") |> Overlays.show_alert("c", "Nichts.")
+    assert [["push", %{"event" => "before"}] | _] = Jason.decode!(Jason.encode!(piped))
+
+    # The next question shows both buttons again.
+    ops = Jason.decode!(Jason.encode!(Overlays.show_confirm("c", "Löschen?", JS.push("x"))))
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-confirm"}] in ops
+    assert ["remove_attr", %{"attr" => "hidden", "to" => "#c-cancel-label"}] in ops
+    assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#c-ok-label"}] in ops
+
+    assigns = %{}
+    doc = parse(~H|<.confirm_dialog />|)
+    assert text(doc, "#confirm-delete-cancel-label") == "Abbrechen"
+    assert text(doc, "#confirm-delete-ok-label") == "OK"
+    assert attr(doc, "#confirm-delete-ok-label", "hidden") != nil
+    assert attr(doc, "#confirm-delete-cancel", "autofocus") != nil
+    assert "empty:hidden" in classes(doc, "#confirm-delete-text")
+
+    doc = parse(~H|<.confirm_dialog ok_label="Verstanden" />|)
+    assert text(doc, "#confirm-delete-ok-label") == "Verstanden"
+  end
+
+  test "disclosure keeps the user's toggle across patches and follows a change of open" do
     assigns = %{}
     doc = parse(~H|<.disclosure id="d" summary="Mehr" open>Inhalt</.disclosure>|)
     assert classes(doc, "details") |> Enum.take(2) == ~w(collapse collapse-arrow)
     assert attr(doc, "details", "open") != nil
     assert attr(doc, "details", "phx-mounted") =~ "ignore_attrs"
+    assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Overlays.Disclosure"
+    assert attr(doc, "details", "data-open") == "true"
     assert text(doc, "summary.collapse-title") == "Mehr"
+
+    for variant <- [:collapse, :row, :button] do
+      assigns = %{variant: variant}
+      doc = parse(~H|<.disclosure id="b" summary="x" variant={@variant}>y</.disclosure>|)
+      assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Overlays.Disclosure"
+      assert attr(doc, "details", "data-open") == "false"
+      assert attr(doc, "details", "open") == nil
+    end
 
     assert classes(
              parse(~H|<.disclosure id="b" summary="x" variant={:button}>y</.disclosure>|),
              "summary"
            ) == ["btn"]
+
+    for variant <- [:collapse, :button] do
+      assigns = %{variant: variant}
+
+      assert_raise ArgumentError, ~r/disclosure> takes no phx-hook/, fn ->
+        rendered_to_string(
+          ~H|<.disclosure id="h" summary="x" variant={@variant} phx-hook="Mine">y</.disclosure>|
+        )
+      end
+    end
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ ~s|mounted() { this.opened = this.el.getAttribute("data-open") }|
+
+    assert hook =~
+             ~r/if \(open === this.opened\) return\s*this.opened = open\s*this.el.open = open === "true"/
   end
 
   test "dialog titles and texts break long strings" do

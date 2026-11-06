@@ -9,6 +9,7 @@ defmodule Setzkasten.Components.Forms do
   """
   use Phoenix.Component
   alias Phoenix.LiveView.ColocatedHook
+  alias Setzkasten.Click
   import Setzkasten.Components.Icons
 
   @doc """
@@ -24,13 +25,17 @@ defmodule Setzkasten.Components.Forms do
   (an app's Gettext `translate_error/1`); without it `%{count}`-style bindings are filled in.
 
   A `toggle` is a checkbox with `role="switch"`: screen readers announce a switch, on or off
-  from the native checked state. `bare` (checkbox and toggle) drops the field's padding and
+  from the native checked state. `bare` on a checkbox or toggle drops the field's padding and
   row height, so the control lines up with a heading beside it (a card's `:actions`); on touch
   screens a hit area centred on the label, at least 44px each way, keeps the target without
-  growing the row, also with `hide_label`. In a stack of fields a checkbox or toggle starts
-  where a labelled field's label would (its control lines up with the label's text), and
-  one right under another stays close; on touch screens its 44px row already makes that room.
-  The first field of a stack, or one on its own, keeps no such room.
+  growing the row, also with `hide_label`. `bare` on the other types (but `radio_group`) is the
+  control alone, for a `field_row/1`: no padding, the label for screen readers only, errors and
+  help right under the control; `class="input-sm"` or `class="select-sm"` sizes it.
+
+  In a stack of fields a checkbox or toggle starts where a labelled field's label would (its
+  control lines up with the label's text), and one right under another stays close; on touch
+  screens its 44px row already makes that room. The first field of a stack, or one on its own,
+  keeps no such room.
 
   `class` lands on the field box (e.g. `max-w-40` for a narrow amount); `numeric` right-aligns
   the value with tabular figures and defaults `inputmode` to `decimal`. `help_tone={:warning}`
@@ -47,6 +52,14 @@ defmodule Setzkasten.Components.Forms do
   pastes, such as an ISIN with spaces the server strips.
 
       <.input field={@form[:isin]} label="ISIN" identifier size="13" placeholder="XX0000000000" />
+
+  `on_escape` (text-like types and textarea) is the command for Escape in the field: an event
+  name (pushed to `phx-target` when given) or a `%JS{}`. The key goes no further, so an
+  enclosing `<.modal>` or popover stays open, e.g. to cancel a name edited in place. It needs
+  an `id` (or `field`), and its hook is Setzkasten's, so a `phx-hook` beside it raises.
+
+      <.input id="payee-name" name="name" value={@name} label="Name" bare
+              on_escape="cancel_rename" phx-target={@myself} phx-mounted={JS.focus()} />
 
   `inline` (text-like types) puts the field and the inner block, the form's button, in one
   `join` (stacked below `sm`) with the label for screen readers only; errors and help go below
@@ -83,7 +96,11 @@ defmodule Setzkasten.Components.Forms do
 
   attr :bare, :boolean,
     default: false,
-    doc: "checkbox and toggle: no field padding or row height, e.g. beside a heading"
+    doc: "no field padding; checkbox and toggle beside a heading, the others in a `field_row/1`"
+
+  attr :on_escape, :any,
+    default: nil,
+    doc: "text-like types and textarea: event name (with `phx-target`) or `%JS{}` for Escape"
 
   attr :prefix, :string, default: nil
   attr :suffix, :string, default: nil
@@ -231,12 +248,12 @@ defmodule Setzkasten.Components.Forms do
     assigns = prepare(assigns)
 
     ~H"""
-    <fieldset class="fieldset min-w-0">
-      <.field_label id={@id} label={@label} hide={@hide_label} />
+    <fieldset class={["fieldset min-w-0", @bare && "setzkasten-bare-field"]}>
+      <.field_label id={@id} label={@label} hide={@hide_label || @bare} />
       <select
         id={@id}
         name={@name}
-        class={["select w-full", @errors != [] && "select-error", @class]}
+        class={["select", !@bare && "w-full", @errors != [] && "select-error", @class]}
         multiple={@multiple}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@describedby}
@@ -252,11 +269,11 @@ defmodule Setzkasten.Components.Forms do
   end
 
   def input(%{type: "textarea"} = assigns) do
-    assigns = prepare(assigns)
+    assigns = assigns |> prepare() |> assign(:rest, escape_rest(assigns))
 
     ~H"""
-    <fieldset class="fieldset min-w-0">
-      <.field_label id={@id} label={@label} hide={@hide_label} />
+    <fieldset class={["fieldset min-w-0", @bare && "setzkasten-bare-field"]}>
+      <.field_label id={@id} label={@label} hide={@hide_label || @bare} />
       <textarea
         id={@id}
         name={@name}
@@ -277,7 +294,12 @@ defmodule Setzkasten.Components.Forms do
     boxed = assigns.prefix || assigns.suffix || assigns.icon
 
     fit = assigns.identifier && !boxed && !assigns.inline && fit_width(assigns.rest)
-    rest = assigns |> numeric_rest() |> identifier_rest(assigns.identifier)
+
+    rest =
+      assigns
+      |> assign(:rest, escape_rest(assigns))
+      |> numeric_rest()
+      |> identifier_rest(assigns.identifier)
 
     assigns =
       assign(assigns,
@@ -287,8 +309,8 @@ defmodule Setzkasten.Components.Forms do
       )
 
     ~H"""
-    <fieldset class="fieldset min-w-0">
-      <.field_label id={@id} label={@label} hide={@hide_label || @inline} />
+    <fieldset class={["fieldset min-w-0", @bare && "setzkasten-bare-field"]}>
+      <.field_label id={@id} label={@label} hide={@hide_label || @inline || @bare} />
       <div :if={@inline} class="join max-sm:join-vertical w-full">
         <.text_field {field_attrs(assigns)} join />
         {render_slot(@inner_block)}
@@ -304,7 +326,41 @@ defmodule Setzkasten.Components.Forms do
         {@help}
       </.field_help>
     </fieldset>
+    <script :type={ColocatedHook} name=".Escape">
+      export default {
+        mounted() {
+          this.onKeydown = (e) => {
+            // Safari sends the Escape that ends a composition after it, as keyCode 229.
+            if (e.key !== "Escape" || e.isComposing || e.keyCode === 229) return
+            e.preventDefault()
+            e.stopPropagation()
+            this.js().exec(this.el.getAttribute("data-escape"))
+          }
+          this.el.addEventListener("keydown", this.onKeydown)
+        },
+        destroyed() {
+          this.el.removeEventListener("keydown", this.onKeydown)
+        }
+      }
+    </script>
     """
+  end
+
+  defp escape_rest(%{on_escape: on_escape, rest: rest}) when on_escape in [nil, false], do: rest
+
+  defp escape_rest(%{id: nil}) do
+    raise ArgumentError, "<.input on_escape> needs an id or a field: its hook runs on the field"
+  end
+
+  defp escape_rest(%{rest: rest}) when is_map_key(rest, :"phx-hook") do
+    raise ArgumentError, "<.input on_escape> takes no phx-hook: Escape needs its own"
+  end
+
+  defp escape_rest(%{on_escape: on_escape, rest: rest}) do
+    Map.merge(rest, %{
+      "phx-hook": "Setzkasten.Components.Forms.Escape",
+      "data-escape": Click.click_js(on_escape, rest[:"phx-target"])
+    })
   end
 
   defp field_attrs(assigns) do
@@ -443,6 +499,34 @@ defmodule Setzkasten.Components.Forms do
     <label :if={@label} for={@id} class={if @hide, do: "sr-only", else: "fieldset-legend"}>
       {@label}
     </label>
+    """
+  end
+
+  @doc """
+  A row of bare fields (`<.input bare>`) and buttons, such as the conditions of a rule: a select,
+  a text field, then icon buttons. Text fields grow and share the width, a select keeps its
+  content width (which browsers measure differently), so the selects of several rows take one
+  width in their `class` (`w-32`) to line up, buttons keep their size, and the row stays one row
+  at every width. Items line up at the top, so an error under a field leaves the buttons in
+  place; give fields and buttons one size (`class="input-sm"` and `size={:sm}`). Items are 8px
+  apart, an icon-only ghost button 4px from what comes before it.
+
+      <.field_row :for={rule <- @rules} id={"rule-\#{rule.key}"}>
+        <.input type="select" bare name={"rules[\#{rule.key}][operator]"} id={"rule-\#{rule.key}-op"}
+                label="Bedingung" options={@operators} value={rule.operator} class="select-sm w-32" />
+        <.input bare name={"rules[\#{rule.key}][text]"} id={"rule-\#{rule.key}-text"}
+                label="Text im Empfänger" value={rule.text} errors={rule.errors} class="input-sm" />
+        <.button variant={:ghost} size={:sm} icon="minus" icon_only label="Regel entfernen"
+                 phx-click="remove_rule" phx-value-key={rule.key} />
+      </.field_row>
+  """
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def field_row(assigns) do
+    ~H"""
+    <div class={["setzkasten-field-row", @class]} {@rest}>{render_slot(@inner_block)}</div>
     """
   end
 

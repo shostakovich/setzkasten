@@ -1844,4 +1844,236 @@ defmodule Setzkasten.DataTest do
     assert css() =~
              ~r/\.setzkasten-sorting \.setzkasten-sort-shifted \{\s*position: relative;\s*transition: translate var\(--setzkasten-duration-exit\) ease-out;/
   end
+
+  test "a compact list has one-line 32px rows without dividers, 44px on touch screens" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.list size={:compact}><.list_row title="Bäckerei Krume" on_click="show" /></.list>|
+      )
+
+    assert "setzkasten-list-compact" in classes(doc, "ul")
+    assert "[.setzkasten-list-compact>li_&]:font-normal" in classes(doc, ".list-col-grow button")
+
+    assert css() =~
+             ~r/\.setzkasten-list-compact > \.list-row \{\s*min-height: 2rem;\s*padding: 0 0\.5rem;\s*column-gap: 0\.5rem;\s*&::after \{\s*content: none;/
+
+    assert css() =~
+             ~r/\.setzkasten-list-compact > \.list-row > \.list-col-grow > :is\(a, button, p\) \{\s*display: block;\s*max-width: 100%;\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;/
+
+    assert css() =~
+             ~r/@media \(pointer: coarse\) \{\s*\.setzkasten-list-compact > \.list-row \{\s*min-height: 2\.75rem;/
+  end
+
+  test "a row's title carries its name as a tooltip that only a compact row lifts under the pointer" do
+    assigns = %{}
+
+    doc =
+      parse(
+        ~H|<.list size={:compact}><.list_row title="Bäckerei Krume" on_click="show" /></.list>|
+      )
+
+    assert attr(doc, ".list-col-grow button > .setzkasten-row-name", "title") == "Bäckerei Krume"
+    assert attr(doc, ".list-col-grow button", "title") == nil
+
+    link = parse(~H|<.list_row title="Krume" navigate="/k" />|)
+    assert attr(link, ".list-col-grow a > .setzkasten-row-name", "title") == "Krume"
+    assert count(parse(~H|<.list_row>Krume</.list_row>|), ".setzkasten-row-name") == 0
+
+    assert css() =~ ~r/\.setzkasten-row-name \{\s*pointer-events: none;/
+
+    assert css() =~
+             ~r/\.setzkasten-list-compact > \.list-row > \.list-col-grow \.setzkasten-row-name \{\s*position: relative;\s*z-index: 1;\s*pointer-events: auto;/
+  end
+
+  test "autofocus lands on the row's title button or link, not on the row" do
+    assigns = %{}
+    doc = parse(~H|<.list_row title="Krume" on_click="show" autofocus />|)
+    assert attr(doc, ".list-col-grow button", "autofocus") != nil
+    assert attr(doc, "li", "autofocus") == nil
+
+    link = parse(~H|<.list_row title="Krume" navigate="/k" autofocus />|)
+    assert attr(link, ".list-col-grow a", "autofocus") != nil
+
+    assert attr(parse(~H|<.list_row title="Krume" on_click="show" />|), "button", "autofocus") ==
+             nil
+  end
+
+  test "a row action with alert tells in the shared dialog, from its icon button and its menu entry" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Entwurf">
+        <:action
+          id="share"
+          label="Teilen"
+          icon="link"
+          on_click="share"
+          alert="Kein Link."
+          alert_text="Weil."
+        />
+      </.list_row>
+      """)
+
+    for button <- ["#share", "#share-menu-item"] do
+      assert attr(doc, button, "aria-haspopup") == "dialog"
+      ops = Jason.decode!(attr(doc, button, "phx-click"))
+      assert pushes(attr(doc, button, "phx-click")) == []
+      assert ["set_attr", %{"attr" => ["hidden", ""], "to" => "#confirm-delete-confirm"}] in ops
+    end
+
+    plain =
+      parse(
+        ~H|<.list_row title="E"><:action id="p" label="Teilen" on_click="share" /></.list_row>|
+      )
+
+    assert attr(plain, "#p", "aria-haspopup") == nil
+    assert attr(plain, "#p-menu-item", "aria-haspopup") == nil
+
+    for {markup, message} <- [
+          {~H|<.list_row title="E"><:action label="T" alert="a" confirm="b" /></.list_row>|,
+           ~r/alert or confirm/},
+          {~H|<.list_row title="E"><:action label="T" alert="a" navigate="/x" /></.list_row>|,
+           ~r/must be a button/}
+        ] do
+      assert_raise ArgumentError, message, fn -> rendered_to_string(markup) end
+    end
+  end
+
+  test "a framed list sits in a bordered box instead of between hairlines" do
+    assigns = %{}
+    framed = classes(parse(~H|<.list framed class="max-h-80">x</.list>|), "ul")
+
+    assert Enum.all?(
+             ~w(overflow-y-auto rounded-box border border-base-content/10 py-1 max-h-80),
+             &(&1 in framed)
+           )
+
+    refute "border-y" in framed
+    assert "border-y" in classes(parse(~H|<.list>x</.list>|), "ul")
+    refute "border-y" in classes(parse(~H|<.list flush>x</.list>|), "ul")
+  end
+
+  test "a selected row takes the row-selected fill and start bar and marks its title current" do
+    assigns = %{}
+    doc = parse(~H|<.list_row title="Stadtwerke" on_click="show" selected />|)
+
+    li = classes(doc, "li")
+    assert "setzkasten-row-selected" in li
+    refute "md:hover:bg-base-200" in li
+    assert attr(doc, ".list-col-grow button", "aria-current") == "true"
+
+    plain = parse(~H|<.list_row title="Stadtwerke" navigate="/s" />|)
+    refute "setzkasten-row-selected" in classes(plain, "li")
+    assert attr(plain, ".list-col-grow a", "aria-current") == nil
+
+    assert attr(parse(~H|<.list_row title="S" selected />|), ".list-col-grow p", "aria-current") ==
+             "true"
+
+    assert css() =~
+             ~r/\.list-row\.setzkasten-row-selected \{\s*border-radius: 0;\s*background-color: var\(--color-row-selected\);\s*box-shadow: inset 3px 0 0 var\(--color-selected\);\s*&:dir\(rtl\) \{\s*box-shadow: inset -3px 0 0 var\(--color-selected\);/
+  end
+
+  test "on_check puts a named checkbox before the leading content, its own target beside the title" do
+    assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 2}}
+
+    doc =
+      parse(~H"""
+      <.list_row
+        id="payee-7"
+        title="Stadtwerke"
+        on_click="show"
+        checked
+        on_check="toggle"
+        phx-target={@myself}
+      >
+        <:leading><.avatar initials="S" /></:leading>
+      </.list_row>
+      """)
+
+    check = "li > div:first-child > label > input[type=checkbox]"
+    assert count(doc, check) == 1
+    assert classes(doc, check) == ~w(checkbox checkbox-sm)
+    assert attr(doc, check, "id") == "payee-7-check"
+    assert attr(doc, check, "aria-label") == "„Stadtwerke“ auswählen"
+    assert attr(doc, check, "checked") != nil
+    assert pushes(attr(doc, check, "phx-click")) == [%{"event" => "toggle", "target" => 2}]
+    assert count(doc, "li > div:first-child > label + div > .avatar") == 1
+    assert count(doc, ".list-col-grow button input") == 0
+
+    assert pushes(attr(doc, ".list-col-grow button", "phx-click")) == [
+             %{"event" => "show", "target" => 2}
+           ]
+
+    label = classes(doc, "li > div:first-child > label")
+
+    assert Enum.all?(
+             ~w(relative z-10 after:absolute after:size-8 pointer-coarse:after:size-11),
+             &(&1 in label)
+           )
+
+    assigns = Map.put(assigns, :js, JS.push("toggle", value: %{id: 7}))
+
+    unchecked =
+      parse(~H|<.list_row title="Stadtwerke" check_label="Stadtwerke wählen" on_check={@js} />|)
+
+    assert attr(unchecked, "input[type=checkbox]", "checked") == nil
+    assert attr(unchecked, "input[type=checkbox]", "aria-label") == "Stadtwerke wählen"
+
+    assert pushes(attr(unchecked, "input[type=checkbox]", "phx-click")) == [
+             %{"event" => "toggle", "value" => %{"id" => 7}}
+           ]
+
+    assert count(parse(~H|<.list_row title="S" />|), "input[type=checkbox]") == 0
+
+    off =
+      parse(~H"""
+      <.list_row title="S" on_check={false}>
+        <:trailing>x</:trailing>
+      </.list_row>
+      """)
+
+    assert count(off, "input[type=checkbox]") == 0
+    assert "max-md:col-start-1" in classes(off, "li > div:nth-child(2)")
+
+    assert_raise ArgumentError, ~r/needs a title or a check_label/, fn ->
+      rendered_to_string(~H|<.list_row on_check="toggle">S</.list_row>|)
+    end
+  end
+
+  test "check_from hides the checkbox below a breakpoint, and an otherwise empty leading cell with it" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.list_row title="Stadtwerke" on_check="toggle" check_from={:sm}>
+        <:trailing>x</:trailing>
+      </.list_row>
+      """)
+
+    assert "max-sm:hidden" in classes(doc, "li > div:first-child")
+    assert "max-sm:hidden" in classes(doc, "li > div:first-child > label")
+    assert "max-sm:[--list-grid-cols:1fr]" in classes(doc, "li")
+    trailing = classes(doc, "li > div:nth-child(3)")
+    assert Enum.all?(~w(max-sm:col-start-1 sm:max-md:col-start-2), &(&1 in trailing))
+
+    leading =
+      parse(~H"""
+      <.list_row title="Stadtwerke" on_check="toggle" check_from={:md}>
+        <:leading>S</:leading>
+      </.list_row>
+      """)
+
+    refute "max-md:hidden" in classes(leading, "li > div:first-child")
+    assert "max-md:hidden" in classes(leading, "li > div:first-child > label")
+    refute Enum.any?(classes(leading, "li"), &String.contains?(&1, "--list-grid-cols"))
+
+    always = parse(~H|<.list_row title="S" on_check="toggle">
+  <:trailing>x</:trailing>
+</.list_row>|)
+    refute "max-sm:hidden" in classes(always, "li > div:first-child")
+    assert "max-md:col-start-2" in classes(always, "li > div:nth-child(3)")
+  end
 end

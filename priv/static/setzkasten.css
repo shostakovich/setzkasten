@@ -530,6 +530,44 @@
   }
 }
 
+/* <.input bare> is the control alone; a width in its class beats these. In a <.field_row> text
+   fields grow, a select keeps its content width and buttons their size. */
+@layer utilities.setzkasten {
+  .fieldset.setzkasten-bare-field {
+    padding-block: 0;
+  }
+  .setzkasten-bare-field > .select {
+    width: 100%;
+  }
+  .setzkasten-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .setzkasten-field-row > * {
+    flex: none;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field:has(> .select) {
+    flex: 0 1 auto;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field > .select {
+    width: auto;
+    max-width: 100%;
+  }
+  /* Error and help lines wrap at the field's width instead of widening a select's. */
+  .setzkasten-field-row > .setzkasten-bare-field > p {
+    contain: inline-size;
+  }
+  /* An icon button's square already holds room around its icon. */
+  .setzkasten-field-row > .btn-ghost.btn-square:not(:first-child) {
+    margin-inline-start: -0.25rem;
+  }
+}
+
 /* A checkbox or toggle field has no label row above its control: on fine pointers, after another
    field, it takes the room of one, so its control starts where a labelled field's label does; touch
    rows are 44px already. */
@@ -736,6 +774,53 @@
   .setzkasten-list-dense > .list-row {
     min-height: 3.3125rem;
     padding-block: 0.375rem;
+  }
+}
+
+/* <.list size={:compact}>: one-line picker rows, 32px (44px on touch screens). A divider every
+   32px is noise; the hover and selected fills tell the rows apart. */
+@layer utilities.setzkasten {
+  .setzkasten-list-compact > .list-row {
+    min-height: 2rem;
+    padding: 0 0.5rem;
+    column-gap: 0.5rem;
+    &::after {
+      content: none;
+    }
+  }
+  .setzkasten-list-compact > .list-row > .list-col-grow > :is(a, button, p) {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The cut-off name shows whole under the pointer: its tooltip sits above the row's link
+     overlay here and takes no pointer in other lists, where the title wraps. */
+  .setzkasten-row-name {
+    pointer-events: none;
+  }
+  .setzkasten-list-compact > .list-row > .list-col-grow .setzkasten-row-name {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+  @media (pointer: coarse) {
+    .setzkasten-list-compact > .list-row {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* <.list_row selected>: the table's current row, square so the bar runs straight. */
+@layer utilities.setzkasten {
+  .list-row.setzkasten-row-selected {
+    border-radius: 0;
+    background-color: var(--color-row-selected);
+    box-shadow: inset 3px 0 0 var(--color-selected);
+    &:dir(rtl) {
+      box-shadow: inset -3px 0 0 var(--color-selected);
+    }
   }
 }
 
@@ -1964,17 +2049,17 @@
 }
 
 @layer utilities.setzkasten {
-  .setzkasten-selection-bar .dropdown > .dropdown-content {
+  :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown > .dropdown-content {
     top: auto;
     bottom: 100%;
     margin-bottom: 0.25rem;
     transform-origin: bottom left;
   }
-  .setzkasten-selection-bar .dropdown-end > .dropdown-content {
+  :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown-end > .dropdown-content {
     transform-origin: bottom right;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .setzkasten-selection-bar .dropdown > .dropdown-content {
+    :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown > .dropdown-content {
       --setzkasten-enter-from: 0 0.25rem;
     }
   }

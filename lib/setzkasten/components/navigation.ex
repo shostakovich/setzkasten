@@ -406,7 +406,8 @@ defmodule Setzkasten.Components.Navigation do
   (dimmed, kept in its place), `subtitle` (a quieter second line, e.g. why it is disabled),
   `class` (e.g. `sm:hidden`
   for an entry that stands as a button next to the menu on wider screens), and `confirm` (+
-  `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first. `:header` is a line above the items
+  `confirm_text`, `confirm_label`) to ask in the shared `<.confirm_dialog>` first, or `alert`
+  (+ `alert_text`) to tell there instead of running `on_click` (see `<.button alert>`). `:header` is a line above the items
   (`menu-title`, e.g. the signed-in account). `trigger_class` adds classes to the trigger
   button (e.g. `btn-square` for an icon trigger, `btn-sm`). `position={:top}` opens the menu
   above the trigger, for a trigger at the bottom of the screen. The menu sets its own text
@@ -454,6 +455,8 @@ defmodule Setzkasten.Components.Navigation do
     attr :confirm, :string
     attr :confirm_text, :string
     attr :confirm_label, :string
+    attr :alert, :string
+    attr :alert_text, :string
   end
 
   def dropdown(assigns) do
@@ -533,7 +536,7 @@ defmodule Setzkasten.Components.Navigation do
             ]}
             aria-current={item[:active] && "true"}
             disabled={item[:disabled]}
-            aria-haspopup={item[:confirm] && "dialog"}
+            aria-haspopup={(item[:confirm] || item[:alert]) && "dialog"}
             phx-click={close_menu("##{@id}") |> JS.concat(entry_click(item, @confirm_id))}
             phx-keydown={close_menu("##{@id}")}
             phx-key="Escape"
