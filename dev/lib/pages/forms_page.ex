@@ -8,7 +8,7 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
 
   def summary,
     do:
-      "input, combobox, file_drop, field_error, field_help, error_bubble, action_bar, Formular mit Fehlern"
+      "input, field_row, combobox, file_drop, field_error, field_help, error_bubble, action_bar, Formular mit Fehlern"
 
   @initial %{
     "title" => "",
@@ -424,6 +424,61 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       </.demo>
     </.showcase>
 
+    <.showcase
+      id="field-row"
+      name="<.field_row>, <.input bare>"
+      title="Feldzeile"
+      code={code(6)}
+    >
+      <:intro>
+        Felder ohne Rahmen des Formularfelds (<code>bare</code>) und Buttons in einer Zeile, etwa
+        die Bedingungen einer Regel. Das Textfeld nimmt den Rest der Breite, die Auswahl ihre
+        eigene oder eine feste (<code>w-32</code>), damit die Zeilen fluchten, die Buttons ihre Größe; die Labels sind für Screenreader da. Ein Fehler steht
+        unter seinem Feld, die Buttons bleiben oben. Auch auf dem Handy eine Zeile.
+      </:intro>
+      <.demo title="Umbenennen, wenn der Empfänger …" class="max-w-md space-y-2">
+        <.field_row :for={{key, operator, text, errors} <- rule_rows()} id={"rule-#{key}"}>
+          <.input
+            type="select"
+            bare
+            id={"rule-#{key}-operator"}
+            name={"rules[#{key}][operator]"}
+            label="Bedingung"
+            options={rule_operators()}
+            value={operator}
+            class="select-sm w-32"
+          />
+          <.input
+            bare
+            id={"rule-#{key}-text"}
+            name={"rules[#{key}][text]"}
+            label="Text im Empfänger"
+            value={text}
+            errors={errors}
+            class="input-sm"
+            autocomplete="off"
+          />
+          <.button
+            id={"rule-#{key}-remove"}
+            variant={:ghost}
+            size={:sm}
+            icon="minus"
+            icon_only
+            label="Regel entfernen"
+          />
+          <.button
+            id={"rule-#{key}-add"}
+            variant={:ghost}
+            size={:sm}
+            icon="plus"
+            icon_only
+            label="Regel hinzufügen"
+            class={key != 2 && "invisible"}
+          />
+        </.field_row>
+      </.demo>
+    </.showcase>
+
     <.showcase id="file-drop" name="<.file_drop>" title="Datei ablegen" code={code(5)}>
       <:intro>
         Eine Ablagefläche um <code>live_file_input</code>: Datei hineinziehen oder antippen. Das
@@ -582,6 +637,21 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
     """
   end
 
+  defp code(6) do
+    ~S"""
+    <.field_row :for={rule <- @rules} id={"rule-#{rule.key}"}>
+      <.input type="select" bare name={"rules[#{rule.key}][operator]"} id={"rule-#{rule.key}-op"}
+              label="Bedingung" options={@operators} value={rule.operator} class="select-sm w-32" />
+      <.input bare name={"rules[#{rule.key}][text]"} id={"rule-#{rule.key}-text"}
+              label="Text im Empfänger" value={rule.text} errors={rule.errors} class="input-sm" />
+      <.button variant={:ghost} size={:sm} icon="minus" icon_only label="Regel entfernen"
+               phx-click="remove_rule" phx-value-key={rule.key} />
+      <.button variant={:ghost} size={:sm} icon="plus" icon_only label="Regel hinzufügen"
+               phx-click="add_rule" />
+    </.field_row>
+    """
+  end
+
   defp code(5) do
     ~S"""
     <%!-- allow_upload(socket, :statement, accept: ~w(.csv .pdf), max_entries: 1) --%>
@@ -655,6 +725,21 @@ defmodule Setzkasten.Dev.Pages.FormsPage do
       <.button type="submit" variant={:primary} phx-disable-with="Speichert …">Speichern</.button>
     </.action_bar>
     """
+  end
+
+  defp rule_operators,
+    do: [
+      {"enthält", "contains"},
+      {"ist", "is"},
+      {"beginnt mit", "starts_with"},
+      {"endet mit", "ends_with"}
+    ]
+
+  defp rule_rows do
+    [
+      {1, "starts_with", "PAYPAL *BAECKEREI", []},
+      {2, "contains", "", ["darf nicht leer sein"]}
+    ]
   end
 
   defp bubble_cells do

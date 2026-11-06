@@ -1038,4 +1038,88 @@ defmodule Setzkasten.FormsTest do
     assert css =~ ~r/\.setzkasten-error-bubble p > span \{\s*white-space: pre-line;/
     assert count(doc, "#{bubble} #cell-error-0 > svg + span") == 1
   end
+
+  test "a bare select or text field is the control with its label for screen readers only" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.input
+        type="select"
+        bare
+        name="op"
+        id="op"
+        label="Bedingung"
+        class="select-sm"
+        options={[{"enthält", "contains"}, {"ist", "is"}]}
+        value="is"
+      />
+      <.input
+        bare
+        name="text"
+        id="text"
+        label="Text im Empfänger"
+        class="input-sm"
+        errors={["darf nicht leer sein"]}
+      />
+      """)
+
+    assert classes(doc, "fieldset:has(#op)") == ~w(fieldset min-w-0 setzkasten-bare-field)
+    assert classes(doc, "label[for=op]") == ["sr-only"]
+    assert classes(doc, "#op") == ~w(select select-sm)
+    assert attr(doc, "#op option[selected]", "value") == "is"
+
+    assert classes(doc, "label[for=text]") == ["sr-only"]
+    assert "input-sm" in classes(doc, "#text")
+    assert attr(doc, "#text", "aria-invalid") == "true"
+    assert attr(doc, "#text", "aria-describedby") == "text-error-0"
+    assert count(doc, "fieldset:has(#text) > #text + #text-error-0") == 1
+
+    plain = parse(~H|<.input type="select" name="s" id="s" label="S" options={[]} />|)
+    assert classes(plain, "#s") == ~w(select w-full)
+    refute "setzkasten-bare-field" in classes(plain, "fieldset")
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+    assert css =~ ~r/\.fieldset\.setzkasten-bare-field \{\s*padding-block: 0;/
+    assert css =~ ~r/\.setzkasten-bare-field > \.select \{\s*width: 100%;/
+  end
+
+  test "a field row lets text fields grow, keeps selects and buttons at their size, aligns at the top" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.field_row id="rule-1" class="mt-2">
+        <.input type="select" bare name="op" id="op" label="Bedingung" options={[{"ist", "is"}]} />
+        <.input bare name="text" id="text" label="Text" />
+        <.button variant={:ghost} size={:sm} icon="plus" icon_only label="Regel hinzufügen" />
+      </.field_row>
+      """)
+
+    assert classes(doc, "#rule-1") == ~w(setzkasten-field-row mt-2)
+    assert count(doc, "#rule-1 > fieldset.setzkasten-bare-field") == 2
+    assert count(doc, "#rule-1 > .btn.btn-ghost.btn-square") == 1
+
+    css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
+
+    assert css =~
+             ~r/\.setzkasten-field-row \{\s*display: flex;\s*align-items: flex-start;\s*gap: 0\.5rem;/
+
+    assert css =~ ~r/\.setzkasten-field-row > \* \{\s*flex: none;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field \{\s*flex: 1 1 0;\s*min-width: 0;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field:has\(> \.select\) \{\s*flex: 0 1 auto;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field > \.select \{\s*width: auto;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.setzkasten-bare-field > p \{\s*contain: inline-size;/
+
+    assert css =~
+             ~r/\.setzkasten-field-row > \.btn-ghost\.btn-square:not\(:first-child\) \{\s*margin-inline-start: -0\.25rem;/
+  end
 end

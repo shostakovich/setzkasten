@@ -530,6 +530,44 @@
   }
 }
 
+/* <.input bare> is the control alone; a width in its class beats these. In a <.field_row> text
+   fields grow, a select keeps its content width and buttons their size. */
+@layer utilities.setzkasten {
+  .fieldset.setzkasten-bare-field {
+    padding-block: 0;
+  }
+  .setzkasten-bare-field > .select {
+    width: 100%;
+  }
+  .setzkasten-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .setzkasten-field-row > * {
+    flex: none;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field:has(> .select) {
+    flex: 0 1 auto;
+  }
+  .setzkasten-field-row > .setzkasten-bare-field > .select {
+    width: auto;
+    max-width: 100%;
+  }
+  /* Error and help lines wrap at the field's width instead of widening a select's. */
+  .setzkasten-field-row > .setzkasten-bare-field > p {
+    contain: inline-size;
+  }
+  /* An icon button's square already holds room around its icon. */
+  .setzkasten-field-row > .btn-ghost.btn-square:not(:first-child) {
+    margin-inline-start: -0.25rem;
+  }
+}
+
 /* A checkbox or toggle field has no label row above its control: on fine pointers, after another
    field, it takes the room of one, so its control starts where a labelled field's label does; touch
    rows are 44px already. */
