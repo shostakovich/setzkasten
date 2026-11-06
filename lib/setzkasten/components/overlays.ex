@@ -105,6 +105,24 @@ defmodule Setzkasten.Components.Overlays do
   dialog, too, focuses itself unless a field asks for `autofocus`: the name is renamed on a
   click or Tab, not edited from the start.
 
+  `:leading` and `:trailing` hold actions in the title row, before and after the title (a
+  "‹ Zurück" button, a "Bearbeiten"), the trailing one at the end, before a side panel's ✕.
+  The title then keeps to one line and truncates between them, and the row keeps the height
+  of a small button, so it holds still while one of the slots stays. Their actions are items
+  of the row, 8px apart, so one an app hides per width (its own `sm:hidden`) leaves no gap.
+  `title_class` goes on the `title`, e.g. `max-sm:sr-only` to keep it as the dialog's name
+  where a back button and the content name the screen; a `:heading` takes none.
+
+      <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+        <:leading :if={@payee}>
+          <.button variant={:ghost} size={:sm} icon="chevron-left" phx-click="back">Empfänger</.button>
+        </:leading>
+        <:trailing :if={!@payee}>
+          <.button variant={:ghost} size={:sm} phx-click="pick">{if @picking, do: "Fertig", else: "Auswählen"}</.button>
+        </:trailing>
+        …
+      </.modal>
+
   Open it with `show_modal/1`, or from the server with `show={true}` (closing again with
   `show={false}` skips `on_cancel`). `show` acts when it changes: closed by the user, the modal
   stays closed until `show` turns `true` again.
@@ -125,14 +143,20 @@ defmodule Setzkasten.Components.Overlays do
   attr :close_label, :string, default: "Schließen"
   attr :close_button, :boolean, default: true
   attr :class, :any, default: nil
+  attr :title_class, :any, default: nil, doc: "with `title`, e.g. `max-sm:sr-only`"
   attr :rest, :global
   slot :inner_block
   slot :actions
   slot :heading, doc: "the title as markup in place of `title`, e.g. a `title_input/1`"
+  slot :leading, doc: "actions in the title row before the title, e.g. a back button"
+  slot :trailing, doc: "actions at the end of the title row"
 
   def modal(assigns) do
     assigns =
-      assign(assigns, :close?, assigns.close_button and assigns.placement in [:start, :end])
+      assign(assigns,
+        close?: assigns.close_button and assigns.placement in [:start, :end],
+        slots?: assigns.leading != [] or assigns.trailing != []
+      )
 
     ~H"""
     <dialog
@@ -152,21 +176,33 @@ defmodule Setzkasten.Components.Overlays do
         @class
       ]}>
         <div
-          :if={@title || @heading != [] || @close?}
+          :if={@title || @heading != [] || @close? || @slots?}
           class={[
-            "setzkasten-modal-head flex items-start justify-between gap-2",
+            "setzkasten-modal-head flex justify-between gap-2",
+            if(@slots?,
+              do: "min-h-14 items-center pointer-coarse:min-h-17",
+              else: "items-start"
+            ),
             "sticky -top-6 z-30 -mx-6 -mt-6 bg-inherit px-6 pt-6"
           ]}
         >
+          <div :if={@leading != []} class="contents *:shrink-0">{render_slot(@leading)}</div>
           <h2
             :if={@title && @heading == []}
             id={"#{@id}-title"}
-            class="min-w-0 text-lg font-semibold wrap-anywhere"
+            class={[
+              "min-w-0 text-lg font-semibold",
+              if(@slots?, do: "flex-1 truncate", else: "wrap-anywhere"),
+              @title_class
+            ]}
           >
             {@title}
           </h2>
           <div :if={@heading != []} class="min-w-0 flex-1">{render_slot(@heading)}</div>
-          <form :if={@close?} method="dialog" class="ms-auto">
+          <div :if={@trailing != []} class="contents *:shrink-0 [&>:first-child]:ms-auto">
+            {render_slot(@trailing)}
+          </div>
+          <form :if={@close?} method="dialog" class={@trailing == [] && "ms-auto"}>
             <button class="btn btn-ghost btn-sm btn-square" aria-label={@close_label}>
               <.icon name="x" />
             </button>

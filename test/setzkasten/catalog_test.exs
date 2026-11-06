@@ -26,6 +26,43 @@ defmodule Setzkasten.CatalogTest do
     refute has_element?(view, ~s|#composer iframe[src="/screens/shopping"]:not([width="390"])|)
   end
 
+  test "the payees dialog swaps its title row actions and picks in an inline selection bar" do
+    {:ok, view, _} = live(build_conn(), "/overlays")
+    head = "#payees .setzkasten-modal-head"
+    assert has_element?(view, "#{head} #payees-pick", "Auswählen")
+    refute has_element?(view, "#payees-bar")
+
+    view |> element("#payees-pick") |> render_click()
+
+    assert has_element?(
+             view,
+             "#payees-bar.setzkasten-selection-inline #payees-bar-count",
+             "0 ausgewählt"
+           )
+
+    assert has_element?(view, "#payees-combine[disabled]")
+
+    view |> element("#payees-aral-check") |> render_click()
+    view |> element("#payees-edeka button") |> render_click()
+    assert has_element?(view, "#payees-bar-count", "2 ausgewählt")
+    assert has_element?(view, "#payees-edeka-check[checked]")
+    refute has_element?(view, "#payees-combine[disabled]")
+
+    view |> element("#payees-pick") |> render_click()
+    refute has_element?(view, "#payees-aral-check")
+    view |> element("#payees-edeka button") |> render_click()
+    assert has_element?(view, "#{head} #payees-back.sm\\:hidden")
+    assert has_element?(view, "#payees-title.max-sm\\:sr-only")
+    assert has_element?(view, "#payees-pick.max-sm\\:hidden")
+    assert has_element?(view, "#payees-edeka.setzkasten-row-selected button[aria-current]")
+    assert has_element?(view, "#payees-detail", "EDEKA Center")
+    assert has_element?(view, "#payees-aral button[autofocus]")
+
+    view |> element("#payees-back") |> render_click()
+    refute has_element?(view, "#payees-title.max-sm\\:sr-only")
+    refute has_element?(view, "#payees-list .setzkasten-row-selected")
+  end
+
   test "the budget screen moves an account within its group" do
     {:ok, view, _} = live(build_conn(), "/screens/budget")
     nav = "#app-shell-sidebar-sort"

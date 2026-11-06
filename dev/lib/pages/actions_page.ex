@@ -161,7 +161,9 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
         </div>
         <:note>
           Dieselbe Auswahl wie oben: in der Werkzeugleiste eines Auswahlmodus, auch bei 0, ohne ✕
-          (kein <code>on_clear</code>).
+          (kein <code>on_clear</code>). Im Fuß eines Dialogs zeigt sie der
+          <.link navigate="/overlays#modal" class="link">Dialog</.link>
+          „Aktionen im Titel, Auswahlleiste im Fuß“.
         </:note>
       </.demo>
     </.showcase>

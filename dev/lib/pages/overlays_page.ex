@@ -48,6 +48,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.button phx-click={show_modal("category-trip")} aria-haspopup="dialog">
           Titel zum Umbenennen, Toast im Dialog
         </.button>
+        <.button id="payees-open" phx-click={show_modal("payees")} aria-haspopup="dialog">
+          Aktionen im Titel, Auswahlleiste im Fuß
+        </.button>
       </.demo>
       <.modal id="booking" title="Buchung bearbeiten" on_cancel={JS.push("booking_closed")}>
         <div class="grid gap-4 py-4">
@@ -196,6 +199,7 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
           Toast erscheint im offenen Dialog; sein Rückgängig lässt sich klicken.
         </p>
       </.modal>
+      <.payees_modal payee={@payee} picking={@payees_picking} picked={@payees_picked} />
       <.long_choice id="long-choice" placement={:center} />
       <.long_choice id="long-choice-panel" placement={:end} />
       <.modal id="category-panel" title="Kategorie Lebensmittel" placement={:end}>
@@ -484,6 +488,107 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     """
   end
 
+  @payees [
+    {"aral", "Tankstelle Aral"},
+    {"edeka", "EDEKA Center"},
+    {"edeka-sagt-danke", "EDEKA SAGT DANKE"},
+    {"hausverwaltung", "Hausverwaltung Ost"},
+    {"stadtwerke", "Stadtwerke Leipzig"}
+  ]
+
+  attr :payee, :string, required: true
+  attr :picking, :boolean, required: true
+  attr :picked, :list, required: true
+
+  defp payees_modal(assigns) do
+    assigns =
+      assign(assigns, payees: @payees, name: @payees |> Map.new() |> Map.get(assigns.payee))
+
+    ~H"""
+    <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+      <:leading :if={@payee}>
+        <.button
+          id="payees-back"
+          variant={:ghost}
+          size={:sm}
+          icon="chevron-left"
+          class="sm:hidden"
+          phx-click="payees_back"
+        >
+          Empfänger
+        </.button>
+      </:leading>
+      <:trailing>
+        <.button
+          id="payees-pick"
+          variant={:ghost}
+          size={:sm}
+          class={@payee && "max-sm:hidden"}
+          phx-click="payees_pick"
+        >
+          {if @picking, do: "Fertig", else: "Auswählen"}
+        </.button>
+      </:trailing>
+      <div class="grid gap-4 py-2 sm:grid-cols-[13rem_1fr]">
+        <.list
+          id="payees-list"
+          size={:compact}
+          framed
+          class={["max-h-64", @payee && "max-sm:hidden"]}
+        >
+          <.list_row
+            :for={{id, name} <- @payees}
+            id={"payees-#{id}"}
+            title={name}
+            selected={id == @payee}
+            autofocus={id == "aral"}
+            on_click={
+              JS.push(if(@picking, do: "payees_toggle", else: "payees_show"), value: %{id: id})
+            }
+            checked={id in @picked}
+            on_check={@picking && JS.push("payees_toggle", value: %{id: id})}
+          />
+        </.list>
+        <div :if={@payee} id="payees-detail" class="space-y-1">
+          <h3 class="font-semibold">{@name}</h3>
+          <p class="text-sm text-base-content/70">12 Buchungen, zuletzt am 3. November.</p>
+        </div>
+        <p :if={!@payee} class="text-sm text-base-content/70 max-sm:hidden">
+          Ein Klick auf einen Namen zeigt den Empfänger.
+        </p>
+      </div>
+      <:actions>
+        <.selection_bar :if={@picking} id="payees-bar" inline count={length(@picked)}>
+          <:leading>
+            <.button
+              id="payees-combine"
+              variant={:ghost}
+              size={:sm}
+              disabled={length(@picked) < 2}
+              phx-click="payees_pick"
+            >
+              Zusammenfassen
+            </.button>
+          </:leading>
+          <.dropdown
+            id="payees-listed"
+            label="Aufführen"
+            variant={:ghost}
+            align={:end}
+            chevron={false}
+            trigger_class={["btn-sm btn-square", @picked == [] && "btn-disabled"]}
+          >
+            <:trigger><.icon name="eye" /></:trigger>
+            <:item on_click="payees_pick" icon="eye">Aufführen und ergänzen</:item>
+            <:item on_click="payees_pick" icon="eye-off">Ausblenden</:item>
+          </.dropdown>
+        </.selection_bar>
+        <.button :if={!@picking} phx-click={hide_modal("payees")}>Schließen</.button>
+      </:actions>
+    </.modal>
+    """
+  end
+
   @categories ~w(Lebensmittel Drogerie Getränke Haushalt Kinder Haustier Garten Baumarkt Apotheke
                   Kleidung Geschenke Freizeit Sonstiges)
 
@@ -547,6 +652,30 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         </form>
       </:heading>
       …
+    </.modal>
+
+    <%!-- actions before and after the title; the title stays the dialog's name, hidden on phones --%>
+    <.modal id="payees" title="Empfänger verwalten" title_class={@payee && "max-sm:sr-only"}>
+      <:leading :if={@payee}>
+        <.button variant={:ghost} size={:sm} icon="chevron-left" class="sm:hidden"
+                 phx-click="back">Empfänger</.button>
+      </:leading>
+      <:trailing>
+        <.button variant={:ghost} size={:sm} class={@payee && "max-sm:hidden"} phx-click="pick">
+          {if @picking, do: "Fertig", else: "Auswählen"}
+        </.button>
+      </:trailing>
+      <.list id="payees-list" size={:compact} framed class={["max-h-64", @payee && "max-sm:hidden"]}>
+        <.list_row :for={p <- @payees} id={"payee-#{p.id}"} title={p.name} selected={p.id == @payee}
+                   autofocus={p.id == @initial}
+                   on_click={JS.push(if(@picking, do: "toggle", else: "show"), value: %{id: p.id})}
+                   checked={p.id in @selected}
+                   on_check={@picking && JS.push("toggle", value: %{id: p.id})} />
+      </.list>
+      …
+      <:actions>
+        <.selection_bar :if={@picking} id="pick" inline count={length(@selected)}>…</.selection_bar>
+      </:actions>
     </.modal>
 
     <%!-- a form that grows as you type: held at the top from sm; focus on the autofocus field --%>

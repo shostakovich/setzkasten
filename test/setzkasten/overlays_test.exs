@@ -91,6 +91,43 @@ defmodule Setzkasten.OverlaysTest do
              ~r/\.setzkasten-title-input > \.input:is\(:hover, :focus\) \{\s*background-color: color-mix\(in oklab, var\(--color-base-content\) 9%, transparent\);/
   end
 
+  test "a modal's title row holds actions before and after the title, which truncates between" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.modal id="p" title="Empfänger verwalten" title_class="max-sm:sr-only" placement={:end}>
+        <:leading><.button id="back" size={:sm}>Empfänger</.button></:leading>
+        <:trailing><.button id="pick" size={:sm}>Auswählen</.button></:trailing>
+        Body
+      </.modal>
+      """)
+
+    head = ".setzkasten-modal-head"
+    assert count(doc, "#{head} > div:has(#back) + h2#p-title + div:has(#pick) + form") == 1
+    assert ~w(items-center min-h-14 pointer-coarse:min-h-17) -- classes(doc, head) == []
+    assert ~w(min-w-0 flex-1 truncate max-sm:sr-only) -- classes(doc, "#p-title") == []
+    refute "wrap-anywhere" in classes(doc, "#p-title")
+    assert ~w(contents *:shrink-0) -- classes(doc, "#{head} > div:has(#back)") == []
+    trailing = classes(doc, "#{head} > div:has(#pick)")
+    assert ~w(contents *:shrink-0 [&>:first-child]:ms-auto) -- trailing == []
+    assert classes(doc, "#{head} > form") == []
+    assert attr(doc, "dialog", "aria-labelledby") == "p-title"
+
+    doc =
+      parse(~H"""
+      <.modal id="q"><:trailing><.button id="edit" size={:sm}>Bearbeiten</.button></:trailing>x</.modal>
+      """)
+
+    assert count(doc, ".setzkasten-modal-head #edit") == 1
+    assert attr(doc, "dialog", "aria-labelledby") == nil
+
+    doc = parse(~H|<.modal id="r" title="Buchung">x</.modal>|)
+    assert "items-start" in classes(doc, ".setzkasten-modal-head")
+    refute "min-h-14" in classes(doc, ".setzkasten-modal-head")
+    assert classes(doc, "#r-title") == ~w(min-w-0 text-lg font-semibold wrap-anywhere)
+  end
+
   test "a scrolling dialog focuses its first field, not the box" do
     hook = colocated_js("Setzkasten.Components.Overlays")
     assert hook =~ "[box, this.el].includes(document.activeElement)) focusIn(box)"
@@ -199,6 +236,7 @@ defmodule Setzkasten.OverlaysTest do
 
     doc = parse(~H|<.modal id="p" placement={:end}>Body</.modal>|)
     assert "setzkasten-modal-head" in classes(doc, ".modal-box > div:first-child")
+    assert classes(doc, ".setzkasten-modal-head > form") == ["ms-auto"]
     refute "modal-bottom" in classes(doc, "dialog")
     assert count(doc, ".modal-action") == 0
 

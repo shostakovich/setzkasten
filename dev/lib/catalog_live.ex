@@ -44,6 +44,9 @@ defmodule Setzkasten.Dev.CatalogLive do
        trip: "🏖️ Urlaub",
        trip_typed: "🏖️ Urlaub",
        picked: [],
+       payee: nil,
+       payees_picking: false,
+       payees_picked: [],
        sort: "date",
        basket: @basket,
        payees: @payees,
@@ -147,6 +150,21 @@ defmodule Setzkasten.Dev.CatalogLive do
     do: {:noreply, put_flash(socket, :info, "Hier öffnet die App „#{name}“ (Demo).")}
 
   def handle_event("clear_picked", _params, socket), do: {:noreply, assign(socket, picked: [])}
+
+  def handle_event("payees_pick", _params, socket),
+    do:
+      {:noreply,
+       assign(socket, payees_picking: !socket.assigns.payees_picking, payees_picked: [])}
+
+  def handle_event("payees_toggle", %{"id" => id}, socket) do
+    {:noreply,
+     update(socket, :payees_picked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
+  end
+
+  def handle_event("payees_show", %{"id" => id}, socket),
+    do: {:noreply, assign(socket, payee: id)}
+
+  def handle_event("payees_back", _params, socket), do: {:noreply, assign(socket, payee: nil)}
 
   def handle_event("booking_closed", _params, socket),
     do: {:noreply, put_flash(socket, :info, "Dialog geschlossen (Demo).")}
