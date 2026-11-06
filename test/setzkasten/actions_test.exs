@@ -518,13 +518,67 @@ defmodule Setzkasten.ActionsTest do
     css = File.read!(Path.expand("../../priv/static/setzkasten.css", __DIR__))
 
     assert css =~
-             ~r/\.setzkasten-selection-bar \.dropdown > \.dropdown-content \{\s*top: auto;\s*bottom: 100%;/
+             ~r/:is\(\.setzkasten-selection-bar, \.setzkasten-selection-inline\) \.dropdown > \.dropdown-content \{\s*top: auto;\s*bottom: 100%;/
 
     assert css =~
              ":root:has(.modal[open], .setzkasten-selection-bar:not([hidden])) .setzkasten-fab {"
 
     assert css =~
              ~r/@starting-style \{\s*\.setzkasten-selection-bar \{\s*opacity: 0;\s*translate: 0 0.5rem;/
+  end
+
+  test "an inline selection bar: in flow, leading actions, the count between, shown at 0" do
+    assigns = %{}
+
+    doc =
+      parse(~H"""
+      <.selection_bar id="pick" inline count={0} class="mt-2">
+        <:leading><.button id="combine" size={:sm} disabled>Zusammenfassen</.button></:leading>
+        <.button id="listed" size={:sm}>Aufführen</.button>
+      </.selection_bar>
+      """)
+
+    assert attr(doc, "#pick", "role") == "group"
+    assert attr(doc, "#pick", "aria-labelledby") == "pick-count"
+    assert attr(doc, "#pick", "phx-hook") == nil
+
+    assert ~w(setzkasten-selection-inline flex w-full justify-between mt-2) --
+             classes(doc, "#pick") == []
+
+    assert count(doc, ".setzkasten-selection-bar, [hidden], .h-20, .fixed") == 0
+
+    assert text(doc, "#pick-status") == "0 ausgewählt"
+    assert attr(doc, "#pick-status", "role") == "status"
+    assert text(doc, "#pick-count") == "0 ausgewählt"
+    assert count(doc, "#pick > div:nth-of-type(1) #combine") == 1
+    assert count(doc, "#pick > div:has(#combine) + #pick-count + div > #listed") == 1
+    assert count(doc, "#pick button[aria-label='Auswahl aufheben']") == 0
+
+    doc = parse(~H|<.selection_bar id="pick" inline count={2} on_clear="clear" />|)
+
+    assert [%{"event" => "clear"}] =
+             pushes(attr(doc, "#pick button[aria-label='Auswahl aufheben']", "phx-click"))
+  end
+
+  test "the fixed selection bar needs on_clear and takes leading actions before the count" do
+    assigns = %{}
+
+    assert_raise ArgumentError, ~r/needs on_clear/, fn ->
+      parse(~H|<.selection_bar id="sel" count={1} />|)
+    end
+
+    doc =
+      parse(~H"""
+      <.selection_bar id="sel" count={1} on_clear="clear">
+        <:leading><.button id="all" size={:sm}>Alle</.button></:leading>
+      </.selection_bar>
+      """)
+
+    assert count(
+             doc,
+             "#sel [role=group] > button[aria-label='Auswahl aufheben'] + #all + #sel-count"
+           ) ==
+             1
   end
 
   test "a confirmed click parks phx-value-* as a plain button sends them" do

@@ -89,7 +89,8 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
       <:intro>
         Für eine Mehrfachauswahl: unten fest über dem Inhalt, neben Seitenleiste oder Icon-Leiste,
         über Dock und sicherem Rand. Aufheben, Anzahl (für Screenreader angesagt), Aktionen; Menüs
-        darin öffnen nach oben. Bei 0 verschwindet sie.
+        darin öffnen nach oben. Bei 0 verschwindet sie. Mit <code>inline</code> steht sie im
+        Fluss, etwa als Werkzeugleiste eines Dialogs.
       </:intro>
       <.demo title="Zeilen auswählen">
         <ul class="divide-y divide-base-content/10 border-y border-base-content/10">
@@ -129,6 +130,39 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
           </.dropdown>
         </.selection_bar>
         <:note>Bisher ausgewählt: {length(@picked)}.</:note>
+      </.demo>
+      <.demo title="Im Fluss (inline), etwa in den :actions eines Dialogs">
+        <div class="max-w-sm rounded-box border border-base-content/10 bg-base-100 p-3">
+          <.selection_bar id="picked-inline" inline count={length(@picked)}>
+            <:leading>
+              <.button
+                id="picked-inline-combine"
+                variant={:ghost}
+                size={:sm}
+                disabled={length(@picked) < 2}
+                phx-click="clear_picked"
+              >
+                Zusammenfassen
+              </.button>
+            </:leading>
+            <.dropdown
+              id="picked-inline-listed"
+              label="Aufführen"
+              variant={:ghost}
+              align={:end}
+              chevron={false}
+              trigger_class="btn-sm btn-square"
+            >
+              <:trigger><.icon name="eye" /></:trigger>
+              <:item on_click="clear_picked" icon="eye">Aufführen und ergänzen</:item>
+              <:item on_click="clear_picked" icon="eye-off">Ausblenden</:item>
+            </.dropdown>
+          </.selection_bar>
+        </div>
+        <:note>
+          Dieselbe Auswahl wie oben: in der Werkzeugleiste eines Auswahlmodus, auch bei 0, ohne ✕
+          (kein <code>on_clear</code>).
+        </:note>
       </.demo>
     </.showcase>
 
@@ -206,6 +240,19 @@ defmodule Setzkasten.Dev.Pages.ActionsPage do
                  trigger_class="btn-sm">
         <:trigger>Mehr</:trigger>
         <:item on_click="delete_selected" icon="trash-2" danger confirm="Auswahl löschen?">Löschen</:item>
+      </.dropdown>
+    </.selection_bar>
+
+    <%!-- inline, e.g. in a modal's :actions while picking: shown at 0, no ✕ without on_clear --%>
+    <.selection_bar :if={@picking} id="pick" inline count={length(@selected)}>
+      <:leading>
+        <.button size={:sm} variant={:ghost} disabled={length(@selected) < 2}
+                 phx-click="combine">Zusammenfassen</.button>
+      </:leading>
+      <.dropdown id="pick-listed" label="Aufführen" variant={:ghost} align={:end} chevron={false}
+                 trigger_class="btn-sm btn-square">
+        <:trigger><.icon name="eye" /></:trigger>
+        <:item on_click="show_selected" icon="eye">Aufführen und ergänzen</:item>
       </.dropdown>
     </.selection_bar>
     """

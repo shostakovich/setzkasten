@@ -387,7 +387,7 @@ defmodule Setzkasten.Components.Actions do
   @doc """
   The bar for a multi-selection (e.g. checked rows of a table): fixed at the bottom of the
   content, with a button that clears the selection, the count and the actions for the selected
-  items (buttons, dropdowns, popovers) in the inner block.
+  items (buttons, dropdowns, popovers) in the inner block. `:leading` goes before the count.
 
   Render it always and pass the count: at 0 it hides (focus inside moves to the closest
   `[data-focus-fallback]`, else `<main id="main">`), and a polite live region announces each
@@ -407,24 +407,83 @@ defmodule Setzkasten.Components.Actions do
           <:item on_click="delete_selected" icon="trash-2" danger confirm="Auswahl löschen?">Löschen</:item>
         </.dropdown>
       </.selection_bar>
+
+  `inline` renders it in flow where it is placed, full width, as the toolbar of a picking
+  mode in a modal's `:actions` or a sheet: `:leading` at the start, the inner block at the
+  end and the count in the middle, with equal room on either side, as in an iOS toolbar. It
+  shows at 0 too, takes no spacer and leaves the floating action button alone; the live
+  region still announces the count, and dropdowns inside still open upwards. `on_clear` is
+  optional there: without it there is no ✕.
+
+      <.selection_bar :if={@picking} id="pick" inline count={length(@selected)}>
+        <:leading>
+          <.button size={:sm} variant={:ghost} disabled={length(@selected) < 2}
+                   phx-click="combine">Zusammenfassen</.button>
+        </:leading>
+        <.dropdown id="pick-listed" label="Aufführen" variant={:ghost} align={:end}
+                   chevron={false} trigger_class="btn-sm btn-square">
+          <:trigger><.icon name="eye" /></:trigger>
+          <:item on_click="show_selected" icon="eye">Aufführen</:item>
+        </.dropdown>
+      </.selection_bar>
   """
   attr :id, :string, required: true
   attr :count, :integer, required: true
   attr :label, :string, default: "%{count} ausgewählt", doc: "`%{count}` is the number"
-  attr :on_clear, :any, required: true, doc: "an event name or `%JS{}`"
+  attr :inline, :boolean, default: false, doc: "in flow where it is placed, shown at 0"
+
+  attr :on_clear, :any,
+    default: nil,
+    doc: "an event name or `%JS{}`; required unless `inline`"
+
   attr :"phx-target", :any, default: nil, doc: "for an event name in `on_clear`"
   attr :clear_label, :string, default: "Auswahl aufheben"
   attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, doc: "the actions for the selected items"
+  slot :leading, doc: "before the count, e.g. an action at the start of an inline bar"
+
+  def selection_bar(%{inline: false, on_clear: nil}) do
+    raise ArgumentError, "<.selection_bar> needs on_clear, unless it is inline"
+  end
 
   def selection_bar(assigns) do
     assigns =
       assign(assigns,
         text: String.replace(assigns.label, "%{count}", to_string(assigns.count)),
-        clear: click_js(assigns.on_clear, assigns[:"phx-target"], [])
+        clear: assigns.on_clear && click_js(assigns.on_clear, assigns[:"phx-target"], [])
       )
 
+    if assigns.inline, do: inline_selection_bar(assigns), else: fixed_selection_bar(assigns)
+  end
+
+  defp inline_selection_bar(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-count"}
+      class={[
+        "setzkasten-selection-inline flex w-full items-center justify-between gap-2 text-sm",
+        @class
+      ]}
+      {@rest}
+    >
+      <p id={"#{@id}-status"} class="sr-only" role="status">{@text}</p>
+      <div class="flex items-center gap-1">
+        <.clear_button :if={@clear} clear={@clear} label={@clear_label} />{render_slot(@leading)}
+      </div>
+      <span id={"#{@id}-count"} class="whitespace-nowrap tabular-nums" aria-hidden="true">
+        {@text}
+      </span>
+      <div class="flex items-center gap-1">
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  defp fixed_selection_bar(assigns) do
     ~H"""
     <div id={@id} phx-hook=".SelectionBar" {@rest}>
       <p id={"#{@id}-status"} class="sr-only" role="status">{if @count > 0, do: @text}</p>
@@ -449,14 +508,7 @@ defmodule Setzkasten.Components.Actions do
             @class
           ]}
         >
-          <.button
-            variant={:ghost}
-            size={:sm}
-            icon="x"
-            icon_only
-            label={@clear_label}
-            phx-click={@clear}
-          />
+          <.clear_button clear={@clear} label={@clear_label} />{render_slot(@leading)}
           <span
             id={"#{@id}-count"}
             class="px-1 font-semibold whitespace-nowrap tabular-nums"
@@ -493,6 +545,15 @@ defmodule Setzkasten.Components.Actions do
         }
       }
     </script>
+    """
+  end
+
+  attr :clear, JS, required: true
+  attr :label, :string, required: true
+
+  defp clear_button(assigns) do
+    ~H"""
+    <.button variant={:ghost} size={:sm} icon="x" icon_only label={@label} phx-click={@clear} />
     """
   end
 

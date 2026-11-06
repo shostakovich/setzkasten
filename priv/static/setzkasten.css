@@ -2049,17 +2049,17 @@
 }
 
 @layer utilities.setzkasten {
-  .setzkasten-selection-bar .dropdown > .dropdown-content {
+  :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown > .dropdown-content {
     top: auto;
     bottom: 100%;
     margin-bottom: 0.25rem;
     transform-origin: bottom left;
   }
-  .setzkasten-selection-bar .dropdown-end > .dropdown-content {
+  :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown-end > .dropdown-content {
     transform-origin: bottom right;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .setzkasten-selection-bar .dropdown > .dropdown-content {
+    :is(.setzkasten-selection-bar, .setzkasten-selection-inline) .dropdown > .dropdown-content {
       --setzkasten-enter-from: 0 0.25rem;
     }
   }
