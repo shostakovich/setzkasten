@@ -47,6 +47,7 @@ defmodule Setzkasten.Dev.CatalogLive do
        payee: nil,
        payees_picking: false,
        payees_picked: [],
+       scheduled_open: false,
        sort: "date",
        basket: @basket,
        payees: @payees,
@@ -160,6 +161,9 @@ defmodule Setzkasten.Dev.CatalogLive do
     {:noreply,
      update(socket, :payees_picked, &if(id in &1, do: List.delete(&1, id), else: &1 ++ [id]))}
   end
+
+  def handle_event("toggle_scheduled", _params, socket),
+    do: {:noreply, update(socket, :scheduled_open, &(!&1))}
 
   def handle_event("payees_show", %{"id" => id}, socket),
     do: {:noreply, assign(socket, payee: id)}

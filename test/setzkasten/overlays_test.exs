@@ -427,18 +427,44 @@ defmodule Setzkasten.OverlaysTest do
     assert text(doc, "#confirm-delete-ok-label") == "Verstanden"
   end
 
-  test "disclosure keeps its open state across patches" do
+  test "disclosure keeps the user's toggle across patches and follows a change of open" do
     assigns = %{}
     doc = parse(~H|<.disclosure id="d" summary="Mehr" open>Inhalt</.disclosure>|)
     assert classes(doc, "details") |> Enum.take(2) == ~w(collapse collapse-arrow)
     assert attr(doc, "details", "open") != nil
     assert attr(doc, "details", "phx-mounted") =~ "ignore_attrs"
+    assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Overlays.Disclosure"
+    assert attr(doc, "details", "data-open") == "true"
     assert text(doc, "summary.collapse-title") == "Mehr"
+
+    for variant <- [:collapse, :row, :button] do
+      assigns = %{variant: variant}
+      doc = parse(~H|<.disclosure id="b" summary="x" variant={@variant}>y</.disclosure>|)
+      assert attr(doc, "details", "phx-hook") == "Setzkasten.Components.Overlays.Disclosure"
+      assert attr(doc, "details", "data-open") == "false"
+      assert attr(doc, "details", "open") == nil
+    end
 
     assert classes(
              parse(~H|<.disclosure id="b" summary="x" variant={:button}>y</.disclosure>|),
              "summary"
            ) == ["btn"]
+
+    for variant <- [:collapse, :button] do
+      assigns = %{variant: variant}
+
+      assert_raise ArgumentError, ~r/disclosure> takes no phx-hook/, fn ->
+        rendered_to_string(
+          ~H|<.disclosure id="h" summary="x" variant={@variant} phx-hook="Mine">y</.disclosure>|
+        )
+      end
+    end
+
+    hook = colocated_js("Setzkasten.Components.Overlays")
+    assert hook =~ ~s|mounted() { this.opened = this.el.getAttribute("data-open") }|
+
+    assert hook =~
+             ~r/if \(open === this.opened\) return\s*this.opened = open\s*this.el.open = open === "true"/
   end
 
   test "dialog titles and texts break long strings" do

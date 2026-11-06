@@ -467,8 +467,8 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
       code={code(2)}
     >
       <:intro>
-        Selten gebrauchte Optionen und Details; Zusammenfassung mindestens 44px auf Touch. Der
-        offene Zustand übersteht LiveView-Updates.
+        Selten gebrauchte Optionen und Details; Zusammenfassung mindestens 44px auf Touch. Was
+        man selbst auf- und zuklappt, übersteht LiveView-Updates; ändert der Server <code>open</code>, folgt er.
       </:intro>
       <.demo title="Zu, offen, mit Anzahl, als Button" class="space-y-4">
         <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">
@@ -487,6 +487,24 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
         <.disclosure id="more-options" variant={:button} icon="settings" summary="Weitere Optionen">
           <.input name="o[notify]" id="o-notify" type="toggle" label="Beteiligte benachrichtigen" />
         </.disclosure>
+      </.demo>
+      <.demo title="Vom Server geöffnet" class="space-y-4">
+        <.button id="scheduled-toggle" size={:sm} phx-click="toggle_scheduled">
+          {if @scheduled_open, do: "Vom Server schließen", else: "Geplante Buchungen zeigen"}
+        </.button>
+        <.disclosure
+          id="scheduled-list"
+          variant={:row}
+          summary="Geplant"
+          count={2}
+          open={@scheduled_open}
+        >
+          Miete am 1. Dezember · Strom am 15. Dezember
+        </.disclosure>
+        <:note>
+          Der Button ändert <code>open</code> auf dem Server, der Bereich folgt. Klappst du ihn
+          selbst zu, bleibt er zu, bis <code>open</code> wieder <code>true</code> wird.
+        </:note>
       </.demo>
     </.showcase>
 
@@ -785,6 +803,9 @@ defmodule Setzkasten.Dev.Pages.OverlaysPage do
     ~S"""
     <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
     <.disclosure id="retired" summary="Ausgemustert" count={length(@retired)}>…</.disclosure>
+
+    <%!-- opened and closed from the server when open changes --%>
+    <.disclosure id="scheduled" variant={:row} summary="Geplant" open={@show_scheduled}>…</.disclosure>
     """
   end
 

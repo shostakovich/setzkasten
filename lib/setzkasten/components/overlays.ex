@@ -946,12 +946,19 @@ defmodule Setzkasten.Components.Overlays do
   `collapse collapse-arrow`; `variant={:row}` is a quiet 14px row with only a hairline above,
   inside a card or under a chart (`chart_card`'s "Werte als Tabelle" is one); `variant={:button}`
   renders the summary as a button (with `icon`) for compact "more options" triggers. The summary is at least 44px on touch screens.
-  The open state survives LiveView patches. `count` follows the summary as a quiet number, as
+  `count` follows the summary as a quiet number, as
   in `section_heading` (not "Kurse (3)"); in the button it is a small neutral badge, set apart
   from the label it would otherwise read as part of.
 
       <.disclosure id="split-more" summary="Weitere Aufteilungsoptionen">…</.disclosure>
       <.disclosure id="retired" summary="Ausgemustert" count={2}>…</.disclosure>
+
+  The user's own toggle survives LiveView patches. `open` acts when it changes, as `show` does
+  for `modal/1`: the server opens or closes it by changing `open`, and closed by the user, it
+  stays closed until `open` turns `true` again. That takes Setzkasten's hook, so a `phx-hook`
+  raises.
+
+      <.disclosure id="scheduled" variant={:row} summary="Geplant" open={@show_scheduled}>…</.disclosure>
 
   The `:title` slot takes the summary as markup instead of `summary` (e.g. with a toned
   amount; an attribute and a slot cannot share the name):
@@ -976,6 +983,10 @@ defmodule Setzkasten.Components.Overlays do
     raise ArgumentError, "<.disclosure> needs a summary or a :title slot"
   end
 
+  def disclosure(%{rest: rest}) when is_map_key(rest, :"phx-hook") do
+    raise ArgumentError, "<.disclosure> takes no phx-hook: following `open` needs its own"
+  end
+
   def disclosure(%{variant: :button} = assigns) do
     ~H"""
     <details
@@ -983,6 +994,8 @@ defmodule Setzkasten.Components.Overlays do
       class={@class}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
+      phx-hook=".Disclosure"
+      data-open={to_string(@open)}
       {@rest}
     >
       <summary class="btn">
@@ -1008,6 +1021,8 @@ defmodule Setzkasten.Components.Overlays do
       ]}
       open={@open}
       phx-mounted={JS.ignore_attributes(["open"])}
+      phx-hook=".Disclosure"
+      data-open={to_string(@open)}
       {@rest}
     >
       <summary class={["collapse-title font-semibold", @variant == :row && "text-sm"]}>
@@ -1017,6 +1032,17 @@ defmodule Setzkasten.Components.Overlays do
         {render_slot(@inner_block)}
       </div>
     </details>
+    <script :type={ColocatedHook} name=".Disclosure">
+      export default {
+        mounted() { this.opened = this.el.getAttribute("data-open") },
+        updated() {
+          const open = this.el.getAttribute("data-open")
+          if (open === this.opened) return
+          this.opened = open
+          this.el.open = open === "true"
+        }
+      }
+    </script>
     """
   end
 

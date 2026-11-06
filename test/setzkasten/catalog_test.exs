@@ -63,6 +63,17 @@ defmodule Setzkasten.CatalogTest do
     refute has_element?(view, "#payees-list .setzkasten-row-selected")
   end
 
+  test "a disclosure opened and closed from the server" do
+    {:ok, view, _} = live(build_conn(), "/overlays")
+    assert has_element?(view, "#scheduled-list[data-open=false]:not([open])")
+
+    view |> element("#scheduled-toggle") |> render_click()
+    assert has_element?(view, "#scheduled-list[data-open=true]")
+
+    view |> element("#scheduled-toggle") |> render_click()
+    assert has_element?(view, "#scheduled-list[data-open=false]")
+  end
+
   test "the budget screen moves an account within its group" do
     {:ok, view, _} = live(build_conn(), "/screens/budget")
     nav = "#app-shell-sidebar-sort"
