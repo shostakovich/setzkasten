@@ -405,9 +405,10 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
       >
         <.list id="payee-picker" size={:compact} framed class="max-h-48">
           <.list_row
-            :for={{id, name, hidden} <- @payees}
+            :for={{id, name, hidden, rules} <- @payees}
             id={"payee-#{id}"}
             title={name}
+            strong={rules}
             selected={id == @payee_shown}
             on_click={JS.push("payee_show", value: %{id: id})}
             checked={id in @payee_checked}
@@ -422,7 +423,8 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
         <:note>
           Gezeigt: {payee_name(@payees, @payee_shown)} · ausgewählt: {length(@payee_checked)}. Die
           Checkbox wählt aus, ein Klick auf den Namen zeigt den Empfänger. 32px-Zeilen, mit dem
-          Finger 44px. Mit <code>check_from={":sm"}</code>
+          Finger 44px. Fett mit <code>strong</code>: Empfänger mit Umbenennungsregeln. Mit
+          <code>check_from={":sm"}</code>
           stünde die Checkbox erst ab <code>sm</code>, etwa auf dem Handy nur beim Auswählen.
         </:note>
       </.demo>
@@ -450,7 +452,7 @@ defmodule Setzkasten.Dev.Pages.TablesPage do
 
   defp payee_name(payees, id) do
     case List.keyfind(payees, id, 0) do
-      {_, name, _} -> name
+      {_, name, _, _} -> name
       nil -> "–"
     end
   end

@@ -827,6 +827,8 @@ defmodule Setzkasten.Components.Data do
 
   `muted` quiets a done or secondary row: the title takes the meta's 70 % at normal weight,
   trailing values follow it, the leading content fades. Hover and tap stay as they are.
+  `strong` is its counterpart: the title in semibold at every size, compact included, e.g. for
+  payees that have rename rules. A row is not both.
 
   `exit={:strike}` (needs `id`) animates every row LiveView removes, in a stream or a `:for` list:
   the title strikes through (if not yet struck), then the row collapses in its place, and LiveView
@@ -867,6 +869,7 @@ defmodule Setzkasten.Components.Data do
   attr :actions_class, :any, default: nil, doc: "the icon buttons' column, e.g. a fixed width"
   attr :confirm_id, :string, default: "confirm-delete"
   attr :muted, :boolean, default: false, doc: "a done or secondary row"
+  attr :strong, :boolean, default: false, doc: "the title in semibold, at every size"
 
   attr :selected, :boolean,
     default: false,
@@ -915,6 +918,10 @@ defmodule Setzkasten.Components.Data do
           "<.list_row exit={:strike}> needs an id: LiveView hooks run on elements with one"
   end
 
+  def list_row(%{strong: true, muted: true}) do
+    raise ArgumentError, "<.list_row> is strong or muted, not both"
+  end
+
   def list_row(%{on_check: check, check_label: nil, title: nil}) when not is_nil(check) do
     raise ArgumentError,
           "<.list_row on_check> needs a title or a check_label to name its checkbox"
@@ -930,11 +937,7 @@ defmodule Setzkasten.Components.Data do
       |> assign(
         link?: link?,
         title_click: title_click(assigns, link?),
-        title_class:
-          if(assigns.muted,
-            do: "font-normal text-base-content/70",
-            else: "font-medium [.setzkasten-list-compact>li_&]:font-normal"
-          ),
+        title_class: title_class(assigns),
         menu_label:
           if(assigns.title,
             do: "#{assigns.actions_label}: #{assigns.title}",
@@ -1295,6 +1298,10 @@ defmodule Setzkasten.Components.Data do
 
   defp row_name(assigns),
     do: ~H|<span class="setzkasten-row-name" title={@title}>{@title}</span>|
+
+  defp title_class(%{strong: true}), do: "font-semibold"
+  defp title_class(%{muted: true}), do: "font-normal text-base-content/70"
+  defp title_class(_assigns), do: "font-medium [.setzkasten-list-compact>li_&]:font-normal"
 
   defp title_click(assigns, link?) do
     click = if assigns.on_click && !link?, do: click_js(assigns.on_click, assigns[:"phx-target"])

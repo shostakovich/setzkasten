@@ -1414,6 +1414,26 @@ defmodule Setzkasten.DataTest do
     refute "opacity-70" in classes(plain, "li > div:first-child")
   end
 
+  test "a strong row sets its title in semibold, in a compact list too" do
+    assigns = %{}
+
+    for doc <- [
+          parse(~H|<.list_row title="Bäckerei Krume" navigate="/k" strong />|),
+          parse(~H|<.list size={:compact}>
+  <.list_row on_click="show" strong>Krume</.list_row>
+</.list>|),
+          parse(~H|<.list size={:dense}><.list_row title="Krume" strong /></.list>|)
+        ] do
+      title = classes(doc, ".list-col-grow > :is(a, button, p)")
+      assert "font-semibold" in title
+      refute Enum.any?(title, &(&1 =~ ~r/font-(normal|medium)/))
+    end
+
+    assert_raise ArgumentError, ~r/strong or muted/, fn ->
+      parse(~H|<.list_row title="Milch" strong muted />|)
+    end
+  end
+
   test "a strike exit row strikes its title on tap, before the app's own click" do
     assigns = %{myself: %Phoenix.LiveComponent.CID{cid: 3}}
 

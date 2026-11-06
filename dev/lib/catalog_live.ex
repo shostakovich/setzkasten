@@ -22,11 +22,11 @@ defmodule Setzkasten.Dev.CatalogLive do
 
   @basket [{1, "Äpfel"}, {2, "Hafermilch"}, {3, "Kaffee"}, {4, "Spülmittel"}]
   @payees [
-    {"krume", "Bäckerei Krume", false},
-    {"frisch", "Supermarkt Frisch", false},
-    {"stadtwerke", "Stadtwerke", false},
-    {"nord", "Tankstelle Nord mit sehr langem Namen aus dem Kontoauszug", false},
-    {"paypal", "PayPal Europe", true}
+    {"krume", "Bäckerei Krume", false, false},
+    {"frisch", "Supermarkt Frisch", false, true},
+    {"stadtwerke", "Stadtwerke", false, false},
+    {"nord", "Tankstelle Nord mit sehr langem Namen aus dem Kontoauszug", false, true},
+    {"paypal", "PayPal Europe", true, false}
   ]
 
   def pages, do: @pages
